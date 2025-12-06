@@ -25,7 +25,7 @@ Basic syntax:
 ffuf -w <WL>:FUZZ -u http://<IP>:<PORT>/FUZZ
 ```
 
-Some wordlists contain comments at the beginning of the document. These comments may clutter the results. Utilize the '**-ic**' flag to ignore comments.
+Some wordlists contain comments at the beginning of the document. These comments may clutter the results. Utilize the '**-ic**' flag to ignore such comments.
 
 ```
 ffuf -w directory-list-2.3-small.txt:FUZZ -u http://94.237.61.242:8080/FUZZ -ic
@@ -106,9 +106,9 @@ ffuf -w directory-list-2.3-small.txt:FUZZ -u http://94.237.61.242:8080/FUZZ -rec
 
 ## Subdomain Fuzzing
 
-Keep in mind that exercises, labs and exams provided by HTB are not hosted on public facing servers, and thus, are not indexed by public DNS servers. In order to access a domain, it must first be resolved to an IP address. The browser first checks the **/etc/hosts** file, and then, if necessary, a public DNS.
+Keep in mind that exercises, labs and exams provided by HTB are not hosted on public facing servers, and thus, are not indexed by public DNS servers. In order to access a domain, it must be resolved to an IP address. The browser first checks the **/etc/hosts** file, and then, if necessary, a public DNS.
 
-In order for DNS resolution to work on a HTB hosted domain an entry must first be added to the **/etc/hosts** file:
+In order for DNS resolution to work on a HTB hosted domain an entry must be added to the **/etc/hosts** file:
 
 ```
 echo "94.237.61.242 inlanefreight.htb" >> /etc/hosts
@@ -134,7 +134,7 @@ The above method only works on public facing servers. Since we do not know which
 
 ## VHOST Fuzzing
 
-Vhost fuzzing is the go-to method for subdomain fuzzing in a HTB environment. A Vhost is basically a subdomain served on the same server as the main domain, and thus, has the **same IP-address**. Vhosts allow a single IP-address to serve several different web pages. Vhost fuzzing work by fuzzing the **Host header** in the HTTP request
+Vhost fuzzing is the go-to method for subdomain fuzzing in a HTB environment. A vhost is basically a subdomain served on the same server as the main domain, and thus, has the **same IP-address**. Vhosts allow a single IP-address to serve several different web pages. Vhost fuzzing work by fuzzing the **Host header** in the HTTP request
 
 Basic syntax:
 
@@ -148,7 +148,7 @@ ffuf -w subdomains-top1million-5000.txt:FUZZ -u http://academy.htb:80/ -H 'Host:
 
 Be aware that when vhost fuzzing we are simply changing the **Host header** while visiting the same page, thus, every response will return a **200 OK** whether the vhost exists or not. However, an existing vhost will return a different response size.
 
-The following flags are used to filter based on size:
+The following flags are used to filter based on response size:
 
 - -ms (match size)
 - -fs (filter size)
@@ -159,4 +159,45 @@ ffuf -w subdomains-top1million-5000.txt:FUZZ -u http://academy.htb:80/ -H 'Host:
 
 ---
 
-## Parameter Fuzzing
+## Parameter Fuzzing (GET)
+
+GET parameters are usually passed after the URL, and are initiated by a question mark (?):
+
+```
+http://admin.academy.htb:80/admin/admin.php?parameter=key
+```
+
+Common wordlists for paramter fuzzing include:
+
+- burp-parameter-names.txt
+- fuzz-lfi-params-list.txt
+
+Basic syntax:
+
+```
+ffuf -w <WL>:FUZZ -u <IP/DOMAIN>:<PORT>/<DIR><PAGE>?FUZZ=KEY
+```
+
+```
+ffuf -w burp-parameter-names.txt:FUZZ -u http://admin.academy.htb:8080/admin/admin.php?FUZZ=key
+```
+
+---
+
+## Parameter Fuzzing (POST)
+
+Post requets are passed in the data field within the HTTP request. When fuzzing PHP pages the POST data must have the following content-type:
+
+- Content-Type: application/x-www-form-urlencoded
+
+It is good practice to set the above **Content-type** with the **-H** flag.
+
+Basic syntax:
+
+```
+ffuf -w burp-parameter-names.txt:FUZZ -u http://admin.academy.htb:8080/admin/admin.php -X POST -d 'FUZZ=key' -H 'Content-Type: application/x-www-form-urlencoded'
+```
+
+---
+
+## Value Fuzzing
