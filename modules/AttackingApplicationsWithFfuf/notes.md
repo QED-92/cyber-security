@@ -198,7 +198,7 @@ Basic syntax:
 ffuf -w burp-parameter-names.txt:FUZZ -u http://admin.academy.htb:8080/admin/admin.php -X POST -d 'FUZZ=key' -H 'Content-Type: application/x-www-form-urlencoded'
 ```
 
-When POST based fuzzing require complex parameters i highly recommend using FFUF's built-in ability to parse files. Simply capture a request with a web-proxy, such as BurpSuite. Insert the FUZZ keyword where you want to FUZZ and save the request to file.
+When POST based fuzzing require complex parameters i highly recommend using FFUF's built-in ability to **\*parse** files. Simply capture a request with a **web-proxy**, such as BurpSuite. Insert the FUZZ keyword where you want to FUZZ and save the request to file.
 
 The following flags are required for parsing a request from file:
 
@@ -218,3 +218,17 @@ ffuf -w burp-parameter-names.txt:FUZZ -request req.txt -request-proto http
 ---
 
 ## Value Fuzzing
+
+After finding a working parameter through **parameter fuzzing**, the next step is usually to fuzz for the correct value (key) to that parameter. The type of value differs depending on the type of parameter, thus, we may not always find a pre-made wordlist. However, for parameters such as user IDs, usernames and passwords, we can probably find a suitable wordlist, or create one ourselves.
+
+User IDs often consists of integer values, thus, we can easily create a word list with a simple bash one-liner:
+
+```
+for i in $(seq 1 1000); do echo $i >> ids.txt; done
+```
+
+Basic syntax:
+
+```
+ffuf -w ids.txt:FUZZ -u http://admin.academy.htb:PORT/admin/admin.php -X POST -d 'id=FUZZ' -H 'Content-Type: application/x-www-form-urlencoded'
+```
