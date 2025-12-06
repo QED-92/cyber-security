@@ -1,10 +1,8 @@
 # Attacking Web Applications with FFUF
 
-Notes from HTB module **Attacking Web Applications with FFUF**.
-
 On HTB VM's and Kali Linux machines most wordlists can be found in the following directory:
 
-- /opt/useful/seclists/
+- **/opt/useful/seclists/**
 
 In the examples below i will simply write the name of the wordlist instead of absolute path.
 

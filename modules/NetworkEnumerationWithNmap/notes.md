@@ -50,7 +50,7 @@ nmap 10.129.2.18 -sn --packet-trace
 
 ![Filtered output](images/nmap3.PNG)
 
-To determine why NMAP has labeled a host as **"up"** the **--reason** flag is used.
+To determine why NMAP has labeled a host as **"up"**, the **--reason** flag is used.
 
 ```
 nmap 10.129.2.18 -sn --reason
@@ -58,8 +58,29 @@ nmap 10.129.2.18 -sn --reason
 
 ![Filtered output](images/nmap4.PNG)
 
-On a local network NMAP might determine the status of the host through **ARP Requests**, even though we told NMAP to use **ICMP Echo Requests**. Use the **-PE** and **--disable-arp-ping** flags to force NMAP to use **ICMP**.
+On a local network NMAP might determine the status of a host through **ARP Requests**, even though we told NMAP to use **ICMP Echo Requests**. Use the **-PE** and **--disable-arp-ping** flags to force NMAP to use **ICMP**.
 
 ```
 nmap 10.129.2.18 -sn -PE --disable-arp-ping
 ```
+
+---
+
+## Port Scanning
+
+Once we have identified an online target through the **host discovery process**, we want to get a more accurate picture of the system. This includes information about:
+
+- Open ports
+- Services
+- Operating systems
+
+A scanned port is assigned one of six different states:
+
+| State             | Description                                                  |
+| ----------------- | ------------------------------------------------------------ |
+| `Open`            | `Connection to port established`                             |
+| `Closed`          | `Connection to port not established`                         |
+| `Filtered`        | `Port returns no response or an error code`                  |
+| `Unfiltered`      | `Port is accessible but not able to conclude if open/closed` |
+| `Open/Filtered`   | `No response (indication of firewall)`                       |
+| `Closed/Filtered` | `Unable to determine if closed or filtered by firewall`      |
