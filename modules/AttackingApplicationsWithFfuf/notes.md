@@ -114,8 +114,22 @@ In order for DNS resolution to work on a HTB hosted domain an entry must first b
 echo “94.237.61.242 inlanefreight.htb” >> /etc/hosts
 ```
 
-| Tabell           | Primärnyckel     | Beskrivning               |
-| ---------------- | ---------------- | ------------------------- |
-| `Elevxxxxxx`     | `pnr`            | Elevens personuppgifter   |
-| `Kursxxxxxx`     | `kursnamn`       | Kurser                    |
-| `KursElevxxxxxx` | `pnr + kursnamn` | Kopplingstabell elev–kurs |
+Common wordlists for subdomain fuzzing include:
+
+- subdomains-top1million-5000/20000/110000/.txt
+
+Basic syntax:
+
+```
+ffuf -w <WL>:FUZZ -u http://FUZZ.<IP/DOMAIN>:<PORT>
+```
+
+```
+ffuf -w subdomains-top1million-5000.txt:FUZZ -u https://FUZZ.inlanefreight.com/ -ic
+```
+
+The above method only works on public facing servers. Since we do not know which subdomains exists, we cannot add them to the **/etc/hosts** file.
+
+---
+
+## VHOST Fuzzing
