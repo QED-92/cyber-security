@@ -39,13 +39,21 @@ nmap -sn -oA hosts 10.129.2.18 10.129.2.19 10.129.2.20 | grep for | cut -d" " -f
 If the IP addresses of interest are adjacent to one another a range can be specified in the last octet.
 
 ```
-nmap -sn -oA hosts 10.129.2.18-22| grep for | cut -d" " -f5
+nmap -sn -oA hosts 10.129.2.18-20| grep for | cut -d" " -f5
 ```
 
-To get an overview of all packages sent and received the **--packet-trace** flag can be used.
+To get an overview of all packages sent and received the **--packet-trace** flag is used.
 
 ```
 nmap 10.129.2.18 -sn -oA hosts --packet-trace
 ```
 
 ![Filtered output](images/nmap3.PNG)
+
+To determine why NMAP has labeled a host as **"up"** the **--reason** flag is used.
+
+```
+nmap 10.129.2.18 -sn -oA hosts --reason
+```
+
+![Filtered output](images/nmap4.PNG)
