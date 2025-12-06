@@ -111,12 +111,12 @@ Keep in mind that exercises, labs and exams provided by HTB are not hosted on pu
 In order for DNS resolution to work on a HTB hosted domain an entry must first be added to the **/etc/hosts** file:
 
 ```
-echo “94.237.61.242 inlanefreight.htb” >> /etc/hosts
+echo "94.237.61.242 inlanefreight.htb" >> /etc/hosts
 ```
 
 Common wordlists for subdomain fuzzing include:
 
-- subdomains-top1million-5000/20000/110000/.txt
+- subdomains-top1million-5000/20000/110000.txt
 
 Basic syntax:
 
@@ -125,7 +125,7 @@ ffuf -w <WL>:FUZZ -u http://FUZZ.<IP/DOMAIN>:<PORT>
 ```
 
 ```
-ffuf -w subdomains-top1million-5000.txt:FUZZ -u https://FUZZ.inlanefreight.com/ -ic
+ffuf -w subdomains-top1million-5000.txt:FUZZ -u https://FUZZ.inlanefreight.com/
 ```
 
 The above method only works on public facing servers. Since we do not know which subdomains exists, we cannot add them to the **/etc/hosts** file.
@@ -133,3 +133,30 @@ The above method only works on public facing servers. Since we do not know which
 ---
 
 ## VHOST Fuzzing
+
+Vhost fuzzing is the go-to method for subdomain fuzzing in a HTB environment. A Vhost is basically a subdomain served on the same server as the main domain, and thus, has the **same IP-address**. Vhosts allow a single IP-address to serve several different web pages. Vhost fuzzing work by fuzzing the **Host header** in the HTTP request
+
+Basic syntax:
+
+```
+ffuf -w <WL>:FUZZ -u http://<IP/DOMAIN>:<PORT>/ -H 'Host: FUZZ.<IP/DOMAIN>'
+```
+
+```
+ffuf -w subdomains-top1million-5000.txt:FUZZ -u http://academy.htb:80/ -H 'Host: FUZZ.academy.htb'
+```
+
+Be aware that when vhost fuzzing we are simply changing the **Host header** while visiting the same page, thus, every response will return a **200 OK** whether the vhost exists or not. However, an existing vhost will return a different response size.
+
+The following flags are used to filter based on size:
+
+- -ms (match size)
+- -fs (filter size)
+
+```
+ffuf -w subdomains-top1million-5000.txt:FUZZ -u http://academy.htb:80/ -H 'Host: FUZZ.academy.htb' -fs 900
+```
+
+---
+
+## Parameter Fuzzing
