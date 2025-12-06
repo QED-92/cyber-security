@@ -11,10 +11,16 @@ Enumerate hidden directories on a web server. Common wordlists for directory fuz
 - directory-list-2.3-small/medium/big.txt
 - raft-small/medium/large-directories.txt
 
-Basic syntax for directory fuzzing:
+Basic syntax:
 
 ```
 ffuf -w <WL>:FUZZ -u http://<IP>:<PORT>/FUZZ
+```
+
+Some wordlists contain comments at the beginning of the document. These comments may clutter the results. Utilize the '**-ic**' flag to ignore comments.
+
+```
+ffuf -w /opt/useful/seclists/Discovery/Web-Content/directory-list-2.3-small.txt:FUZZ -u http://94.237.61.242/FUZZ -ic
 ```
 
 # Databaser L0003B (LTU)
