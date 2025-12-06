@@ -161,7 +161,7 @@ ffuf -w subdomains-top1million-5000.txt:FUZZ -u http://academy.htb:80/ -H 'Host:
 
 ## Parameter Fuzzing (GET)
 
-GET parameters are usually passed after the URL, and are initiated by a question mark (?):
+**GET** parameters are usually passed after the URL, and are initiated by a question mark (?):
 
 ```
 http://admin.academy.htb:80/admin/admin.php?parameter=key
@@ -186,7 +186,7 @@ ffuf -w burp-parameter-names.txt:FUZZ -u http://admin.academy.htb:8080/admin/adm
 
 ## Parameter Fuzzing (POST)
 
-Post requets are passed in the data field within the HTTP request. When fuzzing PHP pages the POST data must have the following content-type:
+**Post requets** are passed in the data field within the HTTP request. When fuzzing **PHP** pages the POST data must have the following content-type:
 
 - Content-Type: application/x-www-form-urlencoded
 
