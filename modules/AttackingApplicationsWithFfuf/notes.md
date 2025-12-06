@@ -198,6 +198,23 @@ Basic syntax:
 ffuf -w burp-parameter-names.txt:FUZZ -u http://admin.academy.htb:8080/admin/admin.php -X POST -d 'FUZZ=key' -H 'Content-Type: application/x-www-form-urlencoded'
 ```
 
+When POST based fuzzing require complex parameters i highly recommend using FFUF's built-in ability to parse files. Simply capture a request with a web-proxy, such as BurpSuite. Insert the FUZZ keyword where you want to FUZZ and save the request to file.
+
+The following flags are required for parsing a request from file:
+
+- -request
+- -request-proto
+
+Basic syntax:
+
+```
+ffuf -w <WL>:FUZZ -request <FILE> -request-proto <PROTOCOL>
+```
+
+```
+ffuf -w burp-parameter-names.txt:FUZZ -request req.txt -request-proto http
+```
+
 ---
 
 ## Value Fuzzing
