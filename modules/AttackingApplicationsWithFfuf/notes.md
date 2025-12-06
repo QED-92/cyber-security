@@ -2,6 +2,12 @@
 
 Notes from HTB module **Attacking Web Applications with FFUF**.
 
+On HTB VM's and Kali Linux machines most wordslists can be found in the following directory:
+
+- /opt/useful/seclists/
+
+In the examples below i will simply write the name of the wordlist instead of absolute path.
+
 ---
 
 ## Directory Fuzzing
@@ -22,7 +28,7 @@ ffuf -w <WL>:FUZZ -u http://<IP>:<PORT>/FUZZ
 Some wordlists contain comments at the beginning of the document. These comments may clutter the results. Utilize the '**-ic**' flag to ignore comments.
 
 ```
-ffuf -w /opt/useful/seclists/Discovery/Web-Content/directory-list-2.3-small.txt:FUZZ -u http://94.237.61.242:8080/FUZZ -ic
+ffuf -w directory-list-2.3-small.txt:FUZZ -u http://94.237.61.242:8080/FUZZ -ic
 ```
 
 ---
@@ -47,7 +53,7 @@ ffuf -w <WL>:FUZZ -u http://<IP>:<PORT>/<FILE>FUZZ
 The **index** file is present on most web servers and often used for extension fuzzing:
 
 ```
-ffuf -w /opt/useful/seclists/Discovery/Web-Content/web-extensions.txt:FUZZ -u http://94.237.61.242:8080/indexFUZZ
+ffuf -w web-extensions.txt:FUZZ -u http://94.237.61.242:8080/indexFUZZ
 ```
 
 ---
@@ -65,85 +71,39 @@ ffuf -w <WL>:FUZZ -u http://<IP>:<PORT>/FUZZ.<EXT>
 ```
 
 ```
-ffuf -w /opt/useful/seclists/Discovery/Web-Content/directory-list-2.3-small.txt:FUZZ -u http://94.237.61.242:8080/blog/FUZZ.php -ic
+ffuf -w directory-list-2.3-small.txt:FUZZ -u http://94.237.61.242:8080/blog/FUZZ.php -ic
 ```
 
-# Databaser L0003B (LTU)
+If you were unable to find any file extensions during the extension fuzzing process, you can still fuzz for pages by utilizing wordlists that combine filenames and extensions. The following wordlists can be utilized:
 
-Anteckningar och uppgifter från kursen Databaser L0003B på LTU. Kursen behandlar relationsdatabaser med fokus på SQL och implementation i VB.
+- raft-small/medium/large-files.txt
 
 ---
 
-## Uppgift 1 – L0003B (Sammanfattning)
+## Recursive Fuzzing
 
-Uppgiften går ut på att bygga en Windows Forms-applikation i **VB.NET** som kommunicerar med en SQL Server-databas via **ADO.NET**.
+Recursive fuzzing combines directory, extension and page fuzzing into one process. A new branch is automatically started whenever a new directory is discovered. This continues until the entire web server has been enumerated.
 
-Syftet är att träna på:
+Recursive fuzzing may save a lot of time, depending on the size of the web server. Specifying a recursive depth is strongly advised.
 
-- Kommunikation mellan program och databas
-- Att konstruera SQL-satser
-- Att hantera CRUD-operationer (Create, Read, Update, Delete)
-- Att upprätthålla objektintegritet i databasen
+Basic syntax:
 
-### Databasstruktur (krav)
+```
+ffuf -w <WL>:FUZZ -u http://<IP>:<PORT>/FUZZ -recursion
+```
 
-Databasen **L0003B** består av tre tabeller:
+Useful flags include:
 
-| Tabell           | Primärnyckel     | Beskrivning               |
-| ---------------- | ---------------- | ------------------------- |
-| `Elevxxxxxx`     | `pnr`            | Elevens personuppgifter   |
-| `Kursxxxxxx`     | `kursnamn`       | Kurser                    |
-| `KursElevxxxxxx` | `pnr + kursnamn` | Kopplingstabell elev–kurs |
+- -recursion-depth
+- -e (extensions)
+- -v (verbose)
 
-**Inga constraints skapas i databasen** – programmet ska hantera reglerna.
-
-### Funktionskrav
-
-Programmet ska klara följande regler:
-
-- Ta bort en elev → alla den elevens kursval tas bort
-- En kurs får inte tas bort om det finns elever registrerade
-- Dubbletter får inte förekomma i någon tabell
-- Ändring av primärnycklar (pnr eller kursnamn) ska slå igenom i kopplingstabellen
-
-### SQL-implementation
-
-De SQL-satser som används för uppgiften finns i följande filer:
-
-- `frmElev.vb` – hantering av elever
-- `frmKurs.vb` – hantering av kurser
-- `frmOppna.vb` – öppning och visning av data
-
-- Kommunikation mellan program och databas
-- Att konstruera SQL-satser
-- Att hantera CRUD-operationer (Create, Read, Update, Delete)
-- Att upprätthålla objektintegritet i databasen
-
-### Databasstruktur (krav)
-
-Databasen **L0003B** består av tre tabeller:
+```
+ffuf -w directory-list-2.3-small.txt:FUZZ -u http://94.237.61.242:8080/FUZZ -recursion -recursion-depth 3 -e .php -v -ic
+```
 
 | Tabell           | Primärnyckel     | Beskrivning               |
 | ---------------- | ---------------- | ------------------------- |
 | `Elevxxxxxx`     | `pnr`            | Elevens personuppgifter   |
 | `Kursxxxxxx`     | `kursnamn`       | Kurser                    |
 | `KursElevxxxxxx` | `pnr + kursnamn` | Kopplingstabell elev–kurs |
-
-**Inga constraints skapas i databasen** – programmet ska hantera reglerna.
-
-### Funktionskrav
-
-Programmet ska klara följande regler:
-
-- Ta bort en elev → alla den elevens kursval tas bort
-- En kurs får inte tas bort om det finns elever registrerade
-- Dubbletter får inte förekomma i någon tabell
-- Ändring av primärnycklar (pnr eller kursnamn) ska slå igenom i kopplingstabellen
-
-### SQL-implementation
-
-De SQL-satser som används för uppgiften finns i följande filer:
-
-- `frmElev.vb` – hantering av elever
-- `frmKurs.vb` – hantering av kurser
-- `frmOppna.vb` – öppning och visning av data
