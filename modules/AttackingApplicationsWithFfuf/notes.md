@@ -2,7 +2,7 @@
 
 Notes from HTB module **Attacking Web Applications with FFUF**.
 
-On HTB VM's and Kali Linux machines most wordslists can be found in the following directory:
+On HTB VM's and Kali Linux machines most wordlists can be found in the following directory:
 
 - /opt/useful/seclists/
 
@@ -74,7 +74,7 @@ ffuf -w <WL>:FUZZ -u http://<IP>:<PORT>/FUZZ.<EXT>
 ffuf -w directory-list-2.3-small.txt:FUZZ -u http://94.237.61.242:8080/blog/FUZZ.php -ic
 ```
 
-If you were unable to find any file extensions during the extension fuzzing process, you can still fuzz for pages by utilizing wordlists that combine filenames and extensions. The following wordlists can be utilized:
+If unable to find any file extensions during the extension fuzzing process, you can still fuzz for pages by utilizing wordlists that combine filenames and extensions. The following wordlists can be utilized:
 
 - raft-small/medium/large-files.txt
 
@@ -100,6 +100,18 @@ Useful flags include:
 
 ```
 ffuf -w directory-list-2.3-small.txt:FUZZ -u http://94.237.61.242:8080/FUZZ -recursion -recursion-depth 3 -e .php -v -ic
+```
+
+---
+
+## Subdomain Fuzzing
+
+Keep in mind that exercises, labs and exams provided by HTB are not hosted on public facing servers, and thus, are not indexed by public DNS servers. In order to access a domain, it must first be resolved to an IP address. The browser first checks the **/etc/hosts** file, and then, if necessary, a public DNS.
+
+In order for DNS resolution to work on a HTB hosted domain an entry must first be added to the **/etc/hosts** file:
+
+```
+echo “94.237.61.242 inlanefreight.htb” >> /etc/hosts
 ```
 
 | Tabell           | Primärnyckel     | Beskrivning               |
