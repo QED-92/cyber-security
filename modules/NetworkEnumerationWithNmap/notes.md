@@ -92,3 +92,14 @@ nmap 10.129.2.49
 ```
 
 ![Filtered output](images/nmap5.PNG)
+
+It might be good to know that the **-sS** scan is only the default option when NMAP is executed with **root privileges**. This is because of socket permissions required to create raw TCP packets. Otherwise NMAP will run a **TCP Connect Scan** (**-sT**) as the default option. This scan actually completes the TCP three-way handshake, making it slower and **more likely to get logged** by the target system. Most IDS/IPS solutions can easily detect a TCP Connect Scan.
+
+The **-p** flag is used to specify which ports to scan.
+
+| Syntax            | Description       |
+| ----------------- | ------------------|
+| `-p-`             | `All 65535 ports` |
+| `-p 22`           | `Specific port`   |
+| `-p 21,22,80`     | `List of ports`   |
+| `-p 21-8080`      | `Range of ports`  |
