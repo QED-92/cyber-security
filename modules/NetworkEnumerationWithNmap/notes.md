@@ -120,3 +120,18 @@ nmap 10.129.2.49 -p 22,80,445 -sV -O
 ```
 
 ![Filtered output](images/nmap6.PNG)
+
+## Fine Tuning (Timing and Performance)
+
+NMAP has many options for timing and performance. Some of the most common for fine-grained control are:
+
+| Flag                 | Description                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------------ |
+| `--script-timeout`   | `Set a ceiling on script execution time. Useful for efficiency.`                           |
+| `--scan-delay`       | `Wait given amount of time between packets. Useful for evading threshold based IDS/IPS.`   |
+| `--max-rate`         | `Limit number of packets sent per second. Useful for stealth and BBH.`                     |
+| `--max-retries`      | `Maximum number of retransmissions in case of no response. Useful for efficiency.`         |
+
+
+
+## NMAP Scripting Engine (NSE)
