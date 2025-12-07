@@ -6,7 +6,7 @@
 
 **Host discovery** is the process of discovering systems on a network. This is usually a good starting point when conducting internal penetration tests.
 
-The most common host discovery method is probing with **ICMP Echo Requests**, also known as **ping**. The following example utilizes **ping** to probe an entire network for online systems.
+The most common host discovery method is probing with **ICMP Echo Requests**, also known as **ping**. The following example utilizes **ping** to probe an entire network for online systems. The network subnet mask is specified in **CIDR** notation.
 
 ```
 nmap 10.129.2.0/24 -sn -oA hosts
@@ -70,17 +70,25 @@ nmap 10.129.2.18 -sn -PE --disable-arp-ping
 
 Once a target has been identified through the **host discovery process**, we want to get a more accurate picture of that system. This includes information about:
 
-- Open ports
-- Services
-- Operating systems
+- **Open ports**
+- **Services**
+- **Operating systems**
 
 A scanned port is assigned one of six different states:
 
 | State             | Description                                                  |
 | ----------------- | ------------------------------------------------------------ |
-| `Open`            | `Connection to port established`                             |
-| `Closed`          | `Connection to port not established`                         |
-| `Filtered`        | `Port returns no response or an error code`                  |
-| `Unfiltered`      | `Port is accessible but not able to conclude if open/closed` |
-| `Open/Filtered`   | `No response (indication of firewall)`                       |
-| `Closed/Filtered` | `Unable to determine if closed or filtered by firewall`      |
+| `open`            | `Connection to port established`                             |
+| `closed`          | `Connection to port not established`                         |
+| `filtered`        | `Port returns no response or an error code`                  |
+| `unfiltered`      | `Port is accessible but not able to conclude if open/closed` |
+| `open/filtered`   | `No response (indication of firewall)`                       |
+| `closed/filtered` | `Unable to determine if closed or filtered by firewall`      |
+
+By default NMAP scans the top 1000 TCP ports using the **TCP-SYN** scan, also known as the **Stealth Scan (**-sS**). This scan is relatively unobtrusive and stealthy since it never completes a full TCP handshake. NMAP initiates the first step in the TCP **three-way handshake** by sending a TCP packet with the **SYN** flag set. If the target port is open it will respond by sending a packet with the **SYN** and **ACK** flags back. Instead of finalizing the handshake by sending a TCP ACK, NMAP will send a packet with the **RST** flag set in order to terminate the connection attempt.
+
+```
+nmap 10.129.2.49
+```
+
+![Filtered output](images/nmap5.PNG)
