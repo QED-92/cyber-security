@@ -123,7 +123,7 @@ nmap 10.129.2.49 -p 22,80,445 -sV -O
 
 ## Fine Tuning (Timing and Performance)
 
-NMAP has many options for timing and performance. Some of the most common for fine-grained control are:
+NMAP has many options for timing and performance. Some of the most common options for fine-grained control are:
 
 | Flag                 | Description                                                                                |
 | -------------------- | ------------------------------------------------------------------------------------------ |
@@ -131,7 +131,27 @@ NMAP has many options for timing and performance. Some of the most common for fi
 | `--scan-delay`       | `Wait given amount of time between packets. Useful for evading threshold based IDS/IPS.`   |
 | `--max-rate`         | `Limit number of packets sent per second. Useful for stealth and BBH.`                     |
 | `--max-retries`      | `Maximum number of retransmissions in case of no response. Useful for efficiency.`         |
+| `--host-timeout`     | `Abondon host after specified amount of time (ms, s, m). Useful for efficieny.`            |
 
+```
+nmap 10.129.2.49 -p 22,80,445 --script-timeout 5s
+```
 
+```
+nmap 10.129.2.49 -p 22,80,445 --scan-delay 10s
+```
 
+```
+nmap 10.129.2.49 -p 22,80,445 --max-rate 2
+```
+
+```
+nmap 10.129.2.49 -p 22,80,445 --max-retries 1
+```
+
+```
+nmap 10.129.2.49/24 --host-timeout 10s
+```
+
+NMAP also has timing templates that offer an easier and more convenient to control timing and performance. 
 ## NMAP Scripting Engine (NSE)
