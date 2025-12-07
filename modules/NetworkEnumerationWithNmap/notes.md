@@ -4,9 +4,9 @@
 
 ## Host discovery
 
-**Host discovery** is utilized to discover systems on a network. This is usually a good starting point when conducting internal penetration tests.
+**Host discovery** is the process of discovering systems on a network. This is usually a good starting point when conducting internal penetration tests.
 
-The most basic host discovery method is **ICMP Echo Requests**, also known as **ping**. The following example utilizes **ping** to probe an entire network for online systems.
+The most common host discovery method is probing with **ICMP Echo Requests**, also known as **ping**. The following example utilizes **ping** to probe an entire network for online systems.
 
 ```
 nmap 10.129.2.0/24 -sn -oA hosts
@@ -36,7 +36,7 @@ nmap -sn -iL hosts.txt | grep for | cut -d " " -f5
 nmap -sn 10.129.2.18 10.129.2.19 10.129.2.20 | grep for | cut -d" " -f5
 ```
 
-If the IP addresses of interest are adjacent to one another a range can be specified in the last octet.
+If the IP addresses of interest are **adjacent** to one another a range can be specified in the last octet.
 
 ```
 nmap -sn 10.129.2.18-20| grep for | cut -d" " -f5
@@ -50,7 +50,7 @@ nmap 10.129.2.18 -sn --packet-trace
 
 ![Filtered output](images/nmap3.PNG)
 
-To determine why NMAP has labeled a host as **"up"**, the **--reason** flag is used.
+To determine why NMAP has labeled a host as **"up"**, we can utilize the **--reason** flag.
 
 ```
 nmap 10.129.2.18 -sn --reason
@@ -68,7 +68,7 @@ nmap 10.129.2.18 -sn -PE --disable-arp-ping
 
 ## Port Scanning
 
-Once we have identified an online target through the **host discovery process**, we want to get a more accurate picture of the system. This includes information about:
+Once a target has been identified through the **host discovery process**, we want to get a more accurate picture of that system. This includes information about:
 
 - Open ports
 - Services
