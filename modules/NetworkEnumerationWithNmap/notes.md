@@ -85,7 +85,7 @@ A scanned port is assigned one of six different states:
 | `open/filtered`   | `No response (indication of firewall)`                       |
 | `closed/filtered` | `Unable to determine if closed or filtered by firewall`      |
 
-By default NMAP scans the top 1000 TCP ports using the **TCP-SYN** scan, also known as the **Stealth Scan (**-sS**). This scan is relatively unobtrusive and stealthy since it never completes a full TCP handshake. NMAP initiates the first step in the TCP **three-way handshake** by sending a TCP packet with the **SYN** flag set. If the target port is open it will respond by sending a packet with the **SYN** and **ACK** flags back. Instead of finalizing the handshake by sending a TCP ACK, NMAP will send a packet with the **RST** flag set in order to terminate the connection attempt.
+By default NMAP scans the top 1000 TCP ports using the **TCP-SYN** scan, also known as the **Stealth Scan** (**-sS**). This scan is relatively unobtrusive and stealthy since it never completes a full TCP handshake. NMAP initiates the first step in the TCP **three-way handshake** by sending a TCP packet with the **SYN** flag set. If the target port is open it will respond by sending a packet with the **SYN** and **ACK** flags back. Instead of finalizing the handshake by sending a TCP ACK, NMAP will send a packet with the **RST** flag set in order to terminate the connection attempt.
 
 ```
 nmap 10.129.2.49
