@@ -87,13 +87,13 @@ A scanned port is assigned one of six different states:
 
 By default NMAP scans the top 1000 TCP ports using the **TCP-SYN** scan, also known as the **Stealth Scan** (**-sS**). This scan is relatively unobtrusive and stealthy since it never completes a full TCP handshake. NMAP initiates the first step in the TCP **three-way handshake** by sending a TCP packet with the **SYN** flag set. If the target port is open it will respond by sending a packet with the **SYN** and **ACK** flags back. Instead of finalizing the handshake by sending a TCP ACK, NMAP will send a packet with the **RST** flag set in order to terminate the connection attempt.
 
+It might be good to know that the **-sS** scan is only the default option when NMAP is executed with **root privileges**. This is because of socket permissions required to create raw TCP packets. Otherwise NMAP will run a **TCP Connect Scan** (**-sT**) as the default option. This scan actually completes the TCP three-way handshake, making it slower and **more likely to get logged** by the target system. Most IDS/IPS solutions can easily detect a TCP Connect Scan.
+
 ```
-nmap 10.129.2.49
+sudo nmap 10.129.2.49
 ```
 
 ![Filtered output](images/nmap5.PNG)
-
-It might be good to know that the **-sS** scan is only the default option when NMAP is executed with **root privileges**. This is because of socket permissions required to create raw TCP packets. Otherwise NMAP will run a **TCP Connect Scan** (**-sT**) as the default option. This scan actually completes the TCP three-way handshake, making it slower and **more likely to get logged** by the target system. Most IDS/IPS solutions can easily detect a TCP Connect Scan.
 
 The **-p** flag is used to specify which ports to scan.
 
@@ -103,3 +103,20 @@ The **-p** flag is used to specify which ports to scan.
 | `-p 22`           | `Specific port`   |
 | `-p 21,22,80`     | `List of ports`   |
 | `-p 21-8080`      | `Range of ports`  |
+
+```
+nmap 10.129.2.49 -p 22,80,445
+```
+
+To get additional information from open ports we can utilize the **-O** and **-sV** flags.
+
+| Flag              | Description                              |
+| ----------------- | -----------------------------------------|
+| `-O`              | `Enable OS detection`                    |
+| `-sV`             | `Enable service and version detection`   |
+
+```
+nmap 10.129.2.49 -p 22,80,445 -sV -O
+```
+
+![Filtered output](images/nmap6.PNG)
