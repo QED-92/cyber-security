@@ -1,10 +1,10 @@
 # Attacking Web Applications with FFUF
 
-On HTB VM's and Kali Linux machines most wordlists can be found in the following directory:
+On most HTB and Kali Linux machines wordlists can be found in the following directory:
 
 - **/opt/useful/seclists/**
 
-In the examples below i will simply write the name of the wordlist instead of absolute path.
+In the examples below i will simply write the name of the wordlist instead of the absolute path.
 
 ---
 
@@ -14,8 +14,8 @@ Enumerate hidden directories on a web server.
 
 Common wordlists for directory fuzzing include:
 
-- directory-list-2.3-small/medium/big.txt
-- raft-small/medium/large-directories.txt
+- **directory-list-2.3-small/medium/big.txt**
+- **raft-small/medium/large-directories.txt**
 
 Basic syntax:
 
@@ -37,10 +37,10 @@ Enumerate file extensions on a web server. Extension fuzzing is usually performe
 
 Common wordlists for extension fuzzing include:
 
-- web-extensions.txt
-- web-extensions-big.txt
-- raft-small/medium/large-extensions.txt
-- file-extensions-all-cases.txt
+- **web-extensions.txt**
+- **web-extensions-big.txt**
+- **raft-small/medium/large-extensions.txt**
+- **file-extensions-all-cases.txt**
 
 Basic syntax:
 
@@ -74,7 +74,7 @@ ffuf -w directory-list-2.3-small.txt:FUZZ -u http://94.237.61.242:8080/blog/FUZZ
 
 If unable to find any file extensions during the extension fuzzing process, you can still fuzz for pages by utilizing wordlists that **combine filenames and extensions**. The following wordlists can be utilized:
 
-- raft-small/medium/large-files.txt
+- **raft-small/medium/large-files.txt**
 
 ---
 
@@ -92,9 +92,9 @@ ffuf -w <WL>:FUZZ -u http://<IP>:<PORT>/FUZZ -recursion
 
 Useful flags include:
 
-- -recursion-depth
-- -e (extensions)
-- -v (verbose)
+- **-recursion-depth**
+- **-e (extensions)**
+- **-v (verbose)**
 
 ```
 ffuf -w directory-list-2.3-small.txt:FUZZ -u http://94.237.61.242:8080/FUZZ -recursion -recursion-depth 3 -e .php -v -ic
@@ -114,7 +114,7 @@ echo "94.237.61.242 inlanefreight.htb" >> /etc/hosts
 
 Common wordlists for subdomain fuzzing include:
 
-- subdomains-top1million-5000/20000/110000.txt
+- **subdomains-top1million-5000/20000/110000.txt**
 
 Basic syntax:
 
@@ -148,18 +148,24 @@ Be aware that when vhost fuzzing we are simply changing the **Host header** whil
 
 The following flags are used to filter based on response size:
 
-- -ms (match size)
-- -fs (filter size)
+- **-ms (match size)**
+- **-fs (filter size)**
 
 ```
 ffuf -w subdomains-top1million-5000.txt:FUZZ -u http://academy.htb:80/ -H 'Host: FUZZ.academy.htb' -fs 900
+```
+
+Add any subdomains found to the **/etc/hosts** file.
+
+```
+echo "<IP> <DOMAIN>" | sudo tee -a /etc/hosts
 ```
 
 ---
 
 ## Parameter Fuzzing (GET)
 
-**GET** parameters are usually passed after the URL, and are initiated by a question mark (?):
+**GET** parameters are usually passed after the URL and are initiated by a question mark (?):
 
 ```
 http://admin.academy.htb:80/admin/admin.php?parameter=key
@@ -167,8 +173,8 @@ http://admin.academy.htb:80/admin/admin.php?parameter=key
 
 Common wordlists for parameter fuzzing include:
 
-- burp-parameter-names.txt
-- fuzz-lfi-params-list.txt
+- **burp-parameter-names.txt**
+- **fuzz-lfi-params-list.txt**
 
 Basic syntax:
 
@@ -186,7 +192,7 @@ ffuf -w burp-parameter-names.txt:FUZZ -u http://admin.academy.htb:8080/admin/adm
 
 **Post requets** are passed in the data field within the HTTP request. When fuzzing **PHP** pages the POST data **must have the following content-type**:
 
-- Content-Type: application/x-www-form-urlencoded
+- **Content-Type: application/x-www-form-urlencoded**
 
 It is good practice to set the above **Content-type** with the **-H** flag.
 
@@ -196,12 +202,12 @@ Basic syntax:
 ffuf -w burp-parameter-names.txt:FUZZ -u http://admin.academy.htb:8080/admin/admin.php -X POST -d 'FUZZ=key' -H 'Content-Type: application/x-www-form-urlencoded'
 ```
 
-When POST based fuzzing require complex parameters i highly recommend using FFUF's built-in ability to **parse** files. Simply capture a request with a **web-proxy**, such as BurpSuite. Insert the FUZZ keyword where you want to FUZZ and save the request to file.
+When POST-based fuzzing require complex parameters i highly recommend using FFUF's built-in ability to **parse** files. Simply capture a request with a **web-proxy**, such as BurpSuite. Insert the FUZZ keyword where you want to FUZZ and save the request to file.
 
 The following flags are required for parsing a request from file:
 
-- -request
-- -request-proto
+- **-request**
+- **-request-proto**
 
 Basic syntax:
 
@@ -217,7 +223,7 @@ ffuf -w burp-parameter-names.txt:FUZZ -request req.txt -request-proto http
 
 ## Value Fuzzing
 
-After finding a working parameter through **parameter fuzzing**, the next step is usually to fuzz for the correct value (key) to that parameter. The type of value differs depending on the type of parameter, thus, we may not always find a pre-made wordlist. However, for parameters such as user IDs, usernames and passwords, we can probably find a suitable wordlist, or create one ourselves.
+After finding a working parameter through **parameter fuzzing**, the next step is usually to fuzz for the correct value (key) to that parameter. The type of value differs depending on the type of parameter. For parameters such as user IDs, usernames and passwords, we can probably find a suitable wordlist, or create one ourselves.
 
 User IDs often consists of integer values, so, we can easily create a wordlist with a simple bash one-liner:
 
