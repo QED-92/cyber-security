@@ -121,6 +121,8 @@ nmap 10.129.2.49 -p 22,80,445 -sV -O
 
 ![Filtered output](images/nmap6.PNG)
 
+---
+
 ## NMAP Scripting Engine (NSE)
 
 NMAP comes equipped with a bunch of **scripts** that can be run against the target. There are a total of **14** different script categories.
@@ -172,6 +174,8 @@ Use **wildcards** to select specific script from the script database.
 nmap 10.129.2.49 -p 80,443 -script "http-*"
 ```
 
+---
+
 ## Fine Tuning (Timing and Performance)
 
 NMAP has many options for timing and performance. Some of the most common options for **fine-grained** control are:
@@ -220,6 +224,8 @@ The **paranoid** and **sneaky** options may be useful for IDS/IPS evasion, but a
 ```
 nmap 10.129.2.49 -p- -T4
 ```
+
+---
 
 ## IDS/IPS Evasion
 
