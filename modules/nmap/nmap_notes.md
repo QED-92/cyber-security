@@ -121,6 +121,57 @@ nmap 10.129.2.49 -p 22,80,445 -sV -O
 
 ![Filtered output](images/nmap6.PNG)
 
+## NMAP Scripting Engine (NSE)
+
+NMAP comes equipped with a bunch of **scripts** that can be run against the target. There are a total of **14** different script categories.
+
+| Template        | Description                                                                        |
+| ----------------| ---------------------------------------------------------------------------------- |      
+| `auth`           | `Authentication and bypassing (non bruteforce)`                                   |
+| `broadcast`      | `Host discovery through broadcasting`                                             |
+| `brute`          | `Brute force attacks`                                                             |
+| `default`        | `Collection of default scripts (-sC)`                                             |
+| `discovery`      | `Network discovery`                                                               |
+| `dos`            | `Denial of service`                                                               |
+| `exploit`        | `Active exploitation`                                                             |
+| `external`       | `Scripts that communicate with third party resources`                             |
+| `fuzzer`         | `Fuzzing scripts`                                                                 |
+| `intrusive`      | `Scripts with high risk of crashing target system`                                |
+| `malware`        | `Scripts that test for malware infections and backdoors`                          |
+| `safe`           | `Safe scripts that do not crash target systems or use large amounts of bandwidth` |
+| `version`        | `Version detection extension`                                                     |
+| `vuln`           | `Scripts that identify vulnerabilities (no exploitation)`                         |
+
+Run **default scripts** on 1000 most common ports.
+
+```
+nmap 10.129.2.49 -sC
+```
+
+Disable port scanning and only run default **host** scripts.
+
+```
+nmap 10.129.2.49 -sn -sC
+```
+
+Run a **specific** script.
+
+```
+nmap 10.129.2.49 -p 445 --script smb-os-discovery
+```
+
+Run all scripts from a **specific category**.
+
+```
+nmap 10.129.2.49 --script vuln
+```
+
+Use **wildcards** to select specific script from the script database.
+
+```
+nmap 10.129.2.49 -p 80,443 -script "http-*"
+```
+
 ## Fine Tuning (Timing and Performance)
 
 NMAP has many options for timing and performance. Some of the most common options for **fine-grained** control are:
@@ -169,53 +220,25 @@ The **paranoid** and **sneaky** options may be useful for IDS/IPS evasion, but a
 ```
 nmap 10.129.2.49 -p- -T4
 ```
-## NMAP Scripting Engine (NSE)
 
-NMAP comes equipped with a bunch of scripts that can be run against the target. There are a total of 14 different script categories.
+## IDS/IPS Evasion
 
-| Template        | Description                                                                        |
-| ----------------| ---------------------------------------------------------------------------------- |      
-| `auth`           | `Authentication and bypassing (non bruteforce)`                                   |
-| `broadcast`      | `Host discovery through broadcasting`                                             |
-| `brute`          | `Brute force attacks`                                                             |
-| `default`        | `Collection of default scripts (-sC)`                                             |
-| `discovery`      | `Network discovery`                                                               |
-| `dos`            | `Denial of service`                                                               |
-| `exploit`        | `Active exploitation`                                                             |
-| `external`       | `Scripts that communicate with third party resources`                             |
-| `fuzzer`         | `Fuzzing scripts`                                                                 |
-| `intrusive`      | `Scripts with high risk of crashing target system`                                |
-| `malware`        | `Scripts that test for malware infections and backdoors`                          |
-| `safe`           | `Safe scripts that do not crash target systems or use large amounts of bandwidth` |
-| `version`        | `Version detection extension`                                                     |
-| `vuln`           | `Scripts that identify vulnerabilities (no exploitation)`                         |
+If you're blocked by an IPS, or if your target simply blocks IP addresses from a specific region, you can utilize **decoys** in an attempt to evade these restrictions. NMAP can generate random IP addresses and insert them into the IP header in order to disguise the true source of the packet.
 
-Run **default scripts** on 1000 most common ports.
+The following example creates 5 random decoys.
 
 ```
-nmap 10.129.2.49 -sC
+nmap 10.129.2.49 -p 80 -D RND:5
 ```
 
-Disable port scanning and only run default **host** scripts.
+Another option is to attempt evasion by simply changing the source IP address with the **-S** flag. 
 
 ```
-nmap 10.129.2.49 -sn -sC
+nmap 10.129.2.49 -p 80 -S 10.129.2.200
 ```
 
-Run a **specific** script.
+A third option is utilizing DNS proxying. We can specify port **53** as the source port and communicate with the target from that port. DNS traffic is **often trusted** since most servers are supposed to be found and visited. 
 
 ```
-nmap 10.129.2.49 -p 445 --script smb-os-discovery
-```
-
-Run all scripts from a **specific category**.
-
-```
-nmap 10.129.2.49 --script vuln
-```
-
-Use **wildcards** to select specific script from the script database.
-
-```
-nmap 10.129.2.49 -p 80,443 -script "http-*"
+nmap 10.129.2.49 -p 80 --source-port 53
 ```
