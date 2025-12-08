@@ -170,3 +170,52 @@ The **paranoid** and **sneaky** options may be useful for IDS/IPS evasion, but a
 nmap 10.129.2.49 -p- -T4
 ```
 ## NMAP Scripting Engine (NSE)
+
+NMAP comes equipped with a bunch of scripts that can be run against the target. There are a total of 14 different script categories.
+
+| Template        | Description                                                                        |
+| ----------------| ---------------------------------------------------------------------------------- |      
+| `auth`           | `Authentication and bypassing (non bruteforce)`                                   |
+| `broadcast`      | `Host discovery through broadcasting`                                             |
+| `brute`          | `Brute force attacks`                                                             |
+| `default`        | `Collection of default scripts (-sC)`                                             |
+| `discovery`      | `Network discovery`                                                               |
+| `dos`            | `Denial of service`                                                               |
+| `exploit`        | `Active exploitation`                                                             |
+| `external`       | `Scripts that communicate with third party resources`                             |
+| `fuzzer`         | `Fuzzing scripts`                                                                 |
+| `intrusive`      | `Scripts with high risk of crashing target system`                                |
+| `malware`        | `Scripts that test for malware infections and backdoors`                          |
+| `safe`           | `Safe scripts that do not crash target systems or use large amounts of bandwidth` |
+| `version`        | `Version detection extension`                                                     |
+| `vuln`           | `Scripts that identify vulnerabilities (no exploitation)`                         |
+
+Run **default scripts** on 1000 most common ports.
+
+```
+nmap 10.129.2.49 -sC
+```
+
+Disable port scanning and only run default **host** scripts.
+
+```
+nmap 10.129.2.49 -sn -sC
+```
+
+Run a **specific** script.
+
+```
+nmap 10.129.2.49 -p 445 --script smb-os-discovery
+```
+
+Run all scripts from a **specific category**.
+
+```
+nmap 10.129.2.49 --script vuln
+```
+
+Use **wildcards** to select specific script from the script database.
+
+```
+nmap 10.129.2.49 -p 80,443 -script "http-*"
+```
