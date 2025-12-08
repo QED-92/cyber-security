@@ -167,3 +167,7 @@ Dump data from all tables from all DBs in the entire DBMS:
 ```
 sqlmap -r req.txt --dump-all --exclude-sysdbs --batch
 ```
+
+---
+
+## Advanced Database Enumeration
