@@ -153,6 +153,20 @@ nmap 10.129.2.49 -p 22,80,445 --max-retries 1
 nmap 10.129.2.49/24 --host-timeout 10s
 ```
 
-NMAP also offers **timing templates** for an easier and more convenient way to control timing and performance. 
+NMAP also offer **timing templates** for an easier and more convenient way to control timing and performance. There are 6 different timing templates.
 
+| Template        | Description        |
+| ----------------| ------------------ |
+| `-T0`           | `Paranoid`         |
+| `-T1`           | `Sneaky`           |
+| `-T2`           | `Polite`           |
+| `-T3`           | `Normal (default)` |
+| `-T4`           | `Aggressive`       |
+| `-T5`           | `Insane`           |
+
+The **paranoid** and **sneaky** options may be useful for IDS/IPS evasion, but are quite slow. Cautious scanners are advised to use the **normal** (**-T3**) option. If you're on a decent ethernet connection and not concered about being stealthy, you are advised to use the **aggressive** (**-T4**) option.
+
+```
+nmap 10.129.2.49 -p- -T4
+```
 ## NMAP Scripting Engine (NSE)

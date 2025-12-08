@@ -267,7 +267,7 @@ ffuf -w directory-list-2.3-small.txt:FUZZ -rate 5 -u http://94.237.61.242/FUZZ
 ```
 
 It's also possible to use the **-p** flag in conjunction with **-t** to achieve fine-grained control over the number of requests sent per second.
-The following example utilizes 5 threads and sends 0.1 requests per second, totaling 50 requets per second.
+The following example utilizes 5 threads and sends 0.1 requests per second, totaling 50 requests per second.
 
 ```
 ffuf -w directory-list-2.3-small.txt:FUZZ -t 5 -p 0.1 -u http://94.237.61.242/FUZZ 
