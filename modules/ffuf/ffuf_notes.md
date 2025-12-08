@@ -236,3 +236,45 @@ Basic syntax:
 ```
 ffuf -w ids.txt:FUZZ -u http://admin.academy.htb:PORT/admin/admin.php -X POST -d 'id=FUZZ' -H 'Content-Type: application/x-www-form-urlencoded'
 ```
+
+## Timing and Performance
+
+Sometimes services are **rate limited**, meaning that you're only allowed to send a certain number of requests per second. Also, BBH programs often include rate limits in order to not overload customer servers. If a hard rate limit is imposed you will receive a **HTTP 429** (too many requests) status code.
+
+| Flag                 | Description                                   |
+| -------------------- | --------------------------------------------- |
+| `-p`                 | `Seconds of delay between requests`           |
+| `-rate`              | `Maximum rate of requests per second`         |
+| `-t`                 | `Number of concurrent threads, default = 40`  |
+| `-se`                | `Stop on spurious errors, default = false`    |
+
+The following example enforces a 1 second pause between requests. Since the default number of concurrent threads is 40, this will amount to 40 requests per second.
+
+```
+ffuf -w directory-list-2.3-small.txt:FUZZ -p 1 -u http://94.237.61.242/FUZZ 
+```
+
+The **-p** flag can also be assigned a range of values, enforcing a random delay between requests within the given range.
+
+```
+ffuf -w directory-list-2.3-small.txt:FUZZ -p 0.5-2.0 -u http://94.237.61.242/FUZZ 
+```
+
+To specify a maximum number of requests per second utilize the rate flag.
+
+```
+ffuf -w directory-list-2.3-small.txt:FUZZ -rate 5 -u http://94.237.61.242/FUZZ 
+```
+
+It's also possible to use the **-p** flag in conjunction with **-t** to achieve fine-grained control over the number of requests sent per second.
+The following example utilizes 5 threads and sends 0.1 requests per second, totaling 50 requets per second.
+
+```
+ffuf -w directory-list-2.3-small.txt:FUZZ -t 5 -p 0.1 -u http://94.237.61.242/FUZZ 
+```
+
+The **-se** flag automatically stops a job when a percentage of the requests have thrown an error. If the last 50 requests have thrown an HTTP 403 95% of the time, or if 20% of the responses have been a HTTP 429, ffuf will terminate the job. 
+
+```
+ffuf -w directory-list-2.3-small.txt:FUZZ -se -rate 100 -u http://94.237.61.242/FUZZ 
+```
