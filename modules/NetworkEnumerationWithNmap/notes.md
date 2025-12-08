@@ -123,7 +123,7 @@ nmap 10.129.2.49 -p 22,80,445 -sV -O
 
 ## Fine Tuning (Timing and Performance)
 
-NMAP has many options for timing and performance. Some of the most common options for fine-grained control are:
+NMAP has many options for timing and performance. Some of the most common options for **fine-grained** control are:
 
 | Flag                 | Description                                                                                |
 | -------------------- | ------------------------------------------------------------------------------------------ |
@@ -153,5 +153,6 @@ nmap 10.129.2.49 -p 22,80,445 --max-retries 1
 nmap 10.129.2.49/24 --host-timeout 10s
 ```
 
-NMAP also has timing templates that offer an easier and more convenient to control timing and performance. 
+NMAP also offers **timing templates** for an easier and more convenient way to control timing and performance. 
+
 ## NMAP Scripting Engine (NSE)
