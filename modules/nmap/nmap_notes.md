@@ -246,5 +246,5 @@ nmap 10.129.2.49 -p 80 -S 10.129.2.200
 A third option is utilizing DNS proxying. We can specify port **53** as the source port and communicate with the target from that port. DNS traffic is **often trusted** since most servers are supposed to be found and visited. 
 
 ```
-nmap 10.129.2.49 -p 80 --source-port 53
+nmap 10.129.2.49 -p 80 -sV --source-port 53
 ```
