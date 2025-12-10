@@ -34,15 +34,15 @@ sudo nmap 10.129.8.198 -p 22 --script ssh*
 
 The SSH scripts did not reveal anything of importance. Since i don't have a valid username or password/SSH key, i don't think this is the intended attack vector. I could attempt brute-forcing with a tool such as **Hydra**, but brute-forcing is rarely the purpuse of HTB labs.
 
-While most services run over TCP, UDP services are still widely deployed, and often exploitable. Therefore i run a new NMAP scan using UDP: 
+While most services run over TCP, **UDP** services are still widely deployed and often exploitable. Therefore i run a new NMAP scan using UDP. UDP scans are usually much slower than TCP scans, so i include some optimization flags:
 
 ```
 sudo nmap -p- -sU 10.129.8.198 --max-retries 0 --min-rate=3000
 ```
 
-I discover an interesting service running on port 5000.
+I discover an interesting service running on port **500**.
 
-![Filtered output](images/nmap3.PNG)
+![Filtered output](images/nmap4.PNG)
 
 After doing some research i discover that **ISAKMP** is a protocol used for IPSEC-tunnels, which coincides nicely with the machine name Expressway", hinting at a tunnel or gateway. My research also leads me to a tool called **ike-scan** used for discovering and enumerating hosts running IPsec VPN servers. 
 
