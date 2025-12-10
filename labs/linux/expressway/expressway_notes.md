@@ -44,7 +44,7 @@ I discover an interesting service running on port **500**.
 
 ![Filtered output](images/nmap4.PNG)
 
-After doing some research i discover that **ISAKMP** is a protocol used for IPSEC-tunnels, which coincides nicely with the machine name Expressway", hinting at a tunnel or gateway. My research also leads me to a tool called **ike-scan** used for discovering and enumerating hosts running IPsec VPN servers. 
+After doing some research i discover that **ISAKMP** is a protocol used for IPSEC-tunnels, which coincides nicely with the machine name "Expressway", hinting at a tunnel or gateway. My research also leads me to a tool called **ike-scan** used for discovering and enumerating hosts running IPsec VPN servers. 
 
 I start by installing the tool:
 
@@ -67,13 +67,10 @@ The scan reveals some interesting information:
 - Encryption: 3DES/SHA1
 - DH group: modp1024
 
-Since i have found a hash, i will attempt to crack it using the related **psk-crack** tool.
-
-The following command ouputs the raw hash to a file:
+By including the **--pskcrack** flag the raw PSK can be written to file and used for offline cracking with the **psk-crack** tool:
 
 ```
 sudo ike-scan -A --pskcrack=ike_hash.txt 10.129.8.198
-
 ```
 
 Crack hash:
@@ -84,7 +81,9 @@ psk-crack ike_hash.txt -d /usr/share/wordlists/rockyou.txt
 
 ![Filtered output](images/ikescan2.PNG)
 
-We succesfully cracked the PSK and have attained some valuable information moving forward:
+The hash was succesfully cracked! 
+
+Below is a short summary of obtained information about the target:
 
 - ID: ike@expressway.htb
 - PSK: freakingrockstarontheroad
