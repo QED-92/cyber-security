@@ -129,6 +129,7 @@ The first flag is located in the users home directory in a file called **user.tx
 
 ```
 cat user.txt
+6e42b743d77c11b2093c7b7d9d50be82
 ```
 
 Flag:
