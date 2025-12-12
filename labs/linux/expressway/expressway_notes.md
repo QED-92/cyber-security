@@ -129,7 +129,6 @@ The first flag is located in the users home directory in a file called **user.tx
 
 ```
 cat user.txt
-6e42b743d77c11b2093c7b7d9d50be82
 ```
 
 Flag:
@@ -140,4 +139,52 @@ Flag:
 
 ![Filtered output](images/userflag.PNG)
 
+Since the user flag was conveniently called **user.txt** i suspect the root flag might be called **root.txt**. I use the find command to search the system for any that matches that name:
 
+```
+sudo find / -type f -name "root.txt"
+```
+
+For some reason the user **ike** is not allowed to run sudo commands.
+
+![Filtered output](images/sudo.PNG)
+
+Let's check the version of sudo:
+
+```
+sudo --version
+```
+
+It appears the we are running version **1.9.17**.
+
+![Filtered output](images/sudo2.PNG)
+
+Perhaps there is some known exploit that would allow us to escalate our privileges. A quick google search for **sudo 1.9.17 exploit** presents us with several potential attack vectors. One of particular interest is CVE-2025-32463, which is a local privelege escalation vulnerability. I found an exploit in the form of a bash script, that i simply copied and pasted into a file called **exploit.sh**. The exploit can be found here:
+
+- https://www.exploit-db.com/exploits/52352
+
+ When i executed the exploit i gained root privileges:
+
+```
+chmod +x exploit.sh
+./exploit.sh
+```
+
+![Filtered output](images/sudo3.PNG)
+
+Search for the **root.txt** file again:
+
+```
+find / -type f -name "root.txt"
+cat root/root.txt
+```
+
+Root flag:
+
+```
+8166012fba651db48de9db1d70193b03
+```
+
+![Filtered output](images/rootflag.PNG)
+
+There we have it, the root flag has been captured and the machine PWNED!
