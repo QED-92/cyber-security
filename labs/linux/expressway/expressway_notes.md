@@ -214,3 +214,15 @@ Root flag:
 ```
 
 ![Filtered output](images/rootflag.PNG)
+
+---
+
+## Conclusion
+
+The Expressway machine was compromised through:
+
+- UDP enumeration revealing an ISAKMP service.
+- IKE Aggressive Mode to capture a PSK hash.
+- Offline cracking of the PSK using a common wordlist.
+- Using the recovered credentials to authenticate via SSH.
+- Exploiting a vulnerable version of sudo (CVE-2025-32463) for root privilege escalation.
