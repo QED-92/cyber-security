@@ -93,7 +93,7 @@ You don't have to use **psk-crack**, you can just as well use **hashcat** or **J
 hashcat -a 0 -m 5400 ike_hash.txt /usr/share/wordlists/rockyou.txt
 ```
 
-![Filtered output](images/ike-scan2)
+![Filtered output](images/ike-scan2.PNG)
 
 Below is a short summary of obtained information about the target:
 
@@ -109,7 +109,7 @@ Let's start of with a simple SSH connection to **ike@expressway.htb**:
 ssh ike@expressway.htb
 ```
 
-![Filtered output](images/ssh-1)
+![Filtered output](images/ssh-1.PNG)
 
 It did not work because we have not added the hostname to the **/etc/hosts** file. Add the hostname and try again:
 
@@ -123,7 +123,7 @@ ssh ike@expressway.htb
 
 We have gained access to the system!
 
-![Filtered output](images/ssh-2)
+![Filtered output](images/ssh-2.PNG)
 
 The first flag is located in the users home directory in a file called **user.txt**:
 
@@ -136,6 +136,7 @@ Flag:
 ```
 6e42b743d77c11b2093c7b7d9d50be82
 ```
-![Filtered output](images/userflag)
+
+![Filtered output](images/userflag.PNG)
 
 
