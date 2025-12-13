@@ -1,31 +1,36 @@
 # Attacking Web Applications with FFUF
 
-On most HTB and Kali Linux machines wordlists can be found in the following directory:
+These notes summarize practical techniques for attacking web applications using ffuf, as covered in the HTB module *Attacking Web Applications with ffuf*.
 
-- **/opt/useful/seclists/**
+## Wordlists
 
-In the examples below i will simply write the name of the wordlist instead of the absolute path.
+On most HTB and Kali Linux systems, commonly used wordlists are located in:
+
+- /opt/useful/seclists/
+- /usr/share/wordlists/
+
+Choosing the correct wordlist is critical and depends on the fuzzing objective (directories, extensions, parameters, etc.).
 
 ---
 
 ## Directory Fuzzing
 
-Enumerate hidden directories on a web server.
+Directory fuzzing is used to discover hidden directories on a web server.
 
-Common wordlists for directory fuzzing include:
+Common wordlists:
 
 - **directory-list-2.3-small/medium/big.txt**
 - **raft-small/medium/large-directories.txt**
 
 Basic syntax:
 
-```
-ffuf -w <WL>:FUZZ -u http://<IP>:<PORT>/FUZZ
+```bash
+ffuf -w <WORDLIST>:FUZZ -u http://<IP>:<PORT>/FUZZ
 ```
 
-Some wordlists contain comments at the beginning of the document. These **comments may clutter the results**. Utilize the '**-ic**' flag to ignore such comments.
+Some wordlists contain commented lines that may clutter results. Use the **-ic** flag to ignore comments:
 
-```
+```bash
 ffuf -w directory-list-2.3-small.txt:FUZZ -u http://94.237.61.242:8080/FUZZ -ic
 ```
 
@@ -33,9 +38,9 @@ ffuf -w directory-list-2.3-small.txt:FUZZ -u http://94.237.61.242:8080/FUZZ -ic
 
 ## Extension Fuzzing
 
-Enumerate file extensions on a web server. Extension fuzzing is usually performed **before page fuzzing**.
+Extension fuzzing is used to discover valid file extensions and is typically performed before page fuzzing.
 
-Common wordlists for extension fuzzing include:
+Common wordlists:
 
 - **web-extensions.txt**
 - **web-extensions-big.txt**
@@ -44,13 +49,13 @@ Common wordlists for extension fuzzing include:
 
 Basic syntax:
 
-```
-ffuf -w <WL>:FUZZ -u http://<IP>:<PORT>/<FILE>FUZZ
+```bash
+ffuf -w <WORDLIST>:FUZZ -u http://<IP>:<PORT>/<FILE>FUZZ
 ```
 
-The **index** file is present on most web servers and often used for extension fuzzing:
+The **index** file is commonly present and often used as a base
 
-```
+```bash
 ffuf -w web-extensions.txt:FUZZ -u http://94.237.61.242:8080/indexFUZZ
 ```
 
@@ -58,21 +63,23 @@ ffuf -w web-extensions.txt:FUZZ -u http://94.237.61.242:8080/indexFUZZ
 
 ## Page Fuzzing
 
-Enumerate hidden pages on a web server. Leveraging the information found during the extension fuzzing process, we can proceed by fuzzing for pages.
+Page fuzzing is used to enumerate hidden pages once valid extensions are known.
 
 Common wordlists for page fuzzing include the **same ones used for directory fuzzing**.
 
 Basic syntax:
 
-```
-ffuf -w <WL>:FUZZ -u http://<IP>:<PORT>/FUZZ.<EXT>
+```bash
+ffuf -w <WORDLIST>:FUZZ -u http://<IP>:<PORT>/FUZZ.<EXT>
 ```
 
-```
+Example:
+
+```bash
 ffuf -w directory-list-2.3-small.txt:FUZZ -u http://94.237.61.242:8080/blog/FUZZ.php -ic
 ```
 
-If unable to find any file extensions during the extension fuzzing process, you can still fuzz for pages by utilizing wordlists that **combine filenames and extensions**. The following wordlists can be utilized:
+If no extensions were discovered earlier during extension fuzzing, wordlists that combine filenames and extensions can be used:
 
 - **raft-small/medium/large-files.txt**
 
@@ -80,23 +87,26 @@ If unable to find any file extensions during the extension fuzzing process, you 
 
 ## Recursive Fuzzing
 
-Recursive fuzzing combines directory, extension and page fuzzing into one process. A new branch is automatically started whenever a new directory is discovered. This continues until the entire web server has been enumerated.
+Recursive fuzzing automatically continues enumeration whenever a new directory is discovered, combining directory, page, and extension fuzzing.
 
-Recursive fuzzing may save a lot of time, depending on the size of the web server. **Specifying a recursive depth is strongly advised**.
+
+It it advised to specify a recursion depth to avoid excessive requests.
 
 Basic syntax:
 
-```
-ffuf -w <WL>:FUZZ -u http://<IP>:<PORT>/FUZZ -recursion
+```bash
+ffuf -w <WORDLIST>:FUZZ -u http://<IP>:<PORT>/FUZZ -recursion
 ```
 
-Useful flags include:
+Useful flags:
 
 - **-recursion-depth**
 - **-e (extensions)**
 - **-v (verbose)**
 
-```
+Example:
+
+```bash
 ffuf -w directory-list-2.3-small.txt:FUZZ -u http://94.237.61.242:8080/FUZZ -recursion -recursion-depth 3 -e .php -v -ic
 ```
 
@@ -104,60 +114,65 @@ ffuf -w directory-list-2.3-small.txt:FUZZ -u http://94.237.61.242:8080/FUZZ -rec
 
 ## Subdomain Fuzzing
 
-Keep in mind that exercises, labs and exams provided by HTB are not hosted on public facing servers, thus, are **not indexed by public DNS servers**. In order to access a domain, it must be resolved to an IP address. The browser first checks the **/etc/hosts** file, and then, if necessary, a public DNS.
+HTB lab domains are not publicly indexed by DNS. To resolve a domain, it must be mapped in the **/etc/hosts** file.
 
-In order for DNS resolution to work on a HTB hosted domain an entry must be added to the **/etc/hosts** file:
+Example:
 
+```bash
+echo "94.237.61.242 inlanefreight.htb" | sudo tee -a /etc/hosts
 ```
-echo "94.237.61.242 inlanefreight.htb" >> /etc/hosts
-```
 
-Common wordlists for subdomain fuzzing include:
+Common wordlists:
 
 - **subdomains-top1million-5000/20000/110000.txt**
 
 Basic syntax:
 
-```
-ffuf -w <WL>:FUZZ -u http://FUZZ.<IP/DOMAIN>:<PORT>
+```bash
+ffuf -w <WORDLIST>:FUZZ -u http://FUZZ.<IP/DOMAIN>:<PORT>
 ```
 
-```
+Example (public DNS only):
+
+```bash
 ffuf -w subdomains-top1million-5000.txt:FUZZ -u https://FUZZ.inlanefreight.com/
 ```
 
-The above method only works on public facing servers. Since we do not know which subdomains exists, we cannot add them to the **/etc/hosts** file.
+This approach does not work reliably in HTB labs due to missing DNS records.
 
 ---
 
-## VHOST Fuzzing
+## Virtual Host (VHOST) Fuzzing
 
-**Vhost fuzzing is the go-to method** for subdomain fuzzing in a HTB environment. A vhost is basically a subdomain served on the same server as the main domain, and thus, has the **same IP-address**. Vhosts allow a single IP-address to serve several different web pages. Vhost fuzzing work by fuzzing the **Host header** in the HTTP request
+VHOST fuzzing is the preferred method for subdomain discovery in HTB environments. Virtual hosts share the same IP address and are distinguished by the **Host HTTP header**.
 
 Basic syntax:
 
-```
-ffuf -w <WL>:FUZZ -u http://<IP/DOMAIN>:<PORT>/ -H 'Host: FUZZ.<IP/DOMAIN>'
+```bash
+ffuf -w <WORDLIST>:FUZZ -u http://<IP/DOMAIN>:<PORT>/ -H 'Host: FUZZ.<DOMAIN>'
 ```
 
-```
+Example:
+
+```bash
 ffuf -w subdomains-top1million-5000.txt:FUZZ -u http://academy.htb:80/ -H 'Host: FUZZ.academy.htb'
 ```
 
-Be aware that when vhost fuzzing we are simply changing the **Host header** while visiting the same page, so, every response will return a **200 OK** whether the vhost exists or not. However, an existing vhost will return a **different response size**.
+All requests will typically return **200 OK**. Valid virtual hosts are identified by different response sizes.
 
-The following flags are used to filter based on response size:
+Filtering by response size:
 
-- **-ms (match size)**
-- **-fs (filter size)**
+- **-fs** &rarr filter size
+- **-ms** &rarr match size
+-
 
-```
+```bash
 ffuf -w subdomains-top1million-5000.txt:FUZZ -u http://academy.htb:80/ -H 'Host: FUZZ.academy.htb' -fs 900
 ```
 
-Add any subdomains found to the **/etc/hosts** file.
+Any discovered subdomains should be added to the **/etc/hosts** file:
 
-```
+```bash
 echo "<IP> <DOMAIN>" | sudo tee -a /etc/hosts
 ```
 
@@ -165,24 +180,26 @@ echo "<IP> <DOMAIN>" | sudo tee -a /etc/hosts
 
 ## Parameter Fuzzing (GET)
 
-**GET** parameters are usually passed after the URL and are initiated by a question mark (?):
+GET parameters are appended to the URL after a **?**.
+
+Example:
 
 ```
 http://admin.academy.htb:80/admin/admin.php?parameter=key
 ```
 
-Common wordlists for parameter fuzzing include:
+Common wordlists:
 
 - **burp-parameter-names.txt**
 - **fuzz-lfi-params-list.txt**
 
 Basic syntax:
 
-```
-ffuf -w <WL>:FUZZ -u <IP/DOMAIN>:<PORT>/<DIR><PAGE>?FUZZ=KEY
+```bash
+ffuf -w <WORDLIST>:FUZZ -u <DOMAIN>:<PORT>/<PATH>?FUZZ=value
 ```
 
-```
+```bash
 ffuf -w burp-parameter-names.txt:FUZZ -u http://admin.academy.htb:8080/admin/admin.php?FUZZ=key
 ```
 
@@ -190,32 +207,34 @@ ffuf -w burp-parameter-names.txt:FUZZ -u http://admin.academy.htb:8080/admin/adm
 
 ## Parameter Fuzzing (POST)
 
-**Post requets** are passed in the data field within the HTTP request. When fuzzing **PHP** pages the POST data **must have the following content-type**:
+POST parameters are sent in the request body.
+
+For PHP applications, the following **Content-Typ header** is required:
 
 - **Content-Type: application/x-www-form-urlencoded**
 
-It is good practice to set the above **Content-type** with the **-H** flag.
+Example:
 
-Basic syntax:
-
-```
+```bash
 ffuf -w burp-parameter-names.txt:FUZZ -u http://admin.academy.htb:8080/admin/admin.php -X POST -d 'FUZZ=key' -H 'Content-Type: application/x-www-form-urlencoded'
 ```
 
-When POST-based fuzzing require complex parameters i highly recommend using FFUF's built-in ability to **parse** files. Simply capture a request with a **web-proxy**, such as BurpSuite. Insert the FUZZ keyword where you want to FUZZ and save the request to file.
+For complex requests, capture the request using a proxy (e.g., Burp Suite), replace the desired value with FUZZ, and save it to a file.
 
-The following flags are required for parsing a request from file:
+Required flags:
 
 - **-request**
 - **-request-proto**
 
 Basic syntax:
 
-```
-ffuf -w <WL>:FUZZ -request <FILE> -request-proto <PROTOCOL>
+```bash
+ffuf -w <WORDLIST>:FUZZ -request <FILE> -request-proto <PROTOCOL>
 ```
 
-```
+Example:
+
+```bash
 ffuf -w burp-parameter-names.txt:FUZZ -request req.txt -request-proto http
 ```
 
@@ -223,59 +242,76 @@ ffuf -w burp-parameter-names.txt:FUZZ -request req.txt -request-proto http
 
 ## Value Fuzzing
 
-After finding a working parameter through **parameter fuzzing**, the next step is usually to fuzz for the correct value (key) to that parameter. The type of value differs depending on the type of parameter. For parameters such as user IDs, usernames and passwords, we can probably find a suitable wordlist, or create one ourselves.
+Once a valid parameter is identified, the next step is to fuzz its value.
 
-User IDs often consists of integer values, so, we can easily create a wordlist with a simple bash one-liner:
+For numeric IDs, a simple wordlist can be generated:
 
-```
+```bash
 for i in $(seq 1 1000); do echo $i >> ids.txt; done
 ```
 
-Basic syntax:
+Example:
 
-```
+```bash
 ffuf -w ids.txt:FUZZ -u http://admin.academy.htb:PORT/admin/admin.php -X POST -d 'id=FUZZ' -H 'Content-Type: application/x-www-form-urlencoded'
 ```
 ---
 
 ## Timing and Performance
 
-Sometimes services are **rate limited**, meaning that you're only allowed to send a certain number of requests per second. Also, BBH programs often include rate limits in order to not overload customer servers. If a hard rate limit is imposed you will receive a **HTTP 429** (too many requests) status code.
+Web services may enforce rate limits, often returning **HTTP 429** responses.
+
+Relevant flags:
 
 | Flag                 | Description                                   |
 | -------------------- | --------------------------------------------- |
-| `-p`                 | `Seconds of delay between requests`           |
-| `-rate`              | `Maximum rate of requests per second`         |
-| `-t`                 | `Number of concurrent threads, default = 40`  |
-| `-se`                | `Stop on spurious errors, default = false`    |
+| `-p`                 | `Delay between requests (seconds)`            |
+| `-rate`              | `Max requests per second`                     |
+| `-t`                 | `Number of concurrent threads (default: 40)`  |
+| `-se`                | `Stop on spurious errors`                     |
 
 The following example enforces a 1 second pause between requests. Since the default number of concurrent threads is 40, this will amount to 40 requests per second.
 
-```
+**Examples:**
+
+Fixed delay:
+
+```bash
 ffuf -w directory-list-2.3-small.txt:FUZZ -p 1 -u http://94.237.61.242/FUZZ 
 ```
 
-The **-p** flag can also be assigned a range of values, enforcing a random delay between requests within the given range.
+Random delay range:
 
-```
+```bash
 ffuf -w directory-list-2.3-small.txt:FUZZ -p 0.5-2.0 -u http://94.237.61.242/FUZZ 
 ```
 
-To specify a maximum number of requests per second utilize the rate flag.
+Rate-limited:
 
-```
+```bash
 ffuf -w directory-list-2.3-small.txt:FUZZ -rate 5 -u http://94.237.61.242/FUZZ 
 ```
 
-It's also possible to use the **-p** flag in conjunction with **-t** to achieve fine-grained control over the number of requests sent per second.
-The following example utilizes 5 threads and sends 0.1 requests per second, totaling 50 requests per second.
+Threads + delay:
 
-```
+```bash
 ffuf -w directory-list-2.3-small.txt:FUZZ -t 5 -p 0.1 -u http://94.237.61.242/FUZZ 
 ```
 
-The **-se** flag automatically stops a job when a percentage of the requests have thrown an error. If the last 50 requests have thrown an HTTP 403 95% of the time, or if 20% of the responses have been a HTTP 429, ffuf will terminate the job. 
+Stop on excessive errors:
 
-```
+```bash
 ffuf -w directory-list-2.3-small.txt:FUZZ -se -rate 100 -u http://94.237.61.242/FUZZ 
 ```
+
+## Final Notes
+
+ffuf is an extremely flexible and powerful tool.
+
+Effective usage depends on:
+
+- Choosing the correct wordlist
+- Understanding the target’s behavior
+- Proper filtering and rate control
+
+These techniques form a solid foundation for real-world web enumeration and exploitation.
