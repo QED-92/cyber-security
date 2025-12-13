@@ -6,8 +6,8 @@ These notes summarize practical techniques for attacking web applications using 
 
 On most HTB and Kali Linux systems, commonly used wordlists are located in:
 
-- /opt/useful/seclists/
-- /usr/share/wordlists/
+- **/opt/useful/seclists/**
+- **/usr/share/wordlists/**
 
 Choosing the correct wordlist is critical and depends on the fuzzing objective (directories, extensions, parameters, etc.).
 
@@ -162,9 +162,8 @@ All requests will typically return **200 OK**. Valid virtual hosts are identifie
 
 Filtering by response size:
 
-- **-fs** &rarr filter size
-- **-ms** &rarr match size
--
+- **-fs** &rarr; filter size
+- **-ms** &rarr; match size
 
 ```bash
 ffuf -w subdomains-top1million-5000.txt:FUZZ -u http://academy.htb:80/ -H 'Host: FUZZ.academy.htb' -fs 900
