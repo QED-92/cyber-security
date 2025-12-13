@@ -1,6 +1,5 @@
 # SQLMAP Essentials
 
-These notes summarize practical techniques for attacking applications using SQLmap, as covered in the HTB module **SQLmap Essentials**.
 ---
 
 ## Overview
