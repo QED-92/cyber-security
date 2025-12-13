@@ -1,10 +1,26 @@
 # Network Enumeration with NMAP
 
+These notes summarize core techniques for network discovery and enumeration using Nmap, as covered in the HTB module *Network Enumeration with Nmap*.
+
 ---
+
+## Overview
+
+Nmap is a powerful open-source tool used for:
+
+- Host discovery
+- Port scanning
+- Service and version enumeration
+- Operating system detection
+- Vulnerability identification via scripting
+
+It is often the first tool used during network-based reconnaissance in penetration tests.
 
 ## Host discovery
 
-**Host discovery** is the process of discovering systems on a network. This is usually a good starting point when conducting internal penetration tests.
+Host discovery is the process of identifying live systems on a network and is often the first step during internal network assessments.
+
+### ICMP-Based Discovery
 
 The most common host discovery method is probing with **ICMP Echo Requests**, also known as **ping**. The following example utilizes **ping** to probe an entire network for online systems. The network subnet mask is specified in **CIDR** notation.
 
