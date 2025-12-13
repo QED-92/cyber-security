@@ -34,8 +34,6 @@ nmap 10.129.2.0/24 -sn -oA hosts
 
 The **-sn** flag disables port scanning, while **-oA** saves output in all major formats.
 
-The **-oA** flag saves the output in all major formats.
-
 ![Filtered output](images/nmap2.PNG)
 
 ### Extracting Live Hosts
@@ -69,7 +67,7 @@ nmap -sn 10.129.2.18 10.129.2.19 10.129.2.20 | grep for | cut -d" " -f5
 IP range:
 
 ```bash
-nmap -sn 10.129.2.18-20| grep for | cut -d" " -f5
+nmap -sn 10.129.2.18-20 | grep for | cut -d" " -f5
 ```
 
 ### Debugging Host Discovery
