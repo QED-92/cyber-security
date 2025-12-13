@@ -214,7 +214,7 @@ sqlmap -r req.txt --all --batch
 
 ### Anti-CSRF Token Bypass
 
-Anti CSRF-tokens is a defense against automated penetration testing tools. This requires each request to have a valid token by actually interacting with the web page.
+Anti CSRF-tokens is a defense against automated penetration testing tools. This requires each request to have a valid token, obtained by actually interacting with the web page.
 
 SQLmap can attempt to bypass this defense by passing the CSRF-token to the **--csrf-token** flag.
 
@@ -228,7 +228,7 @@ sqlmap -r req.txt –-csrf-token=”t0ken” -–batch
 
 Applications sometimes require unique values to be provided to some GET or POST parameter. Such a protection mechanism is similar to anti-CSRF, but does not require the tool to actually parse content on the web page. By ensuring that each request has a unique value assigned to some parameter, the application can prevent CSRF-attempts and prevent some automated tools. 
 
-SQLmap can attempt to bypass this security measure by providing the **-randomize** flag with the name of the parameter that holds the unique value.
+SQLmap can attempt to bypass this security measure by providing the **--randomize** flag with the name of the parameter that holds the unique value.
 
 **Example:**
 
@@ -240,7 +240,7 @@ sqlmap -r req.txt --randomize=rv –-batch
 
 Applications sometimes calculate a parameter value based on some other parameter. Oftentimes, one parameter has to contain the MD5 hash of another parameter.
 
-SQLmap can attempt to bypass this security measure by passing to the **-eval** flag a Python one-liner that creates an MD5 hash of some parameter.
+SQLmap can attempt to bypass this security measure by passing to the **--eval** flag a Python one-liner that creates an MD5 hash of some parameter.
 
 **Example:**
 
@@ -290,7 +290,7 @@ sqlmap -r req.txt –-skip-waf –-batch
 
 ### User-Agent Blacklisting Bypass
 
-The default SQLmap user-agent is blacklisted by many security systems. If you receive **5XX** HTTP error codes, consider changing the user-agent by including the **random-agent** flag.
+The default SQLmap user-agent is blacklisted by many security systems. If you receive **5XX** HTTP error codes, consider changing the user-agent by including the **--random-agent** flag.
 
 **Example:**
 
