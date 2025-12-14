@@ -133,6 +133,18 @@ hydra -l admin -P rockyou.txt ftp://192.168.1.100 -t 20
 
 Basic auth is popular because of how easy it is to implement. However, it has inherent vulnerabilities, which makes it a prime target for brute force attacks.
 
-Basic auth is a challenge-response protocol, where the server demands credentials before providing access to a protected resource. After providing a username and password the browser concatenates them into a colon separated string. This string is **base64 encoded** and passed to the **Authorization header** in the HTTP request. The server **base64 decodes** the credentials and verifies them against records in its database. 
+Basic auth is a challenge-response protocol, where the server demands credentials before providing access to a protected resource. After providing a username and password the browser concatenates them into a colon separated string. This string is **base64 encoded** and passed to the **Authorization header** in the HTTP request. The server **base64 decodes** the credentials and verifies them against records in its database.
+
+A GET request containing basic auth:
 
 ![Filtered output](images/basic-auth.png)
+
+**Example:**
+
+Brute force basic auth using the http-get module:
+
+```bash
+hydra -l basic-auth-user -P rockyou.txt 94.237.60.55 http-get / -s 58596
+```
+
+![Filtered output](images/basic-auth2.png)
