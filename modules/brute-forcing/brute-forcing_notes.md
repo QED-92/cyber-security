@@ -173,3 +173,21 @@ The **path** must be the path to the login form (/login.php).
 The **parameters** are the POST parameters sent to the server (user, pass). ^USER^ and ^PASS^ serve as placeholders where Hydra will insert values from the wordlists. If the request includes other POST parameters, they must be included as well.
 
 The **condition string** is crucial for distinguishing between valid and invalid login attempts. Hydra primarily relies on failure conditions (F=Invalid credentials) to define a failed login attempt. But success condition can also be used (S=Dashboard, S=302).
+
+**Example:**
+
+The following request was intercepted from a login form:
+
+![Filtered output](images/loginform.png)
+
+When entering random credentials an error message saying "Invalid credentials pops up:
+
+![Filtered output](images/loginform2.png)
+
+We have obtained all information necessary in order to craft a proper Hydra command:
+
+```bash
+hydra -L top-usernames-shortlist.txt -P 2023-200_most_used_passwords.txt 94.237.61.242 -s 55332 http-post-form "/:username=^USER^&password=^PASS^:F=Invalid credentials" -f
+```
+
+![Filtered output](images/loginform3.png)
