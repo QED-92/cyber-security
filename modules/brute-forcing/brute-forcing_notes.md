@@ -58,6 +58,6 @@ Suppose that the target organization implements the following password policy:
 
 - Minimum length: 8 characters
 - Must include:
-- - At least one uppercase letter
-- - At least one lowercase letter
-- - At least one number
+    - At least one uppercase letter
+    - At least one lowercase letter
+    - At least one number
