@@ -141,10 +141,35 @@ A GET request containing basic auth:
 
 **Example:**
 
-Brute force basic auth using the http-get module:
+Brute force basic auth using the **http-get** module:
 
 ```bash
-hydra -l basic-auth-user -P rockyou.txt 94.237.60.55 http-get / -s 58596
+hydra -l basic-auth-user -P 2023-200_most_used_passwords.txt 94.237.60.55 http-get / -s 58596
 ```
 
 ![Filtered output](images/basic-auth2.png)
+
+## Attacking Login Forms
+
+The **http-post-form** module is used to attack login forms. For this to work the Hydra command must be crafted properly, based on the actual POST request. 
+
+**Examples:**
+
+```bash
+hydra -l admin -P rockyou.txt 192.168.1.100 http-post-form "/login.php:user=^USER^&pass=^PASS^:F=Invalid credentials"
+```
+
+```bash
+hydra -l admin -P rockyou.txt 192.168.1.100 http-post-form "/login.php:user=^USER^&pass=^PASS^:S=Dashboard"
+```
+
+The http-post-form parameters have the following structure:
+
+- "path:parameters:condition-string"
+- "/login.php:user=^USER^&pass=^PASS^:F=Invalid credentials"
+
+The **path** must be the path to the login form (/login.php).
+
+The **parameters** are the POST parameters sent to the server (user, pass). ^USER^ and ^PASS^ serve as placeholders where Hydra will insert values from the wordlists. If the request includes other POST parameters, they must be included as well.
+
+The **condition string** is crucial for distinguishing between valid and invalid login attempts. Hydra primarily relies on failure conditions (F=Invalid credentials) to define a failed login attempt. But success condition can also be used (S=Dashboard, S=302).
