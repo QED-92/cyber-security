@@ -61,3 +61,29 @@ Suppose that the target organization implements the following password policy:
     - At least one uppercase letter
     - At least one lowercase letter
     - At least one number
+
+With this knowledge the attacker can take a huge wordlist and extract only the passwords that adhere to the password policy:
+
+Minimum 8 characters:
+
+```bash
+grep -E '^.{8,}$' rockyou.txt > rockyou-minlength.txt 
+```
+
+At least one uppercase letter:
+```bash
+grep -E '[A-Z]' rockyou-minlength.txt > rockyou-uppercase.txt
+```
+
+At least one lowercase letter:
+```bash
+grep -E '[a-z]' rockyou-uppercase.txt > rockyou-lowercase.txt 
+```
+
+At least one number:
+```bash
+grep -E '[0-9]' rockyou-lowercase.txt > filtered.txt 
+```
+
+# Hydra
+
