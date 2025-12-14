@@ -23,4 +23,4 @@ A longer and more complex password obviously require more time and computational
 
 To fully grasp the challenge of brute forcing passwords one must understand the underlying equation that determines the total number of possible combinations:
 
-$N = c^n$
+* $N = c^n$
