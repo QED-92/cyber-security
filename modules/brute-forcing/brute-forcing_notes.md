@@ -23,4 +23,13 @@ A longer and more complex password obviously require more time and computational
 
 To fully grasp the challenge of brute forcing passwords one must understand the underlying equation that determines the total number of possible combinations:
 
-* $N = c^n$
+- $N = c^n$
+- N = total number of possible combinations
+- c = number of characters in character set
+- n = number of characters in password
+
+Example:
+
+The password contains 6 characters from the english alphabet
+
+- $N = 26^6 = 308,915,776
