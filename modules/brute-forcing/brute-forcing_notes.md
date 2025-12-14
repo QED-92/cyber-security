@@ -135,4 +135,4 @@ Basic auth is popular because of how easy it is to implement. However, it has in
 
 Basic auth is a challenge-response protocol, where the server demands credentials before providing access to a protected resource. After providing a username and password the browser concatenates them into a colon separated string. This string is **base64 encoded** and passed to the **Authorization header** in the HTTP request. The server **base64 decodes** the credentials and verifies them against records in its database. 
 
-![Filtered output](images/basic-auth.PNG)
+![Filtered output](images/basic-auth.png)
