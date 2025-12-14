@@ -32,4 +32,4 @@ Example:
 
 The password contains 6 characters from the english alphabet
 
-- $N = 26^6 = 308,915,776
+- $N = 26^6 = 308,915,776$
