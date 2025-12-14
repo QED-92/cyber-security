@@ -20,3 +20,7 @@ A longer and more complex password obviously require more time and computational
 | `Complexity`     | `Combination of lowercase, uppercase, numbers and symbols.` |
 | `Uniqueness`     | `A unique password for each service (no reuse).`            |
 | `Randomness`     | `As much randomness as possible.`                           |
+
+To fully grasp the challenge of brute forcing passwords one must understand the underlying equation that determines the total number of possible combinations:
+
+$N = c^n$
