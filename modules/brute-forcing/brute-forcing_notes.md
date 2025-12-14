@@ -180,7 +180,7 @@ The following request was intercepted from a login form:
 
 ![Filtered output](images/loginform.png)
 
-When entering random credentials an error message saying "Invalid credentials pops up:
+When entering random credentials an error message saying "**Invalid credentials**" pops up:
 
 ![Filtered output](images/loginform2.png)
 
@@ -191,3 +191,5 @@ hydra -L top-usernames-shortlist.txt -P 2023-200_most_used_passwords.txt 94.237.
 ```
 
 ![Filtered output](images/loginform3.png)
+
+## Attacking SSH and FTP
