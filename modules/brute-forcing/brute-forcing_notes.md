@@ -89,7 +89,7 @@ grep -E '[0-9]' rockyou-lowercase.txt > filtered.txt
 
 Hydra is a brute forcing tool that can be used to attack a plethora of different services. Hydra utilizes parallell threads to speed up the cracking process. 
 
-Hydra uses built-in modules to properly interact with different protocols and their authentication mechanisms. 
+Built-in modules are utilized to properly interact with different protocols and their authentication mechanisms. 
 
 Examples:
 
@@ -130,3 +130,9 @@ hydra -l admin -P rockyou.txt ftp://192.168.1.100 -t 20
 ```
 
 ## Attacking HTTP Basic Authentication
+
+Basic auth is popular because of how easy it is to implement. However, it has inherent vulnerabilities, which makes it a prime target for brute force attacks.
+
+Basic auth is a challenge-response protocol, where the server demands credentials before providing access to a protected resource. After providing a username and password the browser concatenates them into a colon separated string. This string is **base64 encoded** and passed to the **Authorization header** in the HTTP request. The server **base64 decodes** the credentials and verifies them against records in its database. 
+
+![Filtered output](images/basic-auth.PNG)
