@@ -4,7 +4,7 @@
 
 # Overview
 
-Incident handling is a clearly defined set of procedures for responding to security incidents in a computer network. Incident handling capability is a necessity for any organization looking to uphold the three pillars of information security:
+Incident handling is a clearly defined set of procedures for responding to security incidents. Incident handling capability is a necessity for any organization looking to uphold the three pillars of information security:
 
 - Confidentiality
 - Integrity
@@ -24,4 +24,58 @@ Examples of incidents include:
     - U.S. Interior Department (2015)
 
 # Cyber Kill Chain
+
+The cyber kill chain consists of seven stages, describing the lifecycle of an attack. 
+
+![Filtered output](images/cyber-kill-chain.PNG)
+
+Adversaries rarely operate linearly, as the cyber kill chain suggests. Some stages might be repeated multiple times, and some stages might be skipped.
+
+## Reconaissance
+
+The attacker gather as much useful information as possible about the target. 
+
+Active reconaissance involves mapping out the network, by identifying hosts, open ports, and running services. This involves interacting directly with the target, often through some automated tool, such as NMAP. 
+
+Passive reconaissance involves gathering information from public sources such as social media, job ads, and company web pages. This is a more stealthy approach, since it doesn't require direct interaction with the target.  
+
+## Weaponize
+
+The payload used to gain initial access is developed and embedded into some type of exploit. The main purpose of the payload is to gain remote access to the target machine, preferably through a persistent payload. 
+
+## Delivery
+
+The payload is delivered to the target. The delivery method varies, but often include some type of phishing campaign. A solid payload rarely require the user to do anything more than to double-click on a link. 
+
+In some cases the payload is delivered through physical means, such as a USB stick.
+
+## Exploitation
+
+The payload is triggered on the target machine. The attacker attempts to execute code on the target machine in order to gain control.
+
+## Installation
+
+The initial stager is executed and running on the target machine. The installation stage can be carried out in different ways:
+
+- Droppers
+    - Small piece of code designed to execute malware.
+- Backdoors
+    - Designed to provide the attacker with persistent access.
+- Rootkits
+    - Designed to hide its presence on the compromised machine.
+
+## Command and Control
+
+The attacker establishes remote access capability to the target machine.
+
+## Action
+
+Means to achieve the actual objectives of the attack are carried out. 
+
+Example objectives are:
+
+- Exfiltrating data
+- Deploy ransomware
+
+# MITRE ATT&CK Framework
 
