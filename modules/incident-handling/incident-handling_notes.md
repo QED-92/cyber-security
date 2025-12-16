@@ -105,3 +105,36 @@ HTB Credentials:
 
 ---
 
+# The Incident Handling Process
+
+The incident handling process consists of four stages:
+
+- Preparation
+- Detection and analysis
+- Containment, eradication and recovery
+- Post incident activity
+
+Incident handlers spend the majority of their time in the first two stages: preparation and detection and analysis. 
+
+## Preparation
+
+The preparation stage is about establishing an incident handling capability by implementing the appropriate protective measures.
+
+Protective measures may include:
+
+- DMARC
+- Endpoint and server hardening
+- AD tiering
+- MFA
+
+DMARC is an email protection mechanism against phishing built on top of SPF and DKIM. The idea is to reject emails that pretend to originate from in-house sources. 
+
+Effective ways of achieving endpoint hardening include:
+
+- Disable LLMNR/NetBIOS
+- Remove admin privileges from regular users
+- Configure PowerShell in "ContrainedLanguage" mode
+- Host-based firewalls
+- Impement an EDR solution
+
+## Detection and Analysis
