@@ -23,6 +23,8 @@ Examples of incidents include:
 - Social engineering
     - U.S. Interior Department (2015)
 
+---
+
 # Cyber Kill Chain
 
 The cyber kill chain consists of seven stages, describing the lifecycle of an attack. 
@@ -77,6 +79,8 @@ Example objectives are:
 - Exfiltrating data
 - Deploy ransomware
 
+---
+
 # MITRE ATT&CK Framework
 
 MITRE ATT&CK is another framework for understanding adversary behavior. It is a matrix-based system of tactics and techniques observed in the wild. The columns represent adversary goals, and the rows (cells) represent the techniques used to achieve those goals.
@@ -91,8 +95,13 @@ A case management platform designed to effectively handle incidents by processin
 
 The Hive has the capability to import all MITRE ATT&CK tactics and techniques into its alert management system. 
 
+![Filtered output](images/the-hive2.PNG)
+
 HTB Credentials:
 
 - URL: http://<IP>:9000
 - Username: htb-analyst
 - Password: P3n#31337@LOG
+
+---
+
