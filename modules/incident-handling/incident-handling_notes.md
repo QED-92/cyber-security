@@ -29,7 +29,7 @@ The cyber kill chain consists of seven stages, describing the lifecycle of an at
 
 ![Filtered output](images/cyber-kill-chain.PNG)
 
-Adversaries rarely operate linearly, as the cyber kill chain suggests. Some stages might be repeated multiple times, and some stages might be skipped.
+Keep in mind that adversaries rarely operate linearly, as the cyber kill chain suggests. Some stages might be repeated multiple times, and some stages might be skipped.
 
 ## Reconaissance
 
@@ -79,3 +79,20 @@ Example objectives are:
 
 # MITRE ATT&CK Framework
 
+MITRE ATT&CK is another framework for understanding adversary behavior. It is a matrix-based system of tactics and techniques observed in the wild. The columns represent adversary goals, and the rows (cells) represent the techniques used to achieve those goals.
+
+![Filtered output](images/mitre.PNG)
+
+## The Hive
+
+![Filtered output](images/the-hive.PNG)
+
+A case management platform designed to effectively handle incidents by processing alerts. It collects alerts from various devices and presents them in a centralized way. 
+
+The Hive has the capability to import all MITRE ATT&CK tactics and techniques into its alert management system. 
+
+HTB Credentials:
+
+- URL: http://<IP>:9000
+- Username: htb-analyst
+- Password: P3n#31337@LOG
