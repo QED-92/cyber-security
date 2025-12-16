@@ -13,15 +13,15 @@ Incident handling is a clearly defined set of procedures for responding to secur
 Examples of incidents include:
 
 - Leaked credentials
-- - Colonial Pipeline ransomware attack (2021)
+    - Colonial Pipeline ransomware attack (2021)
 - Weak credentials
-- - Mirai Botnet (2016)
+    - Mirai Botnet (2016)
 - Outdated software
-- - WannaCry ransomware attack (2017)
+    - WannaCry ransomware attack (2017)
 - Rogue employees
-- - Cash App (2021)
+    - Cash App (2021)
 - Social engineering
-- - U.S. Interior Department (2015)
+    - U.S. Interior Department (2015)
 
 # Cyber Kill Chain
 
