@@ -135,7 +135,7 @@ Effective ways of achieving endpoint hardening include:
 - Remove admin privileges from regular users
 - Configure PowerShell in "ContrainedLanguage" mode
 - Host-based firewalls
-- Impement an EDR solution
+- Implement an EDR solution
 
 ## Detection and Analysis
 
@@ -176,7 +176,7 @@ When an incident is detected, the following information should be collected:
 
 The information is usually collected from the security system that generated the alert:
 
-![Filtered output](images/the-hive2.PNG)
+![Filtered output](images/the-hive3.PNG)
 
 ### Investigation
 
@@ -189,5 +189,9 @@ An iterative 3-step process is used:
 - Identification of new leads and impacted systems
 - Data collection and analysis from new leads and impacted systems
 
+IOCs can be added to alerts in The Hive:
+
+
 ## Containment, Eradication and Recovery
 
+![Filtered output](images/the-hive4.PNG)
