@@ -139,14 +139,18 @@ Effective ways of achieving endpoint hardening include:
 
 ## Detection and Analysis
 
-The detection and analysis stage involves all aspects of detecting incidents. Incidents are usually detected through alerts from various security systems, such as:
+The detection and analysis stage involves all aspects of detecting and investigating incidents. 
+
+### Detection
+
+Incidents are usually detected through alerts from various security systems, such as:
 
 - Firewalls
 - EDR
 - IDS/IPS
 - SIEM
 
-Detection capabilities should be designed in levels, depending on where it occurs in the network:
+Detection capabilities should be categorized in levels, depending on where it occurs in the network:
 
 - Network Perimeter Level
     - Firewalls, DMZ, Internet facing IDS/IPS
@@ -160,12 +164,30 @@ Detection capabilities should be designed in levels, depending on where it occur
 When an incident is detected, the following information should be collected:
 
 - Date
-    - 17/12/2025
+    - 09/1/2025
 - Time of the event
-    - 13:37 CET
+    - 04:41 CET
 - Hostname
     - SQLServer01
 - Event description
-    - PHP webshell detected
+    - Hacker tool Mimikatz was detected
 - Data source
     - Antivirus software
+
+The information is usually collected from the security system that generated the alert:
+
+![Filtered output](images/the-hive2.PNG)
+
+### Investigation
+
+Once the investigation starts, the goal is to understand **what happened** and **how it happened**. Without this knowledge it will impossible to stop the same thing from happening again. 
+
+An iterative 3-step process is used:
+
+- Creation and usage of IOCs
+    - IPs, hashes, file names
+- Identification of new leads and impacted systems
+- Data collection and analysis from new leads and impacted systems
+
+## Containment, Eradication and Recovery
+
