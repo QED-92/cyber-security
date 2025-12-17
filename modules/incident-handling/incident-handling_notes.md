@@ -180,7 +180,7 @@ The information is usually collected from the security system that generated the
 
 ### Investigation
 
-Once the investigation starts, the goal is to understand **what happened** and **how it happened**. Without this knowledge it will impossible to stop the same thing from happening again. 
+Once the investigation starts, the goal is to understand **what happened** and **how it happened**. Without this knowledge it will be impossible to stop the same thing from happening again. 
 
 An iterative 3-step process is used:
 
@@ -240,3 +240,5 @@ Suspicous events to monitor for include:
 - Registry changes
 
 ## Post-Incident Activity
+
+The last stage is meant for documentation and reflection. The incident is properly documented and the lessons learned are implemented throughout the organisation. Everything is tied together in a final report. 
