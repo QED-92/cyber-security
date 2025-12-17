@@ -107,7 +107,7 @@ HTB Credentials:
 
 # The Incident Handling Process
 
-The incident handling process consists of four stages:
+The incident handling process contains four stages:
 
 - Preparation
 - Detection and analysis
@@ -118,7 +118,7 @@ Incident handlers spend the majority of their time in the first two stages: prep
 
 ## Preparation
 
-The preparation stage is about establishing an incident handling capability by implementing the appropriate protective measures.
+The preparation stage is about establishing an incident handling capability by creating processes and procedures. 
 
 Protective measures may include:
 
@@ -138,3 +138,34 @@ Effective ways of achieving endpoint hardening include:
 - Impement an EDR solution
 
 ## Detection and Analysis
+
+The detection and analysis stage involves all aspects of detecting incidents. Incidents are usually detected through alerts from various security systems, such as:
+
+- Firewalls
+- EDR
+- IDS/IPS
+- SIEM
+
+Detection capabilities should be designed in levels, depending on where it occurs in the network:
+
+- Network Perimeter Level
+    - Firewalls, DMZ, Internet facing IDS/IPS
+- Internal Network Level
+    - Local firewalls, host-based IDS/IPS
+- Endpoint Level
+    - AVS, EDR
+- Application Level
+    - Logs
+
+When an incident is detected, the following information should be collected:
+
+- Date
+    - 17/12/2025
+- Time of the event
+    - 13:37 CET
+- Hostname
+    - SQLServer01
+- Event description
+    - PHP webshell detected
+- Data source
+    - Antivirus software
