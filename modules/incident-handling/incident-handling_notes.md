@@ -191,7 +191,52 @@ An iterative 3-step process is used:
 
 IOCs can be added to alerts in The Hive:
 
+![Filtered output](images/the-hive4.PNG)
+
 
 ## Containment, Eradication and Recovery
 
-![Filtered output](images/the-hive4.PNG)
+Once the investigation is complete and the type of incident and its impact is understood, its time to prevent the incident from causing more damage. 
+
+### Containment
+
+Containment actions should be coordinated and executed across all systems simultaneously. Otherwise we might alert the attackers, causing them to change their techniques. 
+
+Short-term containment actions may include:
+
+- Placing a system in an isolated VLAN
+- Pulling the network cable
+- Changing the attackers C2 DNS
+
+Long-term containment actions may include:
+
+- Changing passwords
+- Implementing new firewall rules
+- Implementing a host IDS
+- Patching systems
+- Shutting down systems
+
+### Eradication
+
+The eradication process is meant to eliminate the root cause of the incident and make sure that the attackers are out of the system. 
+
+Eradication actions may include:
+
+- Removing malware
+- Rebuilding systems
+- Restoring systems from backups
+- Applying additional patches
+
+### Recovery
+
+In the recovery stage, systems are brought back to normal operation. When the systems are verified as working properly, they are brought back into the production environment. 
+
+Restored systems are subject to heavy monitoring, since attackers tend to be persistent. 
+
+Suspicous events to monitor for include:
+
+- Unusual logins
+- Unusual processes
+- Registry changes
+
+## Post-Incident Activity
