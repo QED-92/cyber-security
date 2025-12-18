@@ -97,12 +97,6 @@ The Hive has the capability to import all MITRE ATT&CK tactics and techniques in
 
 ![Filtered output](images/the-hive2.PNG)
 
-HTB Credentials:
-
-- URL: http://<IP>:9000
-- Username: htb-analyst
-- Password: P3n#31337@LOG
-
 ---
 
 # The Incident Handling Process
