@@ -34,6 +34,8 @@ A 6 character password containing only lowercase letters from the english alphab
 
 - $N = 26^6 = 308,915,776$
 
+---
+
 # Brute Force Attacks
 
 ## Pure Brute Force Attack
@@ -84,6 +86,8 @@ At least one number:
 ```bash
 grep -E '[0-9]' rockyou-lowercase.txt > filtered.txt 
 ```
+
+---
 
 # Hydra
 
@@ -172,7 +176,7 @@ The **path** must be the path to the login form (/login.php).
 
 The **parameters** are the POST parameters sent to the server (user, pass). ^USER^ and ^PASS^ serve as placeholders where Hydra will insert values from the wordlists. If the request includes other POST parameters, they must be included as well.
 
-The **condition string** is crucial for distinguishing between valid and invalid login attempts. Hydra primarily relies on failure conditions (F=Invalid credentials) to define a failed login attempt. But success condition can also be used (S=Dashboard, S=302).
+The **condition string** is crucial for distinguishing between valid and invalid login attempts. Hydra primarily relies on failure conditions (F=Invalid credentials) to define a failed login attempt. But success conditions can also be used (S=Dashboard, S=302).
 
 **Example:**
 
@@ -193,3 +197,57 @@ hydra -L top-usernames-shortlist.txt -P 2023-200_most_used_passwords.txt 94.237.
 ![Filtered output](images/loginform3.png)
 
 ## Attacking SSH and FTP
+
+SSH and FTP facilitate secure remote access and file management. However, they often rely on traditional username- and password combinations, making them vulnerable to brute force attacks. 
+
+**Examples:**
+
+```bash
+hydra -l sshuser -P 2023-200_most_used_passwords.txt ssh://94.237.54.192
+```
+
+![Filtered output](images/ssh.png)
+
+```bash
+hydra -l ftpuser -P 2023-200_most_used_passwords.txt ftp://94.237.54.192
+```
+
+---
+
+# Custom Wordlists
+
+Pre-compiled wordlists casts a wide-net in hopes of finding the right combination. When targeting specific individuals or organisations with unique password policies, using custom wordlists is often a better option.
+
+Common programs for creating custom wordlists include:
+
+- Username Anarchy
+- CUPP (Common User Passwords Profiler)
+
+## Username Anarchy
+
+Creates custom username wordlists. 
+
+To use the program you must first install Ruby, then simply clone the script from Github:
+
+```bash
+sudo apt install ruby -y
+git clone https://github.com/urbanadventurer/username-anarchy.git
+cd username-anarchy
+```
+
+To create a wordlist, execute the script with the targets first and last name as arguments:
+
+```bash
+./username-anarchy Jane Smith > usernames.txt
+```
+
+## CUPP
+
+Creates custom password wordlists tailored to a specific target. 
+
+The effectiveness of CUPP depends on the information you feed it. The more information you have about the target, the better. When starting CUPP in interactive mode, you are prompted with questions about the target. A wordlist is then created based on your answers. 
+
+```bash
+sudo apt install cupp -y
+cupp -i
+```
