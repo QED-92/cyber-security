@@ -16,7 +16,7 @@ This document covers the basic usage of Hashcat, and is by no means an exhaustiv
 - [Hashcat Overview](#hashcat-overview)
 - [Straight Attack](#straight-attack)
 - [Combination Attack](#combination-attack)
-- [Mask Attack (Brute Force)](#mask-attack-brute-force)
+- [Mask Attack (Pattern-Based Brute Force)](#mask-attack-brute-force)
 - [Hashcat Optimization](#hashcat-optimization)
 
 ---
@@ -27,7 +27,7 @@ Hashing is the process of converting some text to a unique string particular to 
 
 Hashing can be used for various purposes; for example, the **MD5** and **SHA256** algorithms are commonly used to verify file integrity, while algorithms such as **PBKDF2** are used to hash passwords before storage.
 
-Unix systems support four different hashing algorithms:
+Unix systems commonly use the following password hashing algorithms:
 	
 - SHA-512
     - Fast and efficient, but vulnerable to rainbow table attacks.
@@ -155,7 +155,7 @@ hashcat -a 1 -m 0 hash.txt wordlist1 wordlist2
 
 ---
 
-## Mask Attack (Brute Force)
+## Mask Attack (Pattern-Based Brute Force)
 
 Mask attacks generate words matching a specific pattern (mask). This type of attack is particularly useful
 when the password policy is known.
