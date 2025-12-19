@@ -75,3 +75,7 @@ The **Event ID** serves as an event identifier. Some useful IDs include:
 | `5140`              | `Network share accessed`               |
 | `5142`              | `Network share added`                  | 
 | `7045`              | `Service installed`                    |
+
+---
+
+# Analyzing Evil with Sysmon and Event Logs
