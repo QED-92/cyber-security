@@ -16,7 +16,7 @@ This document covers the basic usage of Hashcat, and is by no means an exhaustiv
 - [Hashcat Overview](#hashcat-overview)
 - [Straight Attack](#straight-attack)
 - [Combination Attack](#combination-attack)
-- [Mask Attack (Pattern-Based Brute Force)](#mask-attack-brute-force)
+- [Mask Attack (Pattern-Based Brute Force)](#mask-attack-pattern-based-brute-force)
 - [Hashcat Optimization](#hashcat-optimization)
 
 ---
