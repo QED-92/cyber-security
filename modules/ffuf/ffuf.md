@@ -1,6 +1,22 @@
 # Attacking Web Applications with FFUF
 
-These notes summarize practical techniques for attacking web applications using ffuf, as covered in the HTB module *Attacking Web Applications with ffuf*.
+This document summarizes practical techniques for attacking web applications using ffuf. It is by no means an exhaustive guide.
+
+## Table of Contents
+
+- [Wordlists](#wordlists)
+- [Directory Fuzzing](#directory-fuzzing)
+- [Extension Fuzzing](#extension-fuzzing)
+- [Page Fuzzing](#page-fuzzing)
+- [Recursive Fuzzing](#recursive-fuzzing)
+- [Subdomain Fuzzing](#subdomain-fuzzing)
+- [Virtual Host (VHOST) Fuzzing](#virtual-host-vhost-fuzzing)
+- [Parameter Fuzzing (GET)](#parameter-fuzzing-get)
+- [Parameter Fuzzing (POST)](#parameter-fuzzing-post)
+- [Value Fuzzing](#value-fuzzing)
+- [Timing and Performance](#timing-and-performance)
+
+---
 
 ## Wordlists
 
@@ -93,8 +109,7 @@ If no extensions were discovered earlier during extension fuzzing, wordlists tha
 
 Recursive fuzzing automatically continues enumeration whenever a new directory is discovered, combining directory, page, and extension fuzzing.
 
-
-It it advised to specify a recursion depth to avoid excessive requests.
+It is advised to specify a recursion depth to avoid excessive requests.
 
 **Basic syntax:**
 
@@ -142,7 +157,7 @@ ffuf -w <WORDLIST>:FUZZ -u http://FUZZ.<IP/DOMAIN>:<PORT>
 ffuf -w subdomains-top1million-5000.txt:FUZZ -u https://FUZZ.inlanefreight.com/
 ```
 
-This approach does not work reliably in HTB labs due to missing DNS records.
+This approach often does not work reliably in HTB labs due to missing or intentionally unconfigured DNS records.
 
 ---
 
@@ -216,7 +231,7 @@ ffuf -w burp-parameter-names.txt:FUZZ -u http://admin.academy.htb:8080/admin/adm
 
 POST parameters are sent in the request body.
 
-For PHP applications, the following **Content-Typ header** is required:
+For PHP applications, the following **Content-Type header** is required:
 
 - Content-Type: application/x-www-form-urlencoded
 
@@ -260,7 +275,7 @@ for i in $(seq 1 1000); do echo $i >> ids.txt; done
 **Example:**
 
 ```bash
-ffuf -w ids.txt:FUZZ -u http://admin.academy.htb:PORT/admin/admin.php -X POST -d 'id=FUZZ' -H 'Content-Type: application/x-www-form-urlencoded'
+ffuf -w ids.txt:FUZZ -u http://admin.academy.htb:<PORT>/admin/admin.php -X POST -d 'id=FUZZ' -H 'Content-Type: application/x-www-form-urlencoded'
 ```
 ---
 
@@ -276,8 +291,6 @@ Web services may enforce rate limits, often returning **HTTP 429** responses.
 | `-rate`              | `Max requests per second`                     |
 | `-t`                 | `Number of concurrent threads (default: 40)`  |
 | `-se`                | `Stop on spurious errors`                     |
-
-The following example enforces a 1 second pause between requests. Since the default number of concurrent threads is 40, this will amount to 40 requests per second.
 
 **Examples:**
 
@@ -310,15 +323,3 @@ Stop on excessive errors:
 ```bash
 ffuf -w directory-list-2.3-small.txt:FUZZ -se -rate 100 -u http://94.237.61.242/FUZZ 
 ```
-
-## Final Notes
-
-ffuf is an extremely flexible and powerful tool.
-
-**Effective usage depends on:**
-
-- Choosing the correct wordlist
-- Understanding the target’s behavior
-- Proper filtering and rate control
-
-These techniques form a solid foundation for real-world web enumeration and exploitation.
