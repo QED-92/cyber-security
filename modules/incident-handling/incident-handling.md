@@ -1,10 +1,36 @@
 # Incident Handling
 
+Incident handling is a clearly defined set of procedures for responding to security incidents. This document covers the basics of incident handling, and is by no means an exhaustive guide.
+
+# Table of Contents
+
+- [Overview](#overview)
+- [Cyber Kill Chain](#cyber-kill-chain)
+  - [Reconnaissance](#reconnaissance)
+  - [Weaponize](#weaponize)
+  - [Delivery](#delivery)
+  - [Exploitation](#exploitation)
+  - [Installation](#installation)
+  - [Command and Control](#command-and-control)
+  - [Action](#action)
+- [MITRE ATT&CK Framework](#mitre-attck-framework)
+- [The Hive](#the-hive)
+- [The Incident Handling Process](#the-incident-handling-process)
+  - [Preparation](#preparation)
+  - [Detection and Analysis](#detection-and-analysis)
+    - [Detection](#detection)
+    - [Investigation](#investigation)
+  - [Containment, Eradication and Recovery](#containment-eradication-and-recovery)
+    - [Containment](#containment)
+    - [Eradication](#eradication)
+    - [Recovery](#recovery)
+  - [Post-Incident Activity](#post-incident-activity)
+
 ---
 
 # Overview
 
-Incident handling is a clearly defined set of procedures for responding to security incidents. Incident handling capability is a necessity for any organization looking to uphold the three pillars of information security:
+Incident handling capability is a necessity for any organization looking to uphold the three pillars of information security:
 
 - Confidentiality
 - Integrity
@@ -33,21 +59,21 @@ The cyber kill chain consists of seven stages, describing the lifecycle of an at
 
 Keep in mind that adversaries rarely operate linearly, as the cyber kill chain suggests. Some stages might be repeated multiple times, and some stages might be skipped.
 
-## Reconaissance
+## Reconnaissance
 
 The attacker gather as much useful information as possible about the target. 
 
-Active reconaissance involves mapping out the network, by identifying hosts, open ports, and running services. This involves interacting directly with the target, often through some automated tool, such as NMAP. 
+Active reconnaissance involves mapping out the network, by identifying hosts, open ports, and running services. This involves interacting directly with the target, often through some automated tool, such as NMAP. 
 
-Passive reconaissance involves gathering information from public sources such as social media, job ads, and company web pages. This is a more stealthy approach, since it doesn't require direct interaction with the target.  
+Passive reconnaissance involves gathering information from public sources such as social media, job ads, and company web pages. This is a more stealthy approach, since it doesn't require direct interaction with the target.  
 
 ## Weaponize
 
-The payload used to gain initial access is developed and embedded into some type of exploit. The main purpose of the payload is to gain remote access to the target machine, preferably through a persistent payload. 
+The attacker develops a payload and embeds it in an exploit to gain initial access. The main purpose of the payload is to gain remote access to the target machine, preferably through a persistent payload. 
 
 ## Delivery
 
-The payload is delivered to the target. The delivery method varies, but often include some type of phishing campaign. A solid payload rarely require the user to do anything more than to double-click on a link. 
+The payload is delivered to the target. The delivery method varies, but often include some type of phishing campaign. A solid payload rarely requires the user to do anything more than to double-click on a link. 
 
 In some cases the payload is delivered through physical means, such as a USB stick.
 
@@ -127,7 +153,7 @@ Effective ways of achieving endpoint hardening include:
 
 - Disable LLMNR/NetBIOS
 - Remove admin privileges from regular users
-- Configure PowerShell in "ContrainedLanguage" mode
+- Configure PowerShell in "ConstrainedLanguage" mode
 - Host-based firewalls
 - Implement an EDR solution
 
@@ -227,7 +253,7 @@ In the recovery stage, systems are brought back to normal operation. When the sy
 
 Restored systems are subject to heavy monitoring, since attackers tend to be persistent. 
 
-Suspicous events to monitor for include:
+Suspicious events to monitor for include:
 
 - Unusual logins
 - Unusual processes

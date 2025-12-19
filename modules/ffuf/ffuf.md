@@ -1,6 +1,6 @@
 # Attacking Web Applications with FFUF
 
-This document summarizes practical techniques for attacking web applications using ffuf. It is by no means an exhaustive guide.
+This document summarizes practical techniques for attacking web applications with **ffuf**. It is by no means an exhaustive guide.
 
 ## Table of Contents
 
