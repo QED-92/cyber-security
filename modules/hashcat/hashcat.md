@@ -6,6 +6,8 @@ Hashcat is a powerful open-source tool used for password cracking. Hashcat has e
 
 This document covers the basic usage of Hashcat, and is by no means an exhaustive guide.
 
+---
+
 ## Hashing
 
 Hashing is the process of converting some text to a unique string particular to that text. Hashing is a one-way process, meaning that there is no way of reconstructing the original plaintext from the hash. 
@@ -28,6 +30,8 @@ Unix systems support four different hashing algorithms:
 
 A common protection mechanism employed against password cracking is **"salting"**. A salt is a random piece of data added to the plaintext before hashing it. This increases computation time but does not prevent brute forcing altogether.
 
+---
+
 ## Encryption
 
 Encryption is the process of converting data into a format in which the original content is not accessible. Unlike hashing, encryption is reversible, meaning that it's possible to decrypt the ciphertext and obtain the original data.
@@ -39,6 +43,8 @@ There are two types of encryption algorithms:
 	
 - Asymmetric encryption
     - Asymmetric algorithms divide the key into two parts (public and private). The public key can be given to anyone who wishes to encrypt data and pass it securely to the owner. The owner then uses their private key to decrypt the data.
+
+---
 
 ## Identifying Hashes
 
@@ -56,6 +62,8 @@ It's not always possible to identify the algorithm based on the obtained hash. T
 Hashcat provides an excellent reference, that maps hash modes to example hashes. This reference is very handy when determining the type of hash, and the associated **hash mode** required for hashcat to work:
 
 - https://hashcat.net/wiki/doku.php?id=example_hashes
+
+---
 
 ## Hashcat Overview
 
@@ -82,6 +90,8 @@ The following attack modes are supported:
 - 6 - Hybrid Wordlist + Mask
 - 7 - Hybrid Mask + Wordlist
 
+---
+
 ## Straight Attack
 
 A straight attack, also known as a dictionary attack, is the most straightforward mode. Dictionary attacks uses a pre-compiled wordlist for password cracking. Each password from the wordlist is hashed using the specified hash type and compared against the stored hash.
@@ -106,6 +116,8 @@ echo -n '!PasswordCracking' | sha256sum | cut -f1 -d ' ' > hash.txt
 hashcat -a 0 -m 1400 hash.txt rockyou.txt
 ```
 
+---
+
 ## Combination Attack
 
 A combination attack utilizes two wordlists and creates combinations from them. It's quite common for users to join words together, thinking that this creates stronger passwords. 
@@ -127,6 +139,8 @@ echo -n 'secretpassword' | md5sum | cut -f1 -d ' ' > hash.txt
 # Combination attack
 hashcat -a 1 -m 0 hash.txt wordlist1 wordlist2
 ```
+
+---
 
 ## Mask Attack
 
@@ -160,6 +174,8 @@ hashcat -a 3 -m 0 hash.txt ILFREIGHT?l?l?l?l?l20?1?d
 
 hashcat -a 3 -m 0 hash.txt ?a?a?a?a?a?a?a?a
 ```
+
+---
 
 ## Hashcat Optimization
 
