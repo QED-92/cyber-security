@@ -1,10 +1,27 @@
-# Login Brute Forcing
+# Hydra
+
+Brute forcing is a trial-and-error method commonly used to crack passwords, hashes and encryption keys. **Hydra** is a popular tool utilized for brute forcing. 
+
+This document summarizes practical techniques for brute forcing with **Hydra**. It is by no means an exhaustive guide.
+
+# Table of Contents
+
+- [Overview](#overview)
+- [Brute Force Attacks](#brute-force-attacks)
+  - [Pure Brute Force Attack](#pure-brute-force-attack)
+  - [Dictionary Attack](#dictionary-attack)
+  - [Hybrid Attack](#hybrid-attack)
+- [Hydra](#hydra)
+  - [Attacking HTTP Basic Authentication](#attacking-http-basic-authentication)
+  - [Attacking Login Forms](#attacking-login-forms)
+  - [Attacking SSH and FTP](#attacking-ssh-and-ftp)
+- [Custom Wordlists](#custom-wordlists)
+  - [Username Anarchy](#username-anarchy)
+  - [CUPP](#cupp)
 
 ---
 
 # Overview
-
-Brute forcing is a trial-and-error method commonly used to crack passwords, hashes and encryption keys. The process can be likened to a thief trying every key on a giant key-ring until they find one that unlocks the vault. 
 
 The success of a brute force attack depends on three main components:
 
@@ -12,7 +29,7 @@ The success of a brute force attack depends on three main components:
 - Computational power
 - Security measures
 
-A longer and more complex password obviously require more time and computational resources to crack. The following guidelines should be followed when creating passwords:
+A longer and more complex password obviously requires more time and computational resources to crack. The following guidelines should be followed when creating passwords:
 
 | Attribute        | Guideline                                                   |
 | ---------------- | ----------------------------------------------------------- |
@@ -24,13 +41,13 @@ A longer and more complex password obviously require more time and computational
 To fully grasp the challenge of brute forcing passwords one must understand the underlying equation that determines the total number of possible combinations:
 
 - $N = c^n$
-- N = total number of possible combinations
-- c = number of characters in character set
-- n = number of characters in password
+    - N = total number of possible combinations
+    - c = number of characters in character set
+    - n = number of characters in password
 
 Example:
 
-A 6 character password containing only lowercase letters from the english alphabet has over 300 million possible combinations.
+A 6 character password containing only lowercase letters from the English alphabet has over 300 million possible combinations.
 
 - $N = 26^6 = 308,915,776$
 
@@ -91,7 +108,7 @@ grep -E '[0-9]' rockyou-lowercase.txt > filtered.txt
 
 # Hydra
 
-Hydra is a brute forcing tool that can be used to attack a plethora of different services. Hydra utilizes parallell threads to speed up the cracking process. 
+Hydra is a brute forcing tool that can be used to attack a plethora of different services. Hydra utilizes parallel threads to speed up the brute forcing process. 
 
 Built-in modules are utilized to properly interact with different protocols and their authentication mechanisms. 
 
@@ -118,7 +135,7 @@ hydra -l admin -P rockyou.txt 192.168.1.100 http-post-form "/login.php:user=^USE
 ```
 
 ```bash
-hydra -l admin -P rockyou.txt 192.168.1.100 http-get
+hydra -l admin -P rockyou.txt 192.168.1.100 http-get "/"
 ```
 
 Hydra targets the default port if not instructed otherwise. Specify a non-default port with the **-s** flag:
@@ -127,7 +144,7 @@ Hydra targets the default port if not instructed otherwise. Specify a non-defaul
 hydra -l admin -P rockyou.txt ftp://192.168.1.100 -s 2121
 ```
 
-The number of parallell threads is modified with the **-t** flag:
+The number of parallel threads is modified with the **-t** flag:
 
 ```bash
 hydra -l admin -P rockyou.txt ftp://192.168.1.100 -t 20
@@ -216,7 +233,7 @@ hydra -l ftpuser -P 2023-200_most_used_passwords.txt ftp://94.237.54.192
 
 # Custom Wordlists
 
-Pre-compiled wordlists casts a wide-net in hopes of finding the right combination. When targeting specific individuals or organisations with unique password policies, custom wordlists is often a better option.
+Pre-compiled wordlists cast a wide-net in hopes of finding the right combination. When targeting specific individuals or organisations with unique password policies, custom wordlists are often a better option.
 
 Common programs for creating custom wordlists include:
 
