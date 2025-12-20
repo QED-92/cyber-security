@@ -4,6 +4,32 @@ These notes summarize core techniques for discovery and exploitation of **file i
 
 ---
 
+## Table of Contents
+
+- [File Inclusion](#file-inclusion)
+  - [Overview](#overview)
+  - [Basic LFI](#basic-lfi)
+  - [Bypassing Filters](#bypassing-filters)
+    - [Non-recursive Search and Replace Filter](#non-recursive-search-and-replace-filter)
+    - [Character Blacklist Filter](#character-blacklist-filter)
+    - [Approved Paths Filter](#approved-paths-filter)
+    - [Appended Extensions Filter](#appended-extensions-filter)
+  - [PHP Wrappers](#php-wrappers)
+    - [PHP Stream Wrappers](#php-stream-wrappers)
+    - [PHP Data Wrapper](#php-data-wrapper)
+    - [PHP Input Wrapper](#php-input-wrapper)
+    - [PHP Expect Wrapper](#php-expect-wrapper)
+  - [Remote File Inclusion (RFI)](#remote-file-inclusion-rfi)
+  - [File Uploads](#file-uploads)
+    - [Image Upload](#image-upload)
+    - [Zip Upload](#zip-upload)
+    - [Phar Upload](#phar-upload)
+  - [Log Poisoning](#log-poisoning)
+    - [PHPSESSID Poisoning](#phpsessid-poisoning)
+    - [Server Log Poisoning](#server-log-poisoning)
+
+---
+
 ## Overview
 
 Many server-side languages use HTTP parameters to identify which resources are shown on a web page. If the underlying mechanisms are not securely coded, an attacker can manipulate the parameter values and display any file on the back-end server. This is known as a **Local File Inclusion** (LFI) vulnerability.
@@ -610,6 +636,8 @@ http://94.237.48.12:41125/index.php?language=../../../var/lib/php/sessions/sess_
 ![Filtered output](images/log-poisoning2.png)
 
 Keep in mind that the session file is rewritten on subsequent requests, overwriting the injected payload. To execute another command the log file has to be re-poisoned with the web shell.
+
+---
 
 ### Server Log Poisoning
 
