@@ -18,7 +18,7 @@ These notes summarize core techniques for network discovery and enumeration usin
   - [Default Scan Behavior](#default-scan-behavior)
   - [Port Selection](#port-selection)
 - [Service and OS Detection](#service-and-os-detection)
-- [NMAP Scripting Engine (NSE)](#nmap-scripting-engine-nse)
+- [Nmap Scripting Engine (NSE)](#nmap-scripting-engine-nse)
   - [Common NSE Usage](#common-nse-usage)
 - [Timing and Performance](#timing-and-performance)
   - [Timing Templates](#timing-templates)
@@ -205,7 +205,7 @@ nmap 10.129.2.49 -p 22,80,445 -sV -O
 
 ---
 
-## NMAP Scripting Engine (NSE)
+## Nmap Scripting Engine (NSE)
 
 Nmap includes hundreds of scripts for advanced enumeration and vulnerability discovery.
 
