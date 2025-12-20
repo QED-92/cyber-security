@@ -1,6 +1,31 @@
-# Network Enumeration with NMAP
+# Network Enumeration with Nmap
 
-These notes summarize core techniques for network discovery and enumeration using Nmap, as covered in the HTB module *Network Enumeration with Nmap*.
+These notes summarize core techniques for network discovery and enumeration using Nmap. This is by no means an exhaustive guide. 
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Host Discovery](#host-discovery)
+  - [ICMP-Based Discovery](#icmp-based-discovery)
+  - [Extracting Live Hosts](#extracting-live-hosts)
+  - [Scanning From a Host List](#scanning-from-a-host-list)
+  - [Multiple Hosts and Host Ranges](#multiple-hosts-and-host-ranges)
+  - [Debugging Host Discovery](#debugging-host-discovery)
+  - [Forcing ICMP Discovery](#forcing-icmp-discovery)
+- [Port Scanning](#port-scanning)
+  - [Default Scan Behavior](#default-scan-behavior)
+  - [Port Selection](#port-selection)
+- [Service and OS Detection](#service-and-os-detection)
+- [NMAP Scripting Engine (NSE)](#nmap-scripting-engine-nse)
+  - [Common NSE Usage](#common-nse-usage)
+- [Timing and Performance](#timing-and-performance)
+  - [Timing Templates](#timing-templates)
+- [IDS/IPS Evasion](#idsips-evasion)
+  - [Decoys](#decoys)
+  - [Spoofing Source IP](#spoofing-source-ip)
+  - [Source Port Manipulation](#source-port-manipulation)
 
 ---
 
@@ -12,7 +37,7 @@ Nmap is a powerful open-source tool used for:
 - Port scanning
 - Service and version enumeration
 - Operating system detection
-- Vulnerability identification via scripting
+- Vulnerability detection
 
 It is often the first tool used during network-based reconnaissance in penetration tests.
 
@@ -80,7 +105,7 @@ nmap 10.129.2.18 -sn --packet-trace
 
 ![Filtered output](images/nmap3.PNG)
 
-Understand why a host is marked as “up”:
+Understand why a host is marked as "up":
 
 ```bash
 nmap 10.129.2.18 -sn --reason
@@ -102,7 +127,7 @@ nmap 10.129.2.18 -sn -PE --disable-arp-ping
 
 ## Port Scanning
 
-After identifying live hosts, the next step is to enumerate::
+After identifying live hosts, the next step is to enumerate:
 
 - Open ports
 - Running services
@@ -110,14 +135,16 @@ After identifying live hosts, the next step is to enumerate::
 
 **Port states:**
 
-| State             | Description                          |
-| ----------------- | -------------------------------------|
-| `open`            | `Connection established`             |
-| `closed`          | `No service listening`               |
-| `filtered`        | `No response or error`               |
-| `unfiltered`      | `Accessible but unclear state`       |
-| `open/filtered`   | `No response (possible firewall)`    |
-| `closed/filtered` | `Indeterminate state`                |
+| State             | Description                                             |
+| ----------------- | ------------------------------------------------------- |
+| `open`            | `Connection established`                                |
+| `closed`          | `No service listening`                                  |
+| `filtered`        | `Usually indicates firewall silently dropping packets`  |
+| `unfiltered`      | `Port reachable, but can't determine open/closed state` |
+| `open/filtered`   | `No response (possible firewall)`                       |
+| `closed/filtered` | `Indeterminate state`                                   |
+
+Filtered states are common when firewalls silently drop packets.
 
 ### Default Scan Behavior
 
@@ -165,6 +192,8 @@ To gather additional information about discovered services:
 | ----------------- | -------------------------------- |
 | `-sV`             | `Service and version detection`  |
 | `-O`              | `Operating system detection`     |
+
+OS detection requires at least one open and one closed port to be reliable.
 
 **Example:**
 
@@ -226,7 +255,7 @@ nmap 10.129.2.49 --script vuln
 **Use wildcards:**
 
 ```bash
-nmap 10.129.2.49 -p 80,443 -script "http-*"
+nmap 10.129.2.49 -p 80,443 --script "http-*"
 ```
 
 ---
@@ -282,7 +311,7 @@ NMAP also offer **timing templates** for an easier and more convenient way to co
 | `-T4`           | `Aggressive`       |
 | `-T5`           | `Insane`           |
 
-The **paranoid** and **sneaky** options may be useful for IDS/IPS evasion, but are quite slow. If you're on a decent ethernet connection and not concered about being stealthy, you are advised to use the **aggressive** option.
+The **paranoid** and **sneaky** options may be useful for IDS/IPS evasion, but are quite slow. If you're on a decent ethernet connection and not concerned about being stealthy, you are advised to use the **aggressive** option.
 
 **Example:**
 
@@ -293,6 +322,8 @@ nmap 10.129.2.49 -p- -T4
 ---
 
 ## IDS/IPS Evasion
+
+There are several techniques utilized for IDS/IPS evasion. But it's important to keep in mind that many IDS/IPS systems can still detect these techniques through behavioral analysis.
 
 ### Decoys
 
@@ -317,17 +348,3 @@ DNS traffic (port 53) is often trusted:
 ```bash
 nmap 10.129.2.49 -p 80 -sV --source-port 53
 ```
-
----
-
-## Final Notes
-
-Nmap is a foundational tool in penetration testing.
-
-**Effective use requires:**
-
-- Understanding scan types and their trade-offs
-- Choosing appropriate timing profiles
-- Interpreting results rather than blindly trusting output
-
-These techniques provide a strong baseline for real-world network enumeration.
