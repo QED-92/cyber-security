@@ -349,3 +349,26 @@ Unlike `php://filter`, the `php://input` wrapper allows direct code execution an
 ---
 
 ### PHP Expect Wrapper
+
+The PHP **expect wrapper** (`expect://`) allows execution of system commands through the **Expect library**. Expect is designed to automate interactive applications, but when exposed through PHP, it can be abused to execute arbitrary commands.
+
+Unlike other wrappers, the **expect wrapper** does not require embedding PHP code. Instead, commands are executed directly by the operating system.
+
+The expect wrapper has strict prerequisites and is therefore rare in modern environments:
+
+- The Expect extension must be installed (php-expect)
+- The wrapper must be enabled at compile time
+- The application must be vulnerable to LFI using include() or require()
+- In most cases, `allow_url_include = On` is required
+
+Because the Expect extension is **not enabled by default**, this attack vector is uncommon, but extremely powerful when available.
+
+**Examples:**
+
+```bash
+http://94.237.55.43:35886/index.php?language=expect://id
+```
+
+```bash
+http://94.237.55.43:35886/index.php?language=expect://cat+/etc/passwd
+```
