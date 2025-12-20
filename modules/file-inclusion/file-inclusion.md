@@ -6,7 +6,7 @@ These notes summarize core techniques for discovery and exploitation of **file i
 
 ## Overview
 
-Many back-end languages use HTTP parameters to identify which resources are shown on a web page. If the underlying mechanisms are not securely coded, an attacker can manipulate the parameter values and display any file on the back-end server. This is known as a **Local File Inclusion** (LFI) vulnerability. 
+Many server-side languages use HTTP parameters to identify which resources are shown on a web page. If the underlying mechanisms are not securely coded, an attacker can manipulate the parameter values and display any file on the back-end server. This is known as a **Local File Inclusion** (LFI) vulnerability. 
 
 ## Basic LFI
 
@@ -28,9 +28,9 @@ http://94.237.49.23:48568/index.php?language=../../../../etc/passwd
 
 ![Filtered output](images/basic-lfi.png)
 
-**Path traversal** is commonly used in LFI payloads in order to traverse up the directory-tree and back to the root directory. You can only go as far back as the root directory, so it doesn't matter if the payload includes extra traversals. If you're not sure where you stand in the directory-tree, add as many **../** as you like. 
+**Path traversal** is commonly used in LFI payloads in order to traverse up the directory-tree and back to the root directory. Traversal stops at the filesystem root, so including additional **../** sequences does not affect the final resolved path.
 
-Sometimes the parameter value is appended after some prefix. Injecting a regular LFI payload may result in an invalid path. By prepending a slash **/** to the payload, the prefix is treated as a directory and the path becomes valid. It's good practice to resort to this technique by default, because even if there is no prefix, the path will still be valid.
+Sometimes the parameter value is appended after a fixed directory prefix on the server side. Injecting a regular LFI payload may result in an invalid path. By prepending a slash **/** to the payload, the prefix is treated as a directory and the path becomes valid. It's good practice to resort to this technique by default, because even if there is no prefix, the path will still be valid.
 
 **Example:**
 
