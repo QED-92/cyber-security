@@ -484,33 +484,35 @@ A common method of testing for SQL injections is by intercepting requests using 
 
 ## OR Injection
 
-Suppose we attempt to login to a vulnerable application with the credentials `admin/admin`. The back-end SQL query may look something like this:
+Suppose an attacker attempts to log in to a vulnerable application with the credentials `admin/admin`. The back-end SQL query may look something like this:
 
 ```sql
 SELECT * FROM logins WHERE username = 'admin' AND password = 'admin';
 ```
 
-The query is based on a logical `AND` operation, meaning that **both** expressions must evaluate to true in order to gain access to the application.
+The query is based on a logical `AND` operation, meaning that **both** expressions must evaluate to true in order for the attacker to gain access to the application.
 
-An attacker can utilize the `OR` operator to inject a payload that always evaluates to true. The `OR` operator returns true if at least one of the expressions evaluate to true. An attacker can escape user-input bounds an inject the expression `1 = 1`, which will always evaluate to true.
+An attacker can utilize the `OR` operator to inject a payload that always evaluates to true. The `OR` operator returns true if at least one of the expressions evaluate to true. An attacker can escape user-input bounds and inject the expression `1 = 1`, which will always evaluate to true.
 
 **Example:**
 
-Inject into `Username` input field, leave the `Password` field blank:
+The following SQL injection requires a valid username, but bypasses the password check. 
+
+Inject into the `Username` field, leave the the `Password` field blank:
+
 ```sql
-admin'OR '1'='1
+admin' OR '1' = '1
 ```
 
 ![Filtered output](images/or-injection.png)
 
 Backend SQL query after injection:
+
 ```sql
 SELECT * FROM logins WHERE username = 'admin' OR '1'='1' AND password =''; 
 ```
 
-The SQL injection above will only work with a valid username or password.
-
-According to the order of precedence the `AND` operator is evaluated before the `OR` operator. 
+According to operator precedence the `AND` operator is evaluated before the `OR` operator. 
 
 The query will be evaluated as:
 
@@ -530,4 +532,13 @@ With an invalid username and an invalid password, the query will evaluate to `fa
 
 - false OR (true AND false) &rarr; false OR false &rarr; false
 
+Without a valid username or password, the attacker can inject the same payload into the `password` field as well, causing the query to evaluate to true.
 
+**Example:**
+
+Backend SQL query after injection:
+```sql
+SELECT * FROM logins WHERE username = 'admin' OR ('1'='1' AND password ='') OR '1'='1'; 
+```
+
+- false OR (true AND false) OR true &rarr; false OR false OR true &rarr; false OR true &rarr; true
