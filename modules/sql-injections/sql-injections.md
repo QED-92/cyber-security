@@ -63,6 +63,8 @@ mysql -u <username> -h <ip/domain> -P <port> -p
 mysql -u root -h 94.237.57.211 -P 46600 -p
 ```
 
+---
+
 ## Creating Databases and Tables
 
 The semicolon (`;`) works as a statement terminator, much like in the `C` programming language. SQL statements are not case sensitive, however, best practice is to specify statements in UPPERCASE and names in lowercase.
@@ -87,7 +89,7 @@ The `SHOW DATABASES` statement lists all databases.
 SHOW DATABASES;
 ```
 
-![Filtered output](images/show-databases.png.png)
+![Filtered output](images/show-databases.png)
 
 The `USE` statement switches to a particular database.
 
@@ -101,3 +103,52 @@ USE <name>;
 USE users;
 ```
 
+SQL databases store data in tables made up of horizontal rows and vertical columns. The intersection between a row and a column is called a `cell`. A column is of a particular data-type. 
+
+Tables are created with the `CREATE TABLE` statement.
+
+**Example:**
+
+```bash
+# Syntax
+CREATE TABLE <name> (
+    col1 DATATYPE,
+    col2 DATATYPE,
+    col3 DATATYPE
+);
+
+# Example
+CREATE TABLE logins (
+    id INT,
+    username VARCHAR(100),
+    password VARCHAR(100),
+    join_date DATETIME
+);
+```
+
+![Filtered output](images/create-table.png)
+
+The `SHOW TABLES` statement lists all tables in the database.
+
+**Example:**
+
+```bash
+# Example
+SHOW TABLES;
+```
+
+![Filtered output](images/show-tables.png)
+
+The `DESCRIBE` statement is used to get more information about a table and its structure.
+
+**Example:**
+
+```bash
+# Syntax
+DESCRIBE <name>:
+
+# Example
+DESCRIBE logins;
+```
+
+![Filtered output](images/describe.png)
