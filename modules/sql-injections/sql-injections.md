@@ -10,6 +10,7 @@ This document summarizes core techniques for discovery and exploitation of **SQL
     - [Authenticate to MySQL](#authenticate-to-mysql)
     - [Create Databases and Tables](#create-databases-and-tables)
     - [Manipulate and Retrieve Data from Tables](#manipulate-and-retrieve-data-from-tables)
+    - [Filtering SQL Queries](#filtering-sql-queries)
 
 ---
 
@@ -157,7 +158,7 @@ DESCRIBE logins;
 
 ## Manipulate and Retrieve Data from Tables
 
-The `INSERT` statment adds a `record` to a table. A `record` is a row, in other words, values are added to each column in a row of the table. 
+The `INSERT` statement adds a `record` to a table. A `record` represents a single row in a table, where values correspond to each column. 
 
 **Example:**
 
@@ -168,6 +169,8 @@ INSERT INTO <name> VALUES (col1_val, col2_val, ...);
 -- Example
 INSERT INTO logins VALUES(1, 'admin', 'p@ssw0rd', '2025-12-21');
 ```
+
+Keep in mind that omitting column names requires values to be supplied in the exact column order defined by the table schema.
 
 Values can also be added to individual columns, instead of adding entire records. 
 
@@ -180,6 +183,8 @@ INSERT INTO <name> (col1, col2, ...) VALUES (col1_val, col2_val, ...);
 -- Example
 INSERT INTO logins (username, password) VALUES('admin', 'p@ssw0rd');
 ```
+
+In the example above, unspecified columns must either allow `NULL` values or have default values defined.
 
 The `SELECT` statement is used to retrieve data from tables.
 
@@ -201,10 +206,55 @@ Select specific columns from a table:
 
 ```sql
 -- Syntax
-SELECT <col1, col2, ...> FROM <name>;
+SELECT col1, col2, ... FROM <name>;
 
 -- Example
 SELECT username, password FROM logins;
 ```
 
 ![Filtered output](images/select-columns.png)
+
+The `DROP` statement is used to delete tables. Use with `caution` — deletion is permanent and occurs without confirmation.
+
+**Example:**
+
+```sql
+-- Syntax
+DROP TABLE <name>;
+
+-- Example
+DROP TABLE logins;
+```
+
+The `ALTER` statement can be utilized to accomplish four different things:
+
+- Rename table
+- Rename column
+- Add column
+- Delete column
+
+**Example:**
+
+Rename a column:
+
+```sql
+-- Syntax
+ALTER TABLE <name> RENAME COLUMN <name> TO <new_name>;
+
+-- Example
+ALTER TABLE logins RENAME COLUMN id TO ids;
+```
+
+Add a column:
+
+```sql
+-- Syntax
+ALTER TABLE <name> ADD <name> <data_type>;
+
+-- Example
+ALTER TABLE logins ADD age INT;
+```
+
+---
+
+## Filtering SQL Queries
