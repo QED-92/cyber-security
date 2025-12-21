@@ -607,9 +607,7 @@ SELECT * FROM logins WHERE username = 'admin';
 
 ## The UNION Clause
 
-A `UNION` clause can be utilized to inject entire SQL queries to be executed along with the original query.
-
-The `UNION` clause combines results from multiple `SELECT` statements. A `UNION` injection can select and dump data from multiple databases and tables across the DBMS. 
+A `UNION` clause can be utilized to inject entire SQL queries to be executed along with the original query. The `UNION` clause combines results from multiple `SELECT` statements. A `UNION` injection can select and dump data from multiple databases and tables across the DBMS. 
 
 **Example:**
 
@@ -621,4 +619,48 @@ SELECT <columns> FROM <table> UNION SELECT <columns> FROM <table>;
 SELECT * FROM ports UNION SELECT * FROM ships;
 ```
 
-A `UNION` clause can only operate on statements with an equal number of columns. The original query often have more columns than the query the attacker wants to execute. In these scenarios, `junk data` can be utilized to fill in the remaining required columns. The `junk data` must be of the same data-type as the columns in the original query. `NULL` is the preferred `junk data-type`, since it fits all data types. 
+A `UNION` clause can only operate on `SELECT` statements that return the same number of columns in the same order. The original query often has more columns than the query the attacker wants to execute. In these scenarios, `junk data` is utilized to fill in the remaining columns. The injected values must be type-compatible with the corresponding columns in the original query. `NULL` is the preferred filler value because it is type-agnostic and compatible with most column types, but `INT` is also commonly used.
+
+**Example:**
+
+Suppose that the `products` table and the `passwords` table contain an equal number of columns (4). An attacker wants to retrieve the `username` column from the `passwords` table. The attacker may achieve this through a `UNION` injection. The attacker only wants the `username` column, and fills the remaining 3 columns with integers. 
+
+```sql
+SELECT * FROM products WHERE product_id = '1' UNION SELECT username, 2, 3, 4 FROM passwords-- '
+```
+
+The trailing comment ensures that the remainder of the original query is ignored.
+
+![Filtered output](images/union-injection.png)
+
+**Example:**
+
+Suppose you have access to a database and want to find the total number of records in the `employees` plus the `departments` tables.
+
+**Step 1:**
+
+Utilize the `DESCRIBE` statement to find the number of columns in each table.
+
+```sql
+DESCRIBE employees;
+```
+
+![Filtered output](images/describe2.png)
+
+```sql
+DESCRIBE departments;
+```
+
+![Filtered output](images/describe3.png)
+
+The `employees` table contains six columns and the `departments` table contains two columns. 
+
+**Step 2:**
+
+Utilize a `UNION` clause and fill out the remaining four columns in the `departments` table with `NULL` values.
+
+```sql
+SELECT * FROM employees UNION SELECT dept_no, dept_name, NULL, NULL, NULL, NULL FROM departments;
+```
+
+---
