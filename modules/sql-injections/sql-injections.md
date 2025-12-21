@@ -9,6 +9,7 @@ This document summarizes core techniques for discovery and exploitation of **SQL
     - [Overview](#overview)
     - [Authenticate to MySQL](#authenticate-to-mysql)
     - [Creating Databases and Tables](#creating-databases-and-tables)
+    - [Manipulate and Retrieve Data from Tables](#manipulate-and-retrieve-data-from-tables)
 
 ---
 
@@ -67,17 +68,17 @@ mysql -u root -h 94.237.57.211 -P 46600 -p
 
 ## Creating Databases and Tables
 
-The semicolon (`;`) works as a statement terminator, much like in the `C` programming language. SQL statements are not case sensitive, however, best practice is to specify statements in UPPERCASE and names in lowercase.
+The semicolon (`;`) works as a statement terminator, much like in the `C` programming language. SQL keywords are case-insensitive; however, best practice is to write keywords in UPPERCASE and identifiers (such as database and table names) in lowercase.
 
 The `CREATE DATABASE` statement creates a new database.
 
 **Example:**
 
-```bash
-# Syntax
+```sql
+-- Syntax
 CREATE DATABASE <name>;
 
-# Example
+-- Example
 CREATE DATABASE users;
 ```
 
@@ -85,7 +86,7 @@ The `SHOW DATABASES` statement lists all databases.
 
 **Example:**
 
-```bash
+```sql
 SHOW DATABASES;
 ```
 
@@ -95,29 +96,29 @@ The `USE` statement switches to a particular database.
 
 **Example:**
 
-```bash
-# Syntax
+```sql
+-- Syntax
 USE <name>;
 
-# Example
+-- Example
 USE users;
 ```
 
-SQL databases store data in tables made up of horizontal rows and vertical columns. The intersection between a row and a column is called a `cell`. A column is of a particular data-type. 
+SQL databases store data in tables made up of horizontal rows and vertical columns. The intersection of a row and a column is called a `cell`. A column is of a particular data-type. 
 
 Tables are created with the `CREATE TABLE` statement.
 
 **Example:**
 
-```bash
-# Syntax
+```sql
+-- Syntax
 CREATE TABLE <name> (
     col1 DATATYPE,
     col2 DATATYPE,
     col3 DATATYPE
 );
 
-# Example
+-- Example
 CREATE TABLE logins (
     id INT,
     username VARCHAR(100),
@@ -132,8 +133,7 @@ The `SHOW TABLES` statement lists all tables in the database.
 
 **Example:**
 
-```bash
-# Example
+```sql
 SHOW TABLES;
 ```
 
@@ -143,12 +143,14 @@ The `DESCRIBE` statement is used to get more information about a table and its s
 
 **Example:**
 
-```bash
-# Syntax
-DESCRIBE <name>:
+```sql
+-- Syntax
+DESCRIBE <name>;
 
-# Example
+-- Example
 DESCRIBE logins;
 ```
 
 ![Filtered output](images/describe.png)
+
+## Manipulate and Retrieve Data from Tables
