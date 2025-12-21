@@ -562,7 +562,7 @@ SELECT * FROM logins; -- This is a comment
 SELECT * FROM customers; # This is also a comment
 ```
 
-**Common Comment-Based Payloads:**
+**Comment-Based Payloads:**
 
 | Payload     | URL Encoded Payload    |
 | ----------- | ---------------------  |
@@ -605,4 +605,20 @@ SELECT * FROM logins WHERE username = 'admin';
 
 ---
 
-## Union Injection
+## The UNION Clause
+
+A `UNION` clause can be utilized to inject entire SQL queries to be executed along with the original query.
+
+The `UNION` clause combines results from multiple `SELECT` statements. A `UNION` injection can select and dump data from multiple databases and tables across the DBMS. 
+
+**Example:**
+
+```sql
+-- Syntax
+SELECT <columns> FROM <table> UNION SELECT <columns> FROM <table>;
+
+-- Example
+SELECT * FROM ports UNION SELECT * FROM ships;
+```
+
+A `UNION` clause can only operate on statements with an equal number of columns. The original query often have more columns than the query the attacker wants to execute. In these scenarios, `junk data` can be utilized to fill in the remaining required columns. The `junk data` must be of the same data-type as the columns in the original query. `NULL` is the preferred `junk data-type`, since it fits all data types. 
