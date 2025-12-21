@@ -11,6 +11,7 @@ This document summarizes core techniques for discovery and exploitation of **SQL
     - [Create Databases and Tables](#create-databases-and-tables)
     - [Manipulate and Retrieve Data from Tables](#manipulate-and-retrieve-data-from-tables)
     - [Filtering SQL Queries](#filtering-sql-queries)
+    - [SQL Logical Operators](#sql-logical-operators)
 
 ---
 
@@ -322,4 +323,96 @@ SELECT * FROM logins WHERE username LIKE 'admin%';
 SELECT * FROM logins WHERE username LIKE '___';
 ```
 
+---
+
+## SQL Logical Operators
+
+The most common **MySQL** logical operators are:
+
+- `AND` 
+- `OR` 
+- `NOT`
+
+The `AND` operator evaluates two boolean expressions and returns true or false. The result of an `AND` operation is true **if and only if** both expressions evaluate to true.
+
+**Example:**
+
+```sql
+-- Evaluates to true
+SELECT 1 = 1 AND 'test' = 'test';
+
+-- Evaluates to false
+SELECT 1 = 1 AND 'test' = 'abc';
+```
+
+The `OR` operator evaluates two boolean expressions and returns true or false. The result of an `OR` operation is true if at least one expression evaluates to true.
+
+**Example:**
+
+```sql
+-- Evaluates to true
+SELECT 1 = 1 OR 'test' = 'test';
+
+-- Evaluates to true
+SELECT 1 = 1 OR 'test' = 'abc';
+
+-- Evaluates to false
+SELECT 1 = 2 OR 'test' = 'abc';
+```
+
+The `NOT` operator takes one boolean expression and returns **true or false**. The result is the inverse of the expression.
+
+```sql
+-- Evaluates to false
+SELECT NOT 1 = 1;
+
+-- Evaluates to true
+SELECT NOT 1 = 2;
+```
+
+Logical operators are often used in queries.
+
+**Example:**
+
+```sql
+-- All records where the username is not equal to john
+SELECT * FROM logins WHERE username != 'john';
+
+-- All records where the username is not equal to john and the id is greater than 1
+SELECT * FROM logins WHERE username != 'john' AND id > 1;
+```
+
+![Filtered output](images/logical-operators.png)
+
+Logical operators follow a defined **order of precedence**, which determines how expressions are evaluated when parentheses are not used.
+
+From highest to lowest precedence:
+
+1. `NOT`
+2. `AND`
+3. `OR`
+
+This means that `AND` expressions are evaluated before `OR` expressions unless parentheses explicitly alter the order.
+
+**Example:**
+
+Evaluates `AND` first, then `OR`:
+
+```sql
+SELECT 1 = 1 OR 1 = 2 AND 1 = 2;
+```
+
+The above expression is evaluated as:
+
+```sql
+-- true OR false = true
+SELECT 1 = 1 OR (1 = 2 AND 1 = 2);
+```
+
+To override operator precedence and ensure clarity, parentheses should always be used:
+
+```sql
+-- true AND false = false
+SELECT (1 = 1 OR 1 = 2) AND 1 = 2;
+```
 ---
