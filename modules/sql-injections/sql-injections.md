@@ -424,9 +424,9 @@ SELECT (1 = 1 OR 1 = 2) AND 1 = 2;
 
 SQL injections are categorized based on how an attacker retrieves the output of a payload:
 
-- In-band SQL injections
-- Blind SQL injections
-- Out-of-band SQL injections
+- In-band
+- Blind
+- Out-of-band
 
 In-band SQL injections are the most straightforward technique. The output of the injected query is returned directly in the application’s response and can be read by the attacker.
 
@@ -440,3 +440,94 @@ Blind SQL injections do not return output directly on the front-end. SQL logic m
 Out-of-band SQL injections provide no direct access to the output. Instead, the output is redirected to an attacker-controlled remote server and retrieved from there.
 
 ---
+
+## SQL Injection Discovery
+
+SQL injection vulnerabilities are typically discovered by injecting specially crafted input into application input fields or HTTP parameters. When injecting directly into HTTP parameters, payloads should be URL encoded to ensure proper transmission.
+
+These payloads are used to test how user input is handled within SQL queries and whether it can break the intended query structure.
+
+**Common Discovery Payloads:**
+
+| Payload     | URL Encoded Payload   |
+| ----------- | --------------------- |
+| `'`         | `%27`                 |
+| `"`         | `%22`                 |
+| `#`         | `%23`                 |
+| `;`         | `%3B`                 |
+| `)`         | `%29`                 |
+
+The above payloads are commonly used to:
+
+- Break out of string contexts
+- Terminate SQL statements
+- Comment out the remainder of a query
+- Trigger database error messages
+
+A SQL injection vulnerability may be indicated by:
+
+- Database error messages returned in the response
+- Changes in application behavior
+- Unexpected HTTP status codes
+- Differences in response length or content
+
+Examples of database-related error messages include:
+
+- Syntax errors
+- Unclosed quotation marks
+- Invalid query structure
+- Database-specific error codes
+
+A common method of testing for SQL injections is by intercepting requests using tools such as BurpSuite and injecting payloads directly into GET or POST parameters. This allows controlled manipulation of user input while observing changes in server responses.
+
+---
+
+## OR Injection
+
+Suppose we attempt to login to a vulnerable application with the credentials `admin/admin`. The back-end SQL query may look something like this:
+
+```sql
+SELECT * FROM logins WHERE username = 'admin' AND password = 'admin';
+```
+
+The query is based on a logical `AND` operation, meaning that **both** expressions must evaluate to true in order to gain access to the application.
+
+An attacker can utilize the `OR` operator to inject a payload that always evaluates to true. The `OR` operator returns true if at least one of the expressions evaluate to true. An attacker can escape user-input bounds an inject the expression `1 = 1`, which will always evaluate to true.
+
+**Example:**
+
+Inject into `Username` input field, leave the `Password` field blank:
+```sql
+admin'OR '1'='1
+```
+
+![Filtered output](images/or-injection.png)
+
+Backend SQL query after injection:
+```sql
+SELECT * FROM logins WHERE username = 'admin' OR '1'='1' AND password =''; 
+```
+
+The SQL injection above will only work with a valid username or password.
+
+According to the order of precedence the `AND` operator is evaluated before the `OR` operator. 
+
+The query will be evaluated as:
+
+```sql
+SELECT * FROM logins WHERE username = 'admin' OR ('1'='1' AND password =''); 
+```
+
+With a valid username and an invalid password, the query will evaluate to `true`:
+
+- true OR (true AND false) &rarr; true OR false &rarr; true
+
+With an invalid username and a valid password, the query will still evaluate to `true`;
+
+- false OR (true AND true) &rarr; false OR true &rarr; true
+
+With an invalid username and an invalid password, the query will evaluate to `false`;
+
+- false OR (true AND false) &rarr; false OR false &rarr; false
+
+
