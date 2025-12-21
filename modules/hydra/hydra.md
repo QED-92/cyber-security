@@ -1,7 +1,5 @@
 # Hydra
 
-Brute forcing is a trial-and-error method commonly used to crack passwords, hashes and encryption keys. **Hydra** is a popular tool utilized for brute forcing. 
-
 This document summarizes practical techniques for brute forcing with **Hydra**. It is by no means an exhaustive guide.
 
 # Table of Contents

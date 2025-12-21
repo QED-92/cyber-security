@@ -1,6 +1,6 @@
 # Incident Handling
 
-Incident handling is a clearly defined set of procedures for responding to security incidents. This document covers the basics of incident handling, and is by no means an exhaustive guide.
+Incident handling is a clearly defined set of procedures for responding to security incidents. This document summarizes the basics of incident handling, and is by no means an exhaustive guide.
 
 # Table of Contents
 

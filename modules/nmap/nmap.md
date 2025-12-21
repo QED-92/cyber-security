@@ -1,6 +1,6 @@
 # Network Enumeration with Nmap
 
-These notes summarize core techniques for network discovery and enumeration using Nmap. This is by no means an exhaustive guide. 
+This document summarizes core techniques for network discovery and enumeration using **Nmap**. This is by no means an exhaustive guide. 
 
 ---
 

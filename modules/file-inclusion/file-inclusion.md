@@ -1,6 +1,6 @@
 # File Inclusion
 
-These notes summarize core techniques for discovery and exploitation of **file inclusion vulnerabilities**. This is by no means an exhaustive guide. 
+This document summarizes core techniques for discovery and exploitation of **file inclusion vulnerabilities**. This is by no means an exhaustive guide. 
 
 ---
 

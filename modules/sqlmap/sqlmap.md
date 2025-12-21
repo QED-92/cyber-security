@@ -1,6 +1,6 @@
 # SQLmap
 
-These notes summarize core techniques for discovery and exploitation of SQL injection vulnerabilities using **SQLmap**. This is by no means an exhaustive guide. 
+This document summarizes core techniques for discovery and exploitation of SQL injection vulnerabilities using **SQLmap**. This is by no means an exhaustive guide. 
 
 ---
 

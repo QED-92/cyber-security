@@ -4,7 +4,7 @@ Password cracking is a useful skill for any penetration tester, red teamer, or e
 
 Hashcat is a powerful open-source tool used for password cracking. Hashcat has extensive documentation and claims to be the world's fastest and most advanced password recovery utility. 
 
-This document covers the basic usage of Hashcat, and is by no means an exhaustive guide.
+This document summarizes the basics of **Hashcat**. It is by no means an exhaustive guide.
 
 ---
 
