@@ -8,6 +8,7 @@ This document summarizes core techniques for discovery and exploitation of **SQL
 - [SQL Injections](#sql-injections)
     - [Overview](#overview)
     - [Authenticate to MySQL](#authenticate-to-mysql)
+    - [Creating Databases and Tables](#creating-databases-and-tables)
 
 ---
 
@@ -62,9 +63,41 @@ mysql -u <username> -h <ip/domain> -P <port> -p
 mysql -u root -h 94.237.57.211 -P 46600 -p
 ```
 
+## Creating Databases and Tables
 
+The semicolon (`;`) works as a statement terminator, much like in the `C` programming language. SQL statements are not case sensitive, however, best practice is to specify statements in UPPERCASE and names in lowercase.
 
+The `CREATE DATABASE` statement creates a new database.
 
+**Example:**
 
+```bash
+# Syntax
+CREATE DATABASE <name>;
 
+# Example
+CREATE DATABASE users;
+```
+
+The `SHOW DATABASES` statement lists all databases.
+
+**Example:**
+
+```bash
+SHOW DATABASES;
+```
+
+![Filtered output](images/show-databases.png.png)
+
+The `USE` statement switches to a particular database.
+
+**Example:**
+
+```bash
+# Syntax
+USE <name>;
+
+# Example
+USE users;
+```
 
