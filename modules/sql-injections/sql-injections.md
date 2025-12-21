@@ -8,7 +8,7 @@ This document summarizes core techniques for discovery and exploitation of **SQL
 - [SQL Injections](#sql-injections)
     - [Overview](#overview)
     - [Authenticate to MySQL](#authenticate-to-mysql)
-    - [Creating Databases and Tables](#creating-databases-and-tables)
+    - [Create Databases and Tables](#create-databases-and-tables)
     - [Manipulate and Retrieve Data from Tables](#manipulate-and-retrieve-data-from-tables)
 
 ---
@@ -66,7 +66,7 @@ mysql -u root -h 94.237.57.211 -P 46600 -p
 
 ---
 
-## Creating Databases and Tables
+## Create Databases and Tables
 
 The semicolon (`;`) works as a statement terminator, much like in the `C` programming language. SQL keywords are case-insensitive; however, best practice is to write keywords in UPPERCASE and identifiers (such as database and table names) in lowercase.
 
@@ -153,4 +153,58 @@ DESCRIBE logins;
 
 ![Filtered output](images/describe.png)
 
+---
+
 ## Manipulate and Retrieve Data from Tables
+
+The `INSERT` statment adds a `record` to a table. A `record` is a row, in other words, values are added to each column in a row of the table. 
+
+**Example:**
+
+```sql
+-- Syntax
+INSERT INTO <name> VALUES (col1_val, col2_val, ...);
+
+-- Example
+INSERT INTO logins VALUES(1, 'admin', 'p@ssw0rd', '2025-12-21');
+```
+
+Values can also be added to individual columns, instead of adding entire records. 
+
+**Example:**
+
+```sql
+-- Syntax
+INSERT INTO <name> (col1, col2, ...) VALUES (col1_val, col2_val, ...);
+
+-- Example
+INSERT INTO logins (username, password) VALUES('admin', 'p@ssw0rd');
+```
+
+The `SELECT` statement is used to retrieve data from tables.
+
+**Example:**
+
+Select all records from a table:
+
+```sql
+-- Syntax
+SELECT * FROM <name>;
+
+-- Example
+SELECT * FROM logins;
+```
+
+![Filtered output](images/select-all.png)
+
+Select specific columns from a table:
+
+```sql
+-- Syntax
+SELECT <col1, col2, ...> FROM <name>;
+
+-- Example
+SELECT username, password FROM logins;
+```
+
+![Filtered output](images/select-columns.png)
