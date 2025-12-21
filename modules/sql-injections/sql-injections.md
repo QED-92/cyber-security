@@ -15,6 +15,8 @@ This document summarizes core techniques for discovery and exploitation of **SQL
     - [Introduction to SQL Injections](#introduction-to-sql-injections)
     - [OR Injection](#or-injection)
     - [Comment Injection](#comment-injection)
+    - [The UNION Clause](#the-union-clause)
+    - [Union Injections](#union-injections)
 
 ---
 
@@ -664,3 +666,5 @@ SELECT * FROM employees UNION SELECT dept_no, dept_name, NULL, NULL, NULL, NULL 
 ```
 
 ---
+
+## Union Injections
