@@ -12,6 +12,7 @@ This document summarizes core techniques for discovery and exploitation of **SQL
     - [Manipulate and Retrieve Data from Tables](#manipulate-and-retrieve-data-from-tables)
     - [Filtering SQL Queries](#filtering-sql-queries)
     - [SQL Logical Operators](#sql-logical-operators)
+    - [Introduction to SQL Injections](#introduction-to-sql-injections)
 
 ---
 
@@ -415,4 +416,27 @@ To override operator precedence and ensure clarity, parentheses should always be
 -- true AND false = false
 SELECT (1 = 1 OR 1 = 2) AND 1 = 2;
 ```
+---
+
+## Introduction to SQL Injections
+
+**Sanitization** refers to modifying or filtering user input to remove or escape potentially dangerous characters. **Sanitization** is a common technique used to mitigate SQL injections; however, **sanitization alone is often insufficient** to fully prevent them. When user input is not properly handled, attackers can utilize special characters to escape the intended context of user input and inject a SQL payload. The payload is then executed as part of the original query.
+
+SQL injections are categorized based on how an attacker retrieves the output of a payload:
+
+- In-band SQL injections
+- Blind SQL injections
+- Out-of-band SQL injections
+
+In-band SQL injections are the most straightforward technique. The output of the injected query is returned directly in the application’s response and can be read by the attacker.
+
+There are two types of In-band SQL injections:
+
+- Union based SQL injection
+- Error based SQL injection
+
+Blind SQL injections do not return output directly on the front-end. SQL logic must be utilized to infer the output character by character based on application behavior. 
+
+Out-of-band SQL injections provide no direct access to the output. Instead, the output is redirected to an attacker-controlled remote server and retrieved from there.
+
 ---
