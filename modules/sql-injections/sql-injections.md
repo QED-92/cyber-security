@@ -258,3 +258,68 @@ ALTER TABLE logins ADD age INT;
 ---
 
 ## Filtering SQL Queries
+
+The `ORDER BY` clause is used to sort the results of a query. The column to sort by is specified in the statement. Results are sorted in ascending order by default. Use `ASC` or `DESC` to specify direction.
+
+**Example:**
+
+```sql
+-- Syntax
+SELECT <records> FROM <table> ORDER BY <column>;
+
+-- Example
+SELECT * FROM logins ORDER BY password DESC;
+
+-- Example
+SELECT * FROM logins ORDER BY password;
+```
+
+The `LIMIT` clause is used to limit the number of records returned by a query.
+
+**Example:**
+
+```sql
+-- Syntax
+SELECT <records> FROM <table> LIMIT <number>;
+
+-- Example
+SELECT * FROM logins LIMIT 2;
+```
+
+![Filtered output](images/limit.png)
+
+The `WHERE` clause filters query results based on some condition. The `WHERE` clause is similar to an `if` statement in traditional programming languages. 
+
+**Example:**
+
+```sql
+-- Syntax
+SELECT <records> FROM <table> WHERE <condition>;
+
+-- Example
+SELECT * FROM logins WHERE username = 'admin';
+
+-- Example
+SELECT * FROM logins WHERE id > 1;
+```
+
+![Filtered output](images/where-clause.png)
+
+The `LIKE` clause filters a query based on some pattern. The `LIKE` operator performs simple pattern matching using wildcards, but is not a full `regular expression` engine.
+
+**Example:**
+
+The `%` symbol matches any characters and the `_` symbol matches exactly one character.
+
+```sql
+-- Syntax
+SELECT <columns> FROM <table> WHERE <column> LIKE <pattern>;
+
+-- Example 
+SELECT * FROM logins WHERE username LIKE 'admin%';
+
+-- Example
+SELECT * FROM logins WHERE username LIKE '___';
+```
+
+---
