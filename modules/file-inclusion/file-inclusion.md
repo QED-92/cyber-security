@@ -38,9 +38,9 @@ Many server-side languages use HTTP parameters to identify which resources are s
 
 ## Basic LFI
 
-Many applications allow the user to change the language of the content presented. This is often done through a GET parameter that loads the content from some file, such as **en.php** or **es.php**. 
+Many applications allow the user to change the language of the content presented. This is often done through a GET parameter that loads the content from some file, such as `en.php` or `es.php`. 
 
-In the most basic of cases, the attacker may simply change the value of the GET parameter to some other file on the server, such as **/etc/passwd**.
+In the most basic of cases, the attacker may simply change the value of the GET parameter to some other file on the server, such as `/etc/passwd`.
 
 **Example:**
 
@@ -56,9 +56,9 @@ http://94.237.49.23:48568/index.php?language=../../../../etc/passwd
 
 ![Filtered output](images/basic-lfi.png)
 
-**Path traversal** is commonly used in LFI payloads in order to traverse up the directory-tree and back to the root directory. Traversal stops at the filesystem root, so including additional **../** sequences does not affect the final resolved path.
+**Path traversal** is commonly used in LFI payloads in order to traverse up the directory-tree and back to the root directory. Traversal stops at the filesystem root, so including additional `../` sequences does not affect the final resolved path.
 
-Sometimes the parameter value is appended after a fixed directory prefix on the server side. Injecting a regular LFI payload may result in an invalid path. By prepending a slash **/** to the payload, the prefix is treated as a directory and the path becomes valid. It's good practice to resort to this technique by default, because even if there is no prefix, the path will still be valid.
+Sometimes the parameter value is appended after a fixed directory prefix on the server side. Injecting a regular LFI payload may result in an invalid path. By prepending a slash `/` to the payload, the prefix is treated as a directory and the path becomes valid. It's good practice to resort to this technique by default, because even if there is no prefix, the path will still be valid.
 
 **Example:**
 
@@ -73,9 +73,11 @@ http://94.237.49.23:48568/index.php?language=/../../../../etc/passwd
 
 Most applications use various filters to protect against LFI attacks. In these scenarios basic LFI payloads will not work.
 
+---
+
 ### Non-recursive Search and Replace Filter
 
-Non-recursive search and replace filters search for instances of ../ and replace them with an empty string in order to avoid path traversals. 
+Non-recursive search and replace filters search for instances of `../` and replace them with an empty string in order to avoid path traversals. 
 
 A non-recursive search and replace filter might look like this when implemented in PHP:
 
@@ -95,9 +97,9 @@ The above filter is insecure, since it is **non-recursive**. If the filter only 
 
 **Explanation:**
 
-- The payload **....//** contains **../** starting at character 2 
+- The payload `....//` contains `../` starting at character 2 
 - A single pass removes only one instance of the payload
-- The remaining characters still form **../**
+- The remaining characters still form `../`
 
 **Bypass Examples:**
 
@@ -119,7 +121,7 @@ http://94.237.49.23:48568/index.php?language=....\/....\/....\/....\/etc/passwd
 
 ### Character Blacklist Filter
 
-A character blacklist filter blocks specific characters. LFI-related characters such as dot (**.**) and slash (**/**) are often included in these filters. 
+A character blacklist filter blocks specific characters. LFI-related characters such as dot (`.`) and slash (`/`) are often included in these filters. 
 
 A character blacklist filter may be bypassed by URL encoding the payload. There are many URL encoding tools such as **CyberChef** or **BurpDecoder**.
 
@@ -135,13 +137,13 @@ http://94.237.49.23:48568/index.php?language=../../../../etc/passwd
 http://94.237.49.23:48568/index.php?language=%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%65%74%63%2f%70%61%73%73%77%64
 ```
 
-The above payload may work when input validation is performed before URL decoding, or when decoding is incomplete. In some cases, it is worth double or even triple URL encoding the payload. 
+The above payload may work when input validation is performed before URL decoding, or when decoding is incomplete. In some cases, it is worth **double or even triple URL encoding the payload**. 
 
 ---
 
 ### Approved Paths Filter
 
-Some filters use regular expressions to ensure that any included file is under a specific path. An application may for example only accept included files under the **/languages/** directory. 
+Some filters use regular expressions to ensure that any included file is under a specific path. An application may for example only accept included files under the `/languages/` directory. 
 
 An approved paths filter might look like this when implemented in PHP:
 
@@ -163,7 +165,7 @@ http://83.136.253.59:34423/index.php?language=languages/en.php
 
 ![Filtered output](images/approved-path.png)
 
-Approved path filters may be bypassed by prepending the approved path to the payload and then performing directory traversal from that location Approved path filters are often combined with a non-recursive search and replace filter and/or a character blacklist filter. Including recursive payloads and/or URL encoding may be a good idea.
+Approved path filters may be bypassed by prepending the approved path to the payload and then performing directory traversal from that location Approved path filters are often combined with a non-recursive search and replace filter and/or a character blacklist filter. **Including recursive payloads and/or URL encoding may be a good idea**.
 
 **Examples:**
 
@@ -202,7 +204,7 @@ For this technique to work, the path typically needs to begin with a non-existin
 echo -n "non_existing_directory/../../../etc/passwd/" && for i in {1..2048}; do echo -n "./"; done
 ```
 
-Older PHP versions (prior to PHP 5.3.4) may also be vulnerable to **null-byte injection**. By appending a null byte (**%00**) to the payload, filesystem functions may interpret the string as terminated, ignoring anything appended afterward (such as `.php`).
+Older PHP versions (prior to PHP 5.3.4) may also be vulnerable to **null-byte injection**. By appending a null byte (`%00`) to the payload, filesystem functions may interpret the string as terminated, ignoring anything appended afterward (such as `.php`).
 
 **Examples:**
 
@@ -233,6 +235,8 @@ http://83.136.253.59:34423/index.php?language=languages%2f%2e%2e%2e%2e%2f%2f%2e%
 ---
 
 ## PHP Wrappers
+
+---
 
 ### PHP Stream Wrappers
 
@@ -403,7 +407,7 @@ http://94.237.55.43:35886/index.php?language=expect://cat+/etc/passwd
 
 ## Remote File Inclusion (RFI)
 
-LFI allows an attacker to include files that are already present on the local server, while RFI allows an attacker to include files from a **remote location**, typically over HTTP or HTTPS. RFI vulnerabilities are commonly exploited by including a malicious script hosted by the attacker.
+LFI allows an attacker to include files that are already present on the local server, while **RFI** allows an attacker to include files from a **remote location**, typically over HTTP or HTTPS. RFI vulnerabilities are commonly exploited by including a malicious script hosted by the attacker.
 
 LFI and RFI vulnerabilities are closely related, but they are not identical. RFI requires that the PHP configuration option `allow_url_include = On` is enabled, while LFI does not. As a result, not every LFI vulnerability is also exploitable as an RFI.
 
@@ -455,7 +459,7 @@ File upload functionality is a common feature in modern web applications. Being 
 
 ### Image Upload
 
-An attacker may create a malicious image file containing embedded PHP code. By including valid image **magic bytes** and using an allowed file extension, the file may bypass upload filters.
+An attacker may create a malicious image file containing embedded PHP code. By including valid image **magic bytes** and using an allowed **file extension**, the file may bypass upload filters.
 
 **Example:**
 
@@ -557,16 +561,16 @@ http://94.237.61.242:42157/index.php?language=phar://./profile_images/shell.jpg%
 
 ## Log Poisoning
 
-Log poisoning means that the result of an executed payload is logged in a logfile. For this type of attack to work, the attacker must be able to read the logfile through an LFI vulnerability. 
+Log poisoning means that the result of an executed payload is logged in a logfile. For this type of attack to work, the attacker **must be able to read the logfile through an LFI vulnerability**. 
 
 ### PHPSESSID Poisoning
 
 PHP applications utilize **PHPSESSID** cookies to keep track of session-related user details. These details are stored in session files located in the following directories:
 
-- /var/lib/php/sessions/ (Linux)
-- C:\Windows\Temp\ (Windows)
+- /var/lib/php/sessions/
+- C:\Windows\Temp\
 
-The name of the session file matches the **PHPSESSID** cookie value, prefixed with **sess_**. 
+The name of the session file matches the **PHPSESSID** cookie value, prefixed with `sess_`. 
 
 **Example:**
 
@@ -646,7 +650,7 @@ Servers such as Apache and Nginx maintain various log files. Examples include:
 - access.log
 - error.log
 
-`access.log` stores all requests made to the server, including each request's **User-Agent** header. A request's **User-Agent** header can be modified and utilized to perform log poisoning.
+`access.log` stores all requests made to the server, including each request's **User-Agent header**. A request's **User-Agent header** can be modified and utilized to perform log poisoning.
 
 Two main things are required for this attack to work:
 
