@@ -17,6 +17,8 @@ Command injection vulnerabilities are among the most critical ones. This type of
 
 **Sanitization** refers to modifying or filtering user input to remove or escape potentially dangerous characters. **Sanitization** is a common technique used to mitigate command injection attacks; however, **sanitization alone is often insufficient** to fully prevent them. When user input is not properly handled, attackers can utilize special characters to escape the intended context of user input and inject a payload. The payload is then executed as part of the original query.
 
+---
+
 ## Basic Discovery and Exploitation
 
 An attacker is attempting to exploit a basic web application that is used to test connectivity to a host. 
@@ -49,7 +51,7 @@ The following special characters are commonly used to escape the intended contex
 | `\|`      | `%7c`                  | Pipe             | Both                                     |
 | `&&`      | `%26%26`               | AND              | Both (if first command succeeds)         |
 | `\|\|`    | `%7c%7c`               | OR               | Second (if first command fails)          |
-| `\``\`    | `%60%60`               | Sub-shell        | Both (Linux only)                        |
+| ````````    | `%60%60`               | Sub-shell        | Both (Linux only)                        |
 | `$()`     | `%24%28%29`            | Sub-shell        | Both (Linux only)                        |
 
 
