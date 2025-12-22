@@ -20,6 +20,7 @@ This document summarizes core techniques for discovery and exploitation of **SQL
         - [Discovery](#discovery)
         - [Number of Columns](#number-of-columns)
         - [Fingerprinting](#fingerprinting)
+        - [Database Enumeration](#database-enumeration)
 
 ---
 
@@ -672,6 +673,8 @@ SELECT * FROM employees UNION SELECT dept_no, dept_name, NULL, NULL, NULL, NULL 
 
 ## Exploitation Example - Walkthrough
 
+---
+
 ### Discovery
 
 An attacker is targeting an application used to track shipping ports. He discovers a visible GET parameter.
@@ -705,6 +708,8 @@ SELECT * FROM ports WHERE port_code = ''';
 ```
 
 The third single quote does not have a corresponding ending quote, resulting in the syntax error. 
+
+---
 
 ### Number of Columns
 
@@ -770,11 +775,13 @@ Only columns 2, 3 and 4 are displayed in the output. This means that the attacke
 
 The example above demonstrates a scenario where it is beneficial to use `INT` as junk data, instead of `NULL`. Using `INT` makes it easy to track exactly which columns are being displayed. 
 
+---
+
 ### Fingerprinting
 
 To develop a suitable payload, the attacker needs information about the DBMS version and the current user.
 
-It is possible to make a rough guess regarding which DBMS is being used:
+It is possible to make a rough guess regarding the DBMS:
 
 - If the server is **Apache** or **Nginx** and running on **Linux**, the DBMS is likely **MySQL**.
 - If the server is **IIS** running on **Windows**, the DBMS is likely **MSSQL**.
@@ -789,10 +796,22 @@ cn' UNION SELECT 1, @@version, 3, 4--
 
 The exact DBMS and version is `10.3.22-MariaDB-1ubuntu1`.
 
-He proceeds by fingerprinting the current user but injecting the `user()` payload into the second column.
+He proceeds by fingerprinting the current user by injecting the `user()` payload into the second column.
 
 ```sql
 cn' UNION SELECT 1, user(), 3, 4--   
 ```
 
 ![Filtered output](images/fingerprint-user.png)
+
+The current user is `root`.
+
+---
+
+### Database Enumeration
+
+To craft payloads capable of pulling data across the DBMS, the attacker needs information about:
+
+- Databases
+- Tables
+- Columns
