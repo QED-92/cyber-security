@@ -43,15 +43,15 @@ This means that user-input is being utilized to execute commands on the back-end
 
 The following special characters are commonly used to escape the intended context of user input:
 
-| Operator  | URL Encoded Operator   | Description      | Executed Command (first/second/both)     |
-| --------- | ---------------------- | ---------------- |----------------------------------------- |
-| `;`       | `%3b`                  | Semicolon        | Both                                     |
-| `\n`      | `%0a`                  | New line         | Both                                     |
-| `&`       | `%26`                  | Background       | Both                                     |
-| `\|`      | `%7c`                  | Pipe             | Both                                     |
-| `&&`      | `%26%26`               | AND              | Both (if first command succeeds)         |
-| `\|\|`    | `%7c%7c`               | OR               | Second (if first command fails)          |
-| ````````    | `%60%60`               | Sub-shell        | Both (Linux only)                        |
-| `$()`     | `%24%28%29`            | Sub-shell        | Both (Linux only)                        |
+| Operator   | URL Encoded Operator   | Description      | Executed Command (first/second/both)     |
+| ---------- | ---------------------- | ---------------- |----------------------------------------- |
+| `;`        | `%3b`                  | Semicolon        | Both                                     |
+| `\n`       | `%0a`                  | New line         | Both                                     |
+| `&`        | `%26`                  | Background       | Both                                     |
+| `\|`       | `%7c`                  | Pipe             | Both                                     |
+| `&&`       | `%26%26`               | AND              | Both (if first command succeeds)         |
+| `\|\|`     | `%7c%7c`               | OR               | Second (if first command fails)          |
+| ``` `` ``` | `%60%60`               | Sub-shell        | Both (Linux only)                        |
+| `$()`      | `%24%28%29`            | Sub-shell        | Both (Linux only)                        |
 
 
