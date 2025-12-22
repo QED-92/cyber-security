@@ -8,6 +8,10 @@ This document summarizes core techniques for discovery and exploitation of **com
 - [Command Injections](#command-injections)
     - [Overview](#overview)
     - [Basic Discovery and Exploitation](#basic-discovery-and-exploitation)
+    - [Filter Evasion](#filter-evasion)
+        - [Single Character Filters - 1](#single-character-filters---1)
+        - [Single Character Filters - 2](#single-character-filters---2)
+
 
 ---
 
@@ -21,7 +25,7 @@ Command injection vulnerabilities are among the most critical ones. This type of
 
 ## Basic Discovery and Exploitation
 
-An attacker is attempting to exploit a basic web application that is used to test connectivity to a host. 
+We want to exploit a basic web application that is used to test connectivity to a host. 
 
 ![Filtered output](images/target.png)
 
@@ -33,20 +37,20 @@ When interacting with the target, by entering an IP address, it returns the resu
 
 ![Filtered output](images/target2.png)
 
-The input from the attacker appears to be used as input to the `PING` command. The relevant section of source-code probably looks something like this:
+Our input appears to be used as input to the `PING` command. The relevant section of source-code probably looks something like this:
 
 ```bash
 ping -c 1 127.0.0.1
 ```
 
-This means that user-input is being utilized to execute commands on the back-end server. If there are no **sanitization filters** in place, an attacker can trick the server by appending malicious commands after the original one. 
+This means that user-input is being utilized to execute commands on the back-end server. If there are no **sanitization filters** in place, we can trick the server by appending malicious commands after the original one. 
 
 The following special characters are commonly used to escape the intended context of user input:
 
 | Operator   | URL Encoded Operator   | Description      | Executed Command (first/second/both)     |
 | ---------- | ---------------------- | ---------------- |----------------------------------------- |
 | `;`        | `%3b`                  | Semicolon        | Both                                     |
-| `\n`       | `%0a`                  | New line         | Both                                     |
+| `\n`       | `%0a`                  | New-line         | Both                                     |
 | `&`        | `%26`                  | Background       | Both                                     |
 | `\|`       | `%7c`                  | Pipe             | Both                                     |
 | `&&`       | `%26%26`               | AND              | Both (if first command succeeds)         |
@@ -72,13 +76,13 @@ Some applications perform input validation on the front-end and erroneously negl
 
 Front-end validation runs in the user’s browser and provides no real security guarantees. Front-end validation can often be bypassed by sending modified requests directly to the back-end server through a **web proxy**, such as BurpSuite. 
 
-The attacker intercepts a request in BurpSuite and modifies the POST parameter `ip` to contain a simple URL encoded payload:
+We intercept a request in BurpSuite and modify the POST parameter `ip` to contain a simple URL encoded payload:
 
 ```bash
-# Original
+# Original payload
 ip=127.0.0.1;whoami
 
-# URL encoded
+# URL encoded payload
 ip=127.0.0.1%3bwhoami
 ```
 
@@ -93,3 +97,98 @@ www-data
 ![Filtered output](images/front-end-validation-exploit.png)
 
 ---
+
+## Filter Evasion
+
+Blacklist filters are a common mitigation technique against command injection vulnerabilities. A blacklist filter consists of a set of disallowed characters and/or keywords; if user input matches any entry in the blacklist, the request is rejected. Modern applications often combine blacklist-based input filtering with a Web Application Firewall (WAF) to introduce an additional layer of defense.
+
+Despite their prevalence, blacklist filters are inherently fragile. They attempt to block known-bad input rather than enforce what is explicitly allowed, making them susceptible to bypass through alternative encodings, shell features, or overlooked characters.
+
+### Single Character Filters - 1
+
+In this section, we interact with an updated version of the web application introduced earlier. This version includes additional security controls intended to prevent command injection. When attempting to reuse the previously successful payload, the application rejects the request:
+
+```bash
+ip=127.0.0.1%3bwhoami
+```
+
+```
+Invalid input
+```
+
+![Filtered output](images/character-filter.png)
+
+This response differs from the earlier `Please match the requested format` error message, indicating that the payload triggered a security mechanism rather than a simple input validation failure.
+
+The rejected payload contains two potentially suspicious elements:
+
+- A command separator (`;`)
+- A system command (`whoami`)
+
+The rejection may be caused by a blacklist entry matching the separator, the command, or both. To determine the exact trigger, we can probe the filter incrementally by submitting minimal payloads and observing the application’s response.
+
+Injecting only a semicolon (`;`) is sufficient to trigger the filter, confirming that this character is blacklisted. Continuing this process with other common command injection operators reveals that the newline character (`\n`) is not filtered and successfully bypasses the blacklist:
+
+```bash
+ip=127.0.0.1%0a
+```
+![Filtered output](images/character-filter-bypass.png)
+
+The newline character acts as a command separator in many shell environments, allowing execution to continue on a new line. However, while the injection operator bypass is successful, attempts to execute commands after the newline fail, indicating the presence of additional filtering mechanisms.
+
+Appending a space character after the newline results in another rejection:
+
+```bash
+ip=127.0.0.1%0a+
+```
+
+![Filtered output](images/character-filter-bypass2.png)
+
+This behavior is expected, as space characters are frequently blacklisted to prevent argument separation. In shell environments, however, whitespace can often be represented in alternative ways.
+
+One common bypass technique is the use of tab characters (`\t`), which are treated as whitespace by the shell but may not be included in blacklist filters:
+
+```bash
+ip=127.0.0.1%0a%09
+```
+
+![Filtered output](images/character-filter-bypass3.png)
+
+We successfully bypassed the space filter by using tabs instead! 
+
+Another effective technique is leveraging the `${IFS}` environment variable. The IFS (Internal Field Separator) variable defines how the shell splits input into arguments and, by default, contains whitespace characters:
+
+```bash
+ip=127.0.0.1%0a${IFS}
+```
+
+![Filtered output](images/character-filter-bypass4.png)
+
+A third approach involves brace expansion. In Bash, brace expansion occurs before command execution and can be used to construct arguments without explicitly including spaces:
+
+```bash
+ip=127.0.0.1%0a{ls,-la}
+```
+
+At this stage, we have identified one method for bypassing the command separator filter and multiple techniques for bypassing space restrictions:
+
+- `\n` (`%0a`)
+- `\t` (`%09`)
+- `${IFS}`
+- `{arg1, arg2}`
+
+Using these techniques, we can construct payloads that evade the blacklist and successfully execute commands on the back-end server:
+
+```bash
+ip=127.0.0.1%0a%09ls%09-la
+
+ip=127.0.0.1%0a${IFS}ls${IFS}-la
+
+ip=127.0.0.1%0a{ls,-la}
+```
+
+![Filtered output](images/character-filter-bypass5.png)
+
+This demonstrates how blacklist-based defenses can be systematically bypassed by exploiting shell parsing behavior and alternative representations of filtered characters.
+
+### Single Character Filters - 2
