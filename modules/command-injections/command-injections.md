@@ -15,7 +15,7 @@ This document summarizes core techniques for discovery and exploitation of **com
 
 Command injection vulnerabilities are among the most critical ones. This type of vulnerability may allow an attacker to execute system commands directly on the back-end server. 
 
-**Sanitization** refers to modifying or filtering user input to remove or escape potentially dangerous characters. **Sanitization** is a common technique used to mitigate command injection attacks; however, **sanitization alone is often insufficient** to fully prevent them. When user input is not properly handled, attackers can utilize special characters to escape the intended context of user input and inject a payload. The payload is then executed as part of the original query.
+**Sanitization** refers to modifying or filtering user input to remove or escape potentially dangerous characters. **Sanitization** is a common technique used to mitigate command injection attacks; however, **sanitization alone is often insufficient** to fully prevent them. When user input is not properly handled, attackers can utilize special characters to escape the intended context of user input and inject a payload. The payload is then executed as part of the original command.
 
 ---
 
@@ -54,4 +54,42 @@ The following special characters are commonly used to escape the intended contex
 | ``` `` ``` | `%60%60`               | Sub-shell        | Both (Linux only)                        |
 | `$()`      | `%24%28%29`            | Sub-shell        | Both (Linux only)                        |
 
+When testing any of the above operators on the target an error message is displayed:
 
+```
+127.0.0.1;id
+```
+
+```
+Please match the requested format.
+```
+
+![Filtered output](images/target3.png)
+
+Some applications perform input validation on the front-end and erroneously neglect sanitization on the back-end. An easy way to check if input validation happens on the front-end or not, is to examine the requests being sent by opening the browsers **Network** tab. If no new requests are being made when sending the payload, input validation is done on the front-end. 
+
+![Filtered output](images/front-end-validation.png)
+
+Front-end validation runs in the user’s browser and provides no real security guarantees. Front-end validation can often be bypassed by sending modified requests directly to the back-end server through a **web proxy**, such as BurpSuite. 
+
+The attacker intercepts a request in BurpSuite and modifies the POST parameter `ip` to contain a simple URL encoded payload:
+
+```bash
+# Original
+ip=127.0.0.1;whoami
+
+# URL encoded
+ip=127.0.0.1%3bwhoami
+```
+
+![Filtered output](images/front-end-validation-bypass.png)
+
+The application returns the original `PING` output, as well as the output from the injected command:
+
+```
+www-data
+```
+
+![Filtered output](images/front-end-validation-exploit.png)
+
+---
