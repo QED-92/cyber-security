@@ -9,8 +9,8 @@ This document summarizes core techniques for discovery and exploitation of **com
     - [Overview](#overview)
     - [Basic Discovery and Exploitation](#basic-discovery-and-exploitation)
     - [Filter Evasion](#filter-evasion)
-        - [Single Character Filters - 1](#single-character-filters---1)
-        - [Single Character Filters - 2](#single-character-filters---2)
+        - [Single Character Filters - Part 1](#single-character-filters---part-1)
+        - [Single Character Filters - Part 2](#single-character-filters---part-2)
 
 
 ---
@@ -104,7 +104,9 @@ Blacklist filters are a common mitigation technique against command injection vu
 
 Despite their prevalence, blacklist filters are inherently fragile. They attempt to block known-bad input rather than enforce what is explicitly allowed, making them susceptible to bypass through alternative encodings, shell features, or overlooked characters.
 
-### Single Character Filters - 1
+---
+
+### Single Character Filters - Part 1
 
 In this section, we interact with an updated version of the web application introduced earlier. This version includes additional security controls intended to prevent command injection. When attempting to reuse the previously successful payload, the application rejects the request:
 
@@ -191,4 +193,58 @@ ip=127.0.0.1%0a{ls,-la}
 
 This demonstrates how blacklist-based defenses can be systematically bypassed by exploiting shell parsing behavior and alternative representations of filtered characters.
 
-### Single Character Filters - 2
+---
+
+### Single Character Filters - Part 2
+
+The previous section focused on bypassing blacklist filters targeting command separators and whitespace. In addition to these characters, many applications also blacklist the forward slash (`/`) and backslash (`\`). These characters are essential for referencing files and directories and are therefore commonly restricted in an attempt to prevent command execution.
+
+In Linux environments, several environment variables contain characters such as slashes (`/`), semicolons (`;`), and colons (`:`). When direct usage of these characters is blocked, they can often be reconstructed indirectly by extracting them from environment variable values.
+
+The `PATH` environment variable is a useful starting point, as it typically contains multiple directory paths separated by colons and includes forward slashes. By printing its value, we can observe the characters it contains:
+
+```bash
+echo ${PATH}
+```
+
+![Filtered output](images/echo-path.png)
+
+Bash supports substring expansion, allowing individual characters to be extracted from a variable by specifying an offset and length. By extracting a single character starting at index 0, we obtain the forward slash (`/`):
+
+```bash
+echo ${PATH:0:1}
+```
+
+![Filtered output](images/echo-path2.png)
+
+Similar techniques can be applied to other environment variables such as `HOME`, `PWD`, or `LS_COLORS`, depending on which characters are required.
+
+For example, the `LS_COLORS` variable often contains semicolons. By extracting a single character at the appropriate offset, we can recover the semicolon character (`;`):
+
+```bash
+echo ${LS_COLORS:10:1}
+```
+
+![Filtered output](images/echo-ls-colors.png)
+
+By dynamically reconstructing blacklisted characters, it becomes possible to build payloads that bypass character-based input filters.
+
+The following payload reconstructs a semicolon using `LS_COLORS` and bypasses whitespace restrictions using `${IFS}`:
+
+```bash
+ip=127.0.0.1${LS_COLORS:10:1}${IFS}ls${IFS}-la
+```
+
+Similarly, the next payload bypasses a blacklist on the forward slash (`/`) by extracting it from the `PATH` variable and uses alternative whitespace representations to execute a command:
+
+```bash
+ip=127.0.0.1%0als%09-al%09${PATH:0:1}home
+```
+
+![Filtered output](images/echo-path3.png)
+
+This demonstrates a fundamental weakness of blacklist-based filtering: even when individual characters are blocked, shell features such as parameter expansion allow attackers to reconstruct those characters at runtime. As long as user input is evaluated by a shell interpreter, seemingly restrictive filters can often be bypassed through indirect character generation.
+
+---
+
+### Word Filters
