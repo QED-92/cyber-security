@@ -488,7 +488,7 @@ Once logged in, a list of files is displayed. The interface allows users to perf
 
 ![Filtered output](images/walkthrough2.png)
 
-Selecting a random file and choosing the copy to action reveals two GET parameters in the request:
+Selecting a random file and choosing the `copy to` action reveals two GET parameters in the request:
 
 ```
 http://94.237.54.192:46770/index.php?to=&from=51459716.txt
@@ -496,7 +496,7 @@ http://94.237.54.192:46770/index.php?to=&from=51459716.txt
 
 ![Filtered output](images/walkthrough3.png)
 
-The same parameters (`to` and `from`) are observed when selecting the **move to** action. Based on this behavior, it is reasonable to assume that the application executes back-end commands resembling:
+The same parameters (`to` and `from`) are observed when selecting the `move to` action. Based on this behavior, it is reasonable to assume that the application executes back-end commands resembling:
 
 ```bash
 cp <src> <dst>
