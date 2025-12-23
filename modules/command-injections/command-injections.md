@@ -13,6 +13,7 @@ This document summarizes core techniques for discovery and exploitation of **com
         - [Single Character Filters - Part 2](#single-character-filters---part-2)
         - [Word Filters - Part 1](#word-filters---part-1)
         - [Word Filters - Part 2](#word-filters---part-2)
+        - [Automated Obfuscation Tools](#automated-obfuscation-tools)
 
 
 ---
