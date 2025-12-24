@@ -11,6 +11,7 @@ This document summarizes core techniques for identifying and exploiting **Cross-
   - [Stored XSS](#stored-xss)
   - [Reflected XSS](#reflected-xss)
   - [DOM XSS](#dom-xss)
+  - [Automated XSS Discovery](#automated-xss-discovery)
 
 ---
 
@@ -222,3 +223,38 @@ http://94.237.57.115:55333/#task=<img src="" onerror=alert(window.origin)>
 When the victim opens the link, the browser processes the fragment identifier, the vulnerable JavaScript executes, and the payload runs in the victim’s browser.
 
 ## Automated XSS Discovery
+
+Manual testing is essential for understanding XSS vulnerabilities, but it can be time-consuming when assessing large applications with many parameters. Automated tools help speed up the discovery process and identify potential injection points that warrant further manual verification.
+
+`XSStrike` is a well-known, actively maintained tool designed specifically for advanced XSS detection. Unlike basic scanners, it uses context-aware analysis and payload generation to reduce false positives and improve detection accuracy.
+
+Download and install `XSStrike`:
+
+```bash
+git clone https://github.com/s0md3v/XSStrike.git
+cd XSStrike
+pip install -r requirements.txt
+```
+
+To test a single parameter for XSS, provide a target URL using the `-u` flag:
+
+```bash
+python xsstrike.py -u "http://94.237.50.221:32974/index.php?task=test"
+```
+
+`XSStrike` will analyze how the input is reflected in the response, identify injection contexts, and attempt to generate payloads tailored to the application’s filtering behavior.
+
+If a URL contains multiple parameters, `XSStrike` will automatically enumerate and test each one:
+
+```bash
+python xsstrike.py -u "http://94.237.50.221:32974/?fullname=Test&username=Tester&password=123&email=test%40tester.com"
+```
+
+![Filtered output](images/dom-xss4.png)
+
+In this case, XSStrike identified a reflected XSS vulnerability in the email parameter. The tool then generated multiple payloads suitable for the detected injection context.
+
+![Filtered output](images/dom-xss5.png)
+
+---
+
