@@ -148,3 +148,77 @@ When the victim visits the link, the payload is reflected by the server and exec
 ---
 
 ## DOM XSS
+
+DOM-based XSS (Document Object Model XSS) is a **non-persistent** client-side vulnerability. Unlike **reflected XSS**, DOM XSS does not involve the back-end server at all. The vulnerability exists entirely within client-side JavaScript that processes user-controlled input and dynamically modifies the page.
+
+The DOM is a programming interface that represents a web page as a tree of objects (nodes). JavaScript can read from and write to these nodes to dynamically update content. DOM XSS vulnerabilities occur when JavaScript reads user-controlled input and writes it back to the page without proper sanitization.
+
+When attempting to add a task named `test`, we observe that the application updates the URL using a fragment identifier (`#`):
+
+```
+http://94.237.57.115:55333/#task=test
+```
+
+![Filtered output](images/dom-xss.png)
+
+The `#` character indicates a **client-side parameter** (URL fragment). Fragment identifiers are processed entirely by the browser and are **never sent to the server** as part of an HTTP request. This behavior strongly suggests a DOM-based vulnerability.
+
+Two key concepts are central to understanding DOM XSS:
+
+- Source: A JavaScript object that reads user-controlled input (e.g., `document.URL`, `location.hash`)
+- Sink: A JavaScript function or property that writes data to the DOM
+
+If user input flows from a source to a sink without sanitization, a DOM XSS vulnerability may exist.
+
+Common sink functions and properties include:
+
+- document.write()
+- element.innerHTML
+- element.outerHTML
+- add()
+- after()
+- append()
+
+Reviewing the page source reveals that user input is extracted from the `task` parameter (source) and written to the page using `innerHTML` (sink):
+
+```javascript
+var pos = document.URL.indexOf("task=");
+var task = document.URL.substring(pos + 5, document.URL.length);
+document.getElementById("todo").innerHTML = "<b>Next Task:</b> " + decodeURIComponent(task);
+```
+
+![Filtered output](images/dom-xss2.png)
+
+Because the application uses `innerHTML` without sanitization, user-controlled input is injected directly into the DOM, creating a DOM XSS vulnerability.
+
+The `innerHTML` sink does not allow execution of `<script>` tags. As a result, traditional `<script>`-based payloads will not work in this context.
+
+However, JavaScript execution can still be achieved by injecting HTML elements with event handlers. For example, the `onerror` attribute of an `<img>` element executes JavaScript when the image fails to load. By specifying an invalid image source, the error condition is guaranteed.
+
+```javascript
+// Payloads
+<img src="" onerror=alert(window.origin)>
+
+<img src="" onerror=alert(document.cookie)>
+```
+
+```javascript
+// Examples
+task=<img src="" onerror=alert(window.origin)>
+
+task=<img src="" onerror=alert(document.cookie)>
+```
+
+![Filtered output](images/dom-xss3.png)
+
+Because DOM XSS vulnerabilities are **non-persistent**, payloads must be delivered **at the time of execution**. This is typically accomplished by crafting a malicious URL and persuading a victim to visit it (e.g., via phishing or social engineering).
+
+An example crafted URL may look like this:
+
+```
+http://94.237.57.115:55333/#task=<img src="" onerror=alert(window.origin)>
+```
+
+When the victim opens the link, the browser processes the fragment identifier, the vulnerable JavaScript executes, and the payload runs in the victim’s browser.
+
+## Automated XSS Discovery
