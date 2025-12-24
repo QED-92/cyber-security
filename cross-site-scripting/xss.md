@@ -35,6 +35,8 @@ There are three primary types of XSS vulnerabilities:
 - Reflected (Non-Persistent) XSS
 - DOM-based XSS
 
+---
+
 ## Stored XSS
 
 Stored XSS, also referred to as **persistent XSS**, is generally considered the most **severe** form of cross-site scripting vulnerability. In this scenario, malicious payloads are stored on the back-end server and executed whenever the affected content is retrieved and rendered in a user’s browser. Because the payload is persisted server-side, it survives page refreshes and impacts **every user** who accesses the vulnerable page.
@@ -95,6 +97,8 @@ task=<script>print()</script>
 
 Although XSS vulnerabilities execute exclusively **client-side** and do not directly lead to server-side command execution, they remain highly impactful. Stored XSS can enable session theft, credential harvesting, phishing attacks, and full account compromise. As such, it should be treated as a critical security issue despite its client-side execution model.
 
+---
+
 ## Reflected XSS
 
 Reflected XSS vulnerabilities are **non-persistent**. While the malicious input is processed by the back-end server, it is **not stored**, and therefore does not persist across page refreshes. As a result, reflected XSS typically impacts only the targeted victim rather than all users of the application.
@@ -140,5 +144,7 @@ http://94.237.60.55:51429/index.php?task=<script>alert(window.origin)</script>
 ```
 
 When the victim visits the link, the payload is reflected by the server and executed in the victim’s browser.
+
+---
 
 ## DOM XSS
