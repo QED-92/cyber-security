@@ -36,7 +36,7 @@ SSRF vulnerabilities arise when an application fetches remote resources based on
 - Localhost interfaces
 - Cloud metadata endpoints
 
-If the application allows user-controlled URL schemes or protocols, exploitation may extend beyond HTTP(S). 
+If the application allows user-controlled URL schemes or protocols, exploitation may extend beyond `HTTP(S)`. 
 
 Commonly abused schemes include:
 
@@ -74,7 +74,7 @@ dateserver=http://10.10.15.190:8001/ssrf&date=2025-09-02
 
 The incoming request confirms that the application is vulnerable to SSRF.
 
-We will attempt to perform an interal port scan of the server. But before doing so, we need to understand how the application responds to **closed ports**, so we can filter them out during fuzzing.
+We will attempt an internal port scan of the server. But before doing so, we need to understand how the application responds to **closed ports**, so we can filter them out during fuzzing.
 
 We instruct the server to connect to **itself** on a likely closed port:
 
@@ -127,3 +127,54 @@ HTB{911fc5badf7d65aed95380d536c270f8}
 ---
 
 ### SSRF - Accessing Restricted Endpoints
+
+We continue working with the application from the previous section. This time, the goal is to leverage the confirmed SSRF vulnerability to enumerate **restricted or hidden internal endpoints**.
+
+Before fuzzing, it is important to understand how the application responds to non-existent resources, so we can reliably distinguish valid endpoints from invalid ones during enumeration.
+
+We request a directory that is unlikely to exist:
+
+```bash
+dateserver=http://dateserver.htb/invalid&date=2025-09-02
+```
+
+![Filtered output](images/ssrf-discovery7.png)
+
+The server responds with a standard `404 Not Found` error. 
+
+![Filtered output](images/ssrf-discovery8.png)
+
+This response will serve as our baseline and can be filtered out during fuzzing to reduce noise.
+
+With the baseline established, we use `ffuf` to fuzz potential endpoint names through the vulnerable `dateserver parameter`. The application appends `.php`, so the wordlist entries are used accordingly.
+
+We filter out responses that match the known `404` behavior and irrelevant word counts:
+
+```bash
+ffuf -w directory-list-2.3-small.txt:FUZZ -u http://110.129.153.47/index.php -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "dateserver=http://dateserver.htb/FUZZ.php&date=2025-09-02" -fr 404 -fw 3,23 -ic
+```
+
+The scan reveals two valid internal endpoints:
+
+- `admin`
+- `availability`
+
+![Filtered output](images/ssrf-discovery9.png)
+
+We direct the application to the `admin.php` endpoint via the SSRF parameter:
+
+```bash
+dateserver=http://dateserver.htb/admin.php&date=2025-09-02
+```
+
+![Filtered output](images/ssrf-discovery10.png)
+
+The request succeeds, and the application returns the flag:
+
+```bash
+HTB{61ea58507c2b9da30465b9582d6782a1}
+```
+
+![Filtered output](images/ssrf-discovery11.png)
+
+---
