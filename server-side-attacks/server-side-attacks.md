@@ -6,10 +6,11 @@ This document summarizes core techniques for identifying and exploiting **server
 
 ## Table of Contents
 
-- [Server Side Attacks (XSS)](#server-side-attacks)
+- [Server Side Attacks](#server-side-attacks)
   - [Overview](#overview)
   - [Server-Side Request Forgery (SSRF)](#server-side-request-forgery-ssrf)
     - [SSRF - Internal Port Scanning](#ssrf---internal-port-scanning)
+    - [SSRF - Accessing Restricted Endpoints](#ssrf---accessing-restricted-endpoints)
 
 ---
 
@@ -124,3 +125,5 @@ HTB{911fc5badf7d65aed95380d536c270f8}
 ![Filtered output](images/ssrf-discovery6.png)
 
 ---
+
+### SSRF - Accessing Restricted Endpoints
