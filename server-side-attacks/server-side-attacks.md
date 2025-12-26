@@ -16,6 +16,7 @@ This document summarizes core techniques for identifying and exploiting **server
   - [Server-Side Template Injection (SSTI)](#server-side-template-injection-ssti)
     - [SSTI Discovery](#ssti-discovery)
     - [Exploiting SSTI - Jinja](#exploiting-ssti---jinja)
+    - [Exploiting SSTI - Twig](#exploiting-ssti---twig)
 
 ---
 
@@ -497,3 +498,45 @@ Once command execution is confirmed, arbitrary commands can be executed, such as
 ![Filtered output](images/jinja4.png)
 
 ---
+
+### Exploiting SSTI - Twig
+
+`Twig` is a server-side template engine commonly used in `PHP` applications, most notably with the `Symfony` framework. When a `Twig` template renders user-controlled input without proper sanitization, an attacker may be able to inject and execute `Twig` expressions on the server.
+
+A simple starting point when exploiting `Twig` SSTI is dumping contextual information about the current template. The `_self` keyword references the current template object and can reveal useful metadata:
+
+```twig
+{{ _self }}
+```
+
+![Filtered output](images/twig.png)
+
+This output can help confirm execution context and provide insight into the template structure.
+
+Unlike `Jinja`, `Twig` does not natively expose powerful file-handling primitives. However, `Symfony` extends `Twig` with additional filters, some of which can be abused to read local files.
+
+One such filter is `file_excerpt`, which can be used to extract file contents. 
+
+```twig
+{{ "/etc/passwd"|file_excerpt(1,-1) }}
+```
+
+![Filtered output](images/twig2.png)
+
+This payload reads the contents of `/etc/passwd`, confirming local file inclusion via the template engine.
+
+`Twig` itself is not inherently dangerous, but when combined with `PHP` built-in functions, it can lead to remote code execution.
+
+The following payload leverages Twig’s `filter()` function to call PHP’s `system()` function:
+
+```twig
+{{ ['cat /flag.txt'] | filter('system') }}
+```
+
+![Filtered output](images/twig3.png)
+
+In this case, the command is executed on the server, and its output is rendered in the response, confirming full RCE via `Twig` SSTI.
+
+---
+
+### Automating SSTI Discovery and Exploitation
