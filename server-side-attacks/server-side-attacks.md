@@ -618,7 +618,7 @@ The general syntax of an SSI directive is:
 <!--#name param1="value1" param2="value" -->
 ```
 
-The `printenv` prints all environment variables available to the web server process.
+The `printenv` directive prints all environment variables available to the web server process.
 
 ```ssi
 <!--#printenv -->
@@ -630,7 +630,7 @@ The `config` directive modifies SSI configuration options. The example below cus
 <!--#config errmsg="Error!" -->
 ```
 
-The `echo` outputs the value of a specified environment variable using the `var` parameter.
+The `echo` directive outputs the value of a specified environment variable using the `var` parameter.
 
 ```bash
 # Name of current file
@@ -664,7 +664,7 @@ The `exec` directive executes system commands on the server. This directive is t
 ```
 
 ```bash
-<!--#exec cmd="id" -->
+<!--#exec cmd="cat /etc/passwd" -->
 ```
 
 The `include` directive includes the contents of another file into the current page. The included file must be accessible within the web root.
@@ -684,3 +684,41 @@ SSI injection vulnerabilities are especially dangerous when user-controlled inpu
 ---
 
 ### Exploiting SSI
+
+When visiting the target application, we are prompted to enter a name:
+
+```
+Enter your name:
+```
+
+![Filtered output](images/ssi.png)
+
+After submitting a name, we are redirected to a page with the `.shtml` extension:
+
+```
+http://83.136.250.201:58497/page.shtml
+```
+
+![Filtered output](images/ssi2.png)
+
+The `.shtml` extension suggests that SSI processing may be enabled. To test for an SSI vulnerability, we inject a basic SSI directive into the input field:
+
+```
+<!--#printenv -->
+```
+
+If the application is vulnerable, the directive is executed by the server. In this case, all environment variables are printed to the page, confirming the presence of an SSI injection vulnerability:
+
+![Filtered output](images/ssi3.png)
+
+To demonstrate impact, we leverage the `exec` directive to execute a system command and read the contents of `/etc/passwd`:
+
+```
+<!--#exec cmd="cat /etc/passwd" -->
+```
+
+![Filtered output](images/ssi5.png)
+
+This confirms that arbitrary command execution is possible through SSI injection.
+
+---
