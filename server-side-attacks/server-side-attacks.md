@@ -349,3 +349,94 @@ Because template rendering occurs **server-side**, SSTI vulnerabilities are ofte
 ---
 
  ### SSTI Discovery
+
+Each template engine uses slightly different syntax. As a result, the first step in exploiting an SSTI vulnerability is **fingerprinting the template engine** used by the application.
+
+The discovery process closely resembles other injection-based vulnerabilities (such as SQL injection or command injection): we inject input containing special characters with semantic meaning in template engines and observe how the application responds.
+
+A commonly used probe string containing syntax elements from multiple popular template engines is:
+
+```
+${{<%[%'"}}%\.
+```
+
+If the application is vulnerable to SSTI, injecting this string will typically cause a template parsing error, as it violates expected syntax rules.
+
+When injecting the probe string into the target application we receive an `Internal Server Error`.
+
+![Filtered output](images/ssti7.PNG)
+
+This increases the likelihood of the target being vulnerable to SSTI.
+
+When interacting with the target application, we are prompted to enter a name:
+
+```
+Enter your name:
+```
+
+![Filtered output](images/ssti.PNG)
+
+When entering a name, for example `Sam`, the name is reflected back to us:
+
+```
+Hi Sam!
+```
+
+![Filtered output](images/ssti2.PNG)
+
+Because the response dynamically incorporates user input, we can infer that the application is rendering content using a template engine. This makes the application a strong candidate for SSTI testing.
+
+The following decision tree is commonly used to identify the underlying template engine based on payload behavior:
+
+![Filtered output](images/ssti3.PNG)
+
+We begin with a simple arithmetic expression commonly supported by many template engines:
+
+```
+${7*7}
+```
+
+The payload is reflected verbatim in the response:
+
+```
+Hi ${7*7}!
+```
+
+![Filtered output](images/ssti4.PNG)
+
+Since the expression was not evaluated, we follow the red path in the decision tree and test the next payload:
+
+```
+{{7*7}}
+```
+
+This time, the payload is evaluated by the server:
+
+```
+Hi $49!
+```
+
+![Filtered output](images/ssti5.PNG)
+
+Because the expression was executed, we proceed along the green path and test a payload that behaves differently depending on the template engine:
+
+```
+{{7*'7'}}
+```
+
+The result is again:
+
+```
+Hi $49!
+```
+
+![Filtered output](images/ssti6.PNG)
+
+This behavior allows us to distinguish between common engines:
+
+- Jinja evaluates `7 * '7'` as string multiplication &rarr; `7777777`
+- Twig evaluates it as numeric multiplication &rarr; 49
+
+Since the result is `49`, we can confidently conclude that the target application is using the `Twig` template engine.
+
+---
