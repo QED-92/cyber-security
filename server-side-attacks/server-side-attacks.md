@@ -17,6 +17,7 @@ This document summarizes core techniques for identifying and exploiting **server
     - [SSTI Discovery](#ssti-discovery)
     - [Exploiting SSTI - Jinja](#exploiting-ssti---jinja)
     - [Exploiting SSTI - Twig](#exploiting-ssti---twig)
+    - [Automating SSTI Discovery and Exploitation](#automating-ssti-discovery-and-exploitation)
 
 ---
 
