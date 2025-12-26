@@ -364,7 +364,7 @@ If the application is vulnerable to SSTI, injecting this string will typically c
 
 When injecting the probe string into the target application we receive an `Internal Server Error`.
 
-![Filtered output](images/ssti7.PNG)
+![Filtered output](images/ssti0.PNG)
 
 This increases the likelihood of the target being vulnerable to SSTI.
 
@@ -374,7 +374,7 @@ When interacting with the target application, we are prompted to enter a name:
 Enter your name:
 ```
 
-![Filtered output](images/ssti.PNG)
+![Filtered output](images/ssti1.PNG)
 
 When entering a name, for example `Sam`, the name is reflected back to us:
 
