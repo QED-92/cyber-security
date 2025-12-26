@@ -374,7 +374,7 @@ When interacting with the target application, we are prompted to enter a name:
 Enter your name:
 ```
 
-![Filtered output](images/ssti1.PNG)
+![Filtered output](images/ssti1.png)
 
 When entering a name, for example `Sam`, the name is reflected back to us:
 
@@ -382,13 +382,13 @@ When entering a name, for example `Sam`, the name is reflected back to us:
 Hi Sam!
 ```
 
-![Filtered output](images/ssti2.PNG)
+![Filtered output](images/ssti2.png)
 
 Because the response dynamically incorporates user input, we can infer that the application is rendering content using a template engine. This makes the application a strong candidate for SSTI testing.
 
 The following decision tree is commonly used to identify the underlying template engine based on payload behavior:
 
-![Filtered output](images/ssti3.PNG)
+![Filtered output](images/ssti3.png)
 
 We begin with a simple arithmetic expression commonly supported by many template engines:
 
@@ -402,7 +402,7 @@ The payload is reflected verbatim in the response:
 Hi ${7*7}!
 ```
 
-![Filtered output](images/ssti4.PNG)
+![Filtered output](images/ssti4.png)
 
 Since the expression was not evaluated, we follow the red path in the decision tree and test the next payload:
 
@@ -416,7 +416,7 @@ This time, the payload is evaluated by the server:
 Hi $49!
 ```
 
-![Filtered output](images/ssti5.PNG)
+![Filtered output](images/ssti5.png)
 
 Because the expression was executed, we proceed along the green path and test a payload that behaves differently depending on the template engine:
 
@@ -430,7 +430,7 @@ The result is again:
 Hi $49!
 ```
 
-![Filtered output](images/ssti6.PNG)
+![Filtered output](images/ssti6.png)
 
 This behavior allows us to distinguish between common engines:
 
