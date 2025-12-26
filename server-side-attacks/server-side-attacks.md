@@ -11,6 +11,7 @@ This document summarizes core techniques for identifying and exploiting **server
   - [Server-Side Request Forgery (SSRF)](#server-side-request-forgery-ssrf)
     - [SSRF - Internal Port Scanning](#ssrf---internal-port-scanning)
     - [SSRF - Accessing Restricted Endpoints](#ssrf---accessing-restricted-endpoints)
+    - [SSRF - Local File Inclusion (LFI)](#ssrf---local-file-inclusion-lfi)
 
 ---
 
@@ -146,7 +147,7 @@ The server responds with a standard `404 Not Found` error.
 
 This response will serve as our baseline and can be filtered out during fuzzing to reduce noise.
 
-With the baseline established, we use `ffuf` to fuzz potential endpoint names through the vulnerable `dateserver parameter`. The application appends `.php`, so the wordlist entries are used accordingly.
+With the baseline established, we use `ffuf` to fuzz potential endpoint names through the vulnerable `dateserver` parameter. The application appends `.php`, so the wordlist entries are used accordingly.
 
 We filter out responses that match the known `404` behavior and irrelevant word counts:
 
@@ -176,5 +177,38 @@ HTB{61ea58507c2b9da30465b9582d6782a1}
 ```
 
 ![Filtered output](images/ssrf-discovery11.png)
+
+---
+
+### SSRF - Local File Inclusion (LFI)
+
+If an application allows **user-controlled URL schemes**, SSRF vulnerabilities can sometimes be escalated to **Local File Inclusion (LFI)**. This occurs when the server-side request mechanism accepts non-HTTP schemes, such as `file://`, enabling direct access to files on the local filesystem.
+
+In this scenario, the `dateserver` parameter accepts a full URL and does not enforce strict scheme validation. This allows us to replace the original `http://` scheme with `file://` and attempt to read sensitive files from the server.
+
+As an initial test, we attempt to read the standard Linux `/etc/passwd` file:
+
+```bash
+dateserver=file:///etc/passwd&date=2025-09-02
+```
+
+![Filtered output](images/ssrf-lfi.png)
+
+The server responds with the contents of `/etc/passwd`, confirming that:
+
+- The application permits the `file://` URL scheme
+- The server-side process has read access to local system files
+- The SSRF vulnerability can be leveraged for arbitrary file reads
+
+![Filtered output](images/ssrf-lfi2.png)
+
+At this point, the impact of the vulnerability increases significantly. Depending on permissions and system configuration, this technique may allow attackers to read:
+
+- Application source code
+- Configuration files containing credentials or API keys
+- Logs containing sensitive data
+- SSH keys or environment variables
+
+This highlights why SSRF vulnerabilities should be treated as **high severity**, especially when URL scheme validation and outbound request restrictions are not properly enforced.
 
 ---
