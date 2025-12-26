@@ -20,6 +20,8 @@ This document summarizes core techniques for identifying and exploiting **server
     - [Automating SSTI Discovery and Exploitation](#automating-ssti-discovery-and-exploitation)
   - [Server-Side Includes (SSI)](#server-side-includes-ssi)
     - [Exploiting SSI](#exploiting-ssi)
+  - [Extensible Stylesheet Language Transformations (XSLT)](#extensible-stylesheet-language-transformations-xslt)
+    - [Exploiting XSLT](#exploiting-xslt)
 
 ---
 
@@ -717,8 +719,121 @@ To demonstrate impact, we leverage the `exec` directive to execute a system comm
 <!--#exec cmd="cat /etc/passwd" -->
 ```
 
-![Filtered output](images/ssi5.png)
+![Filtered output](images/ssi5.PNG)
 
 This confirms that arbitrary command execution is possible through SSI injection.
 
 ---
+
+## Extensible Stylesheet Language Transformations (XSLT)
+
+Extensible Stylesheet Language Transformations (XSLT) is a language used to transform XML documents into other formats, such as XML, HTML, or plain text. It is commonly used to extract specific nodes from an XML document, rearrange data, or alter the structure of the output.
+
+A typical XML document may look like the following:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<fruits>
+    <fruit>
+        <name>Apple</name>
+        <color>Red</color>
+        <size>Medium</size>
+    </fruit>
+    <fruit>
+        <name>Banana</name>
+        <color>Yellow</color>
+        <size>Medium</size>
+    </fruit>
+    <fruit>
+        <name>Strawberry</name>
+        <color>Red</color>
+        <size>Small</size>
+    </fruit>
+</fruits>
+```
+
+XSLT documents are structured similarly to XML documents, but include XSL-specific elements prefixed with `xsl`:. These elements define how the XML data should be processed and transformed.
+
+```xml
+<!-- XML element -->
+<name>Banana</name>
+
+<!-- XSL element -->
+<xsl:for-each select="fruit">
+			<xsl:value-of select="name"/> (<xsl:value-of select="color"/>)
+</xsl:for-each>
+```
+
+Some commonly used XSL elements include:
+
+- <xsl:template> ... </xsl:template>
+- <xsl:value-of> ... </xsl:value-of>
+- <xsl:for-each> ... </xsl:for-each>
+
+The following XSLT document extracts the name and color of all fruits from the XML document:
+
+```xml
+<?xml version="1.0"?>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+	<xsl:template match="/fruits">
+		Here are all the fruits:
+		<xsl:for-each select="fruit">
+			<xsl:value-of select="name"/> (<xsl:value-of select="color"/>)
+		</xsl:for-each>
+	</xsl:template>
+</xsl:stylesheet>
+```
+
+- The `<xsl:template>` element defines a template that applies to a specific XML node.
+- The `match` attribute specifies which node in the XML document the template applies to (in this case, `<fruits>`).
+- The `<xsl:for-each>` element iterates over all `<fruit>` nodes.
+- The `<xsl:value-of>` element extracts and outputs the value of the specified XML node.
+
+Applying this XSLT document to the sample XML produces the following output:
+
+```
+Here are all the fruits:
+    Apple (Red)
+    Banana (Yellow)
+    Strawberry (Red)
+```
+
+Two additional XSL elements that are commonly used are:
+
+- <xsl:sort />
+- <xsl:if> ... </xsl:if>
+
+The `<xsl:sort>` element defines how elements should be ordered during iteration, using the `select` and `order` attributes.
+
+The `<xsl:if>` element allows conditional logic based on expressions defined in the test attribute.
+
+The following example filters fruits by size and sorts them by color in descending order:
+
+```xml
+<?xml version="1.0"?>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+	<xsl:template match="/fruits">
+		Here are all fruits of medium size ordered by their color:
+		<xsl:for-each select="fruit">
+			<xsl:sort select="color" order="descending" />
+			<xsl:if test="size = 'Medium'">
+				<xsl:value-of select="name"/> (<xsl:value-of select="color"/>)
+			</xsl:if>
+		</xsl:for-each>
+	</xsl:template>
+</xsl:stylesheet>
+```
+
+This produces the following output:
+
+```
+Here are all fruits of medium size ordered by their color:
+	Banana (Yellow)
+	Apple (Red)
+```
+
+An XSLT injection vulnerability occurs when user-controlled input is inserted into an XSLT document before it is processed by the XSLT engine. This allows an attacker to inject arbitrary XSL elements, which are then executed by the XSLT processor. Depending on the implementation, this can lead to sensitive data disclosure or, in some cases, remote code execution.
+
+---
+
+### Exploiting XSLT
