@@ -13,6 +13,8 @@ This document summarizes core techniques for identifying and exploiting **server
     - [SSRF - Accessing Restricted Endpoints](#ssrf---accessing-restricted-endpoints)
     - [SSRF - Local File Inclusion (LFI)](#ssrf---local-file-inclusion-lfi)
     - [Blind SSRF](#blind-ssrf)
+  - [Server-Side Template Injection (SSTI)](#server-side-template-injection-ssti)
+    - [SSTI Discovery](#ssti-discovery)
 
 ---
 
@@ -288,6 +290,62 @@ Even limited SSRF findings should be treated seriously, as they often act as ste
 
 ---
 
+## Server-Side Template Injection (SSTI)
 
+A **template engine** is software used by web applications to generate dynamic content by combining static templates with runtime data. This allows developers to reuse common components (such as headers, footers, or layouts) while dynamically rendering page-specific content.
 
+Common template engines include:
 
+- `jinja` (Python / Flask Django)
+- `twig` (PHP / Symfony)
+
+Templates can be defined as files or inline strings and typically contain placeholders where dynamic values are inserted. These values are supplied as key–value pairs during rendering.
+
+For example, the following template contains a variable called `name`, which is replaced with a dynamic value at runtime:
+
+```jinja
+Hello {{ name }}
+```
+
+If the application renders this template with `name="Sam"`, the resulting output will be:
+
+```
+Hello Sam
+```
+
+Modern template engines support more advanced features such as loops, conditionals, and expressions, making them effectively small domain-specific programming languages. For example:
+
+```jinja
+{% for name in names %}
+Hello {{ name }}!
+{% endfor %}
+```
+
+If the template is rendered with:
+
+```jinja
+names = ["sam", "cibola", "hackerman"]
+```
+
+The output will be:
+
+```
+Hello sam!
+Hello cibola!
+Hello hackerman!
+```
+
+**Server-Side Template Injection (SSTI)** vulnerabilities occur when user-controlled input is embedded directly into a template and rendered by the server **without proper sanitization**. In such cases, an attacker can inject template syntax that is interpreted and executed by the template engine. 
+
+Depending on the engine and configuration, successful SSTI exploitation may allow an attacker to:
+
+- Read sensitive server-side data
+- Access application configuration and environment variables
+- Perform arbitrary file reads
+- Achieve remote code execution (RCE)
+
+Because template rendering occurs **server-side**, SSTI vulnerabilities are often high-impact and may lead to full system compromise.
+
+---
+
+ ### SSTI Discovery
