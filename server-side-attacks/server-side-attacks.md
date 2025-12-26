@@ -18,6 +18,8 @@ This document summarizes core techniques for identifying and exploiting **server
     - [Exploiting SSTI - Jinja](#exploiting-ssti---jinja)
     - [Exploiting SSTI - Twig](#exploiting-ssti---twig)
     - [Automating SSTI Discovery and Exploitation](#automating-ssti-discovery-and-exploitation)
+  - [Server-Side Includes (SSI)](#server-side-includes-ssi)
+    - [Exploiting SSI](#exploiting-ssi)
 
 ---
 
@@ -591,3 +593,94 @@ python3 sstimap.py -u http://94.237.60.55:49043/index.php?name=test --os-shell
 This allows direct interaction with the underlying operating system, confirming full compromise of the template rendering context.
 
 ---
+
+## Server-Side Includes (SSI)
+
+Server-Side Includes (SSI) are a mechanism for embedding dynamic content into otherwise static HTML pages. SSI is supported by many common web servers, including `Apache` and `IIS`, and is processed on the server before the response is sent to the client.
+
+SSI usage can sometimes be inferred from file extensions commonly associated with SSI processing:
+
+- `.shtml`
+- `.shtm`
+- `.sht`
+
+However, file extensions alone are **not a reliable indicator**. Web servers can be configured to process SSI directives in files with arbitrary extensions (including `.html`), so further testing is often required to confirm SSI support.
+
+SSI relies on **directives** to perform dynamic operations. Each directive consists of:
+
+- A directive **name**
+- One or more **parameters**
+- Corresponding **parameter values**
+
+The general syntax of an SSI directive is:
+
+```ssi
+<!--#name param1="value1" param2="value" -->
+```
+
+The `printenv` prints all environment variables available to the web server process.
+
+```ssi
+<!--#printenv -->
+```
+
+The `config` directive modifies SSI configuration options. The example below customizes the error message returned by SSI:
+
+```ssi
+<!--#config errmsg="Error!" -->
+```
+
+The `echo` outputs the value of a specified environment variable using the `var` parameter.
+
+```bash
+# Name of current file
+<!--#echo var="DOCUMENT_NAME" -->
+```
+
+```bash
+# Local server time
+<!--#echo var="DATE_LOCAL" -->
+```
+
+```bash
+# The current file's URI
+<!--#echo var="DOCUMENT_URI" -->
+```
+
+```bash
+# Timestamp of last modification of current file
+<!--#echo var="LAST_MODIFIED" -->
+```
+
+```bash
+# Multiple variable assignments
+<!--#echo var="DOCUMENT_NAME" var="DATE_LOCAL" var="DOCUMENT_URI" -->
+```
+
+The `exec` directive executes system commands on the server. This directive is the **most security-critical**, as it can lead directly to remote code execution (RCE).
+
+```bash
+<!--#exec cmd="whoami" -->
+```
+
+```bash
+<!--#exec cmd="id" -->
+```
+
+The `include` directive includes the contents of another file into the current page. The included file must be accessible within the web root.
+
+```bash
+<!--#include virtual="index.html" -->
+```
+
+An **SSI injection vulnerability** occurs when an attacker can inject SSI directives into a file that is later parsed by the web server with SSI enabled. If successful, the injected directive will be executed server-side, potentially resulting in:
+
+- Disclosure of sensitive environment variables
+- Local file inclusion (LFI)
+- Arbitrary command execution (RCE)
+
+SSI injection vulnerabilities are especially dangerous when user-controlled input is written to files that are later rendered by the server without proper sanitization.
+
+---
+
+### Exploiting SSI
