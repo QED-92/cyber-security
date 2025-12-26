@@ -15,6 +15,7 @@ This document summarizes core techniques for identifying and exploiting **server
     - [Blind SSRF](#blind-ssrf)
   - [Server-Side Template Injection (SSTI)](#server-side-template-injection-ssti)
     - [SSTI Discovery](#ssti-discovery)
+    - [Exploiting SSTI - Jinja](#exploiting-ssti---jinja)
 
 ---
 
@@ -435,8 +436,64 @@ Hi $49!
 This behavior allows us to distinguish between common engines:
 
 - Jinja evaluates `7 * '7'` as string multiplication &rarr; `7777777`
-- Twig evaluates it as numeric multiplication &rarr; 49
+- Twig evaluates it as numeric multiplication &rarr; `49`
 
 Since the result is `49`, we can confidently conclude that the target application is using the `Twig` template engine.
+
+---
+
+### Exploiting SSTI - Jinja
+
+The `Jinja` template engine is commonly used in Python-based web frameworks such as `Flask` and `Django`. When an application is vulnerable to SSTI, injected template expressions are evaluated server-side, allowing attackers to access internal objects, application configuration, and—in severe cases—achieve remote code execution (RCE).
+
+`Jinja` templates execute within the context of the running Python application. As a result, injected payloads can often access:
+
+- Application configuration
+- Python built-in functions
+- Imported standard libraries
+- Arbitrary file system objects
+- Operating system commands
+
+A common first step is enumerating application configuration values. `Jinja` exposes the config object in many Flask-based applications. This may reveal sensitive information such as secret keys, database credentials, or debug settings:
+
+```jinja
+{{ config.items() }}
+```
+
+![Filtered output](images/jinja1.png)
+
+`Jinja` templates provide access to internal Python objects. The following payload enumerates all available built-in functions. This output often includes functions such as `open`, `eval`, `exec`, and `__import__`, which can be leveraged for further exploitation:
+
+```jinja
+{{ self.__init__.__globals__.__builtins__ }}
+```
+
+![Filtered output](images/jinja2.png)
+
+If the `open()` function is accessible, attackers can read arbitrary files from the server:
+
+```jinja
+{{ self.__init__.__globals__.__builtins__.open("/etc/passwd").read() }}
+```
+
+![Filtered output](images/jinja3.png)
+
+This confirms file system access and significantly increases the impact of the vulnerability.
+
+The Python `os` module provides functions such as `system()` and `popen()` that allow execution of operating system commands. If the module is not already imported, it can often be loaded dynamically using `__import__`. This payload executes the `id` command on the server and returns its output:
+
+```jinja
+{{ self.__init__.__globals__.__builtins__.__import__('os').popen('id').read() }}
+```
+
+![Filtered output](images/jinja5.PNG)
+
+Once command execution is confirmed, arbitrary commands can be executed, such as reading sensitive files:
+
+```jinja
+{{ self.__init__.__globals__.__builtins__.__import__('os').popen('cat flag.txt').read() }}
+```
+
+![Filtered output](images/jinja4.png)
 
 ---
