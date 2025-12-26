@@ -932,7 +932,7 @@ Since arbitrary PHP functions are allowed, we can escalate from file disclosure 
 <xsl:value-of select="php:function('system','ls -la')" />
 ```
 
-![Filtered output](images/xslt7.png)
+![Filtered output](images/xslt7.PNG)
 
 The command executes successfully on the server, resulting in full remote code execution via XSLT injection.
 
