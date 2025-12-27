@@ -244,4 +244,5 @@ http://94.237.50.221:56396/uploads/reverse.php
 ```
 
 If successful, a reverse shell will connect back to the specified listener.
+
 ---
