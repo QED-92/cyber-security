@@ -11,6 +11,7 @@ This section documents common techniques for identifying and exploiting **file u
   - [Basic Exploitation](#basic-exploitation)
   - [Web Shells](#web-shells)
   - [Reverse Shells](#reverse-shells)
+  - [Front-End Validation](#front-end-validation)
 
 ---
 
@@ -246,3 +247,73 @@ http://94.237.50.221:56396/uploads/reverse.php
 If successful, a reverse shell will connect back to the specified listener.
 
 ---
+
+## Front-End Validation
+
+Some applications rely solely on front-end validation to restrict uploaded file types. This approach is inherently weak, as client-side controls can be bypassed by interacting directly with the back-end using a web proxy such as **Burp Suite**.
+
+In this scenario, the target application allows users to upload a profile image:
+
+```
+Update your profile image
+```
+
+![Filtered output](images/front-end-filter.PNG)
+
+When attempting to upload a PHP file named `shell.php`, the application returns the following error:
+
+```
+Only images are allowed.
+```
+
+![Filtered output](images/front-end-filter2.PNG)
+
+This indicates that file type validation is in place. However, when uploading the file, no HTTP request is sent to the server. This strongly suggests that validation is occurring **entirely on the client side**.
+
+Inspecting the page source reveals that the upload functionality only permits files with the following extensions:
+
+- `jpg`
+- `jpeg`
+- `png`
+
+![Filtered output](images/front-end-filter3.PNG)
+
+To test the robustness of this validation, we rename `shell.php` to `shell.jpg` while keeping the file contents unchanged (i.e., still containing PHP code). The file uploads successfully:
+
+![Filtered output](images/front-end-filter4.PNG)
+
+This confirms that the application performs **extension-based validation only**, without inspecting the file contents. However, PHP code cannot be executed unless the file has a PHP-related extension.
+
+Since validation occurs on the front end, we can bypass it by intercepting the upload request before it reaches the server. The process is as follows:
+
+1. Upload the file with an allowed extension (e.g., `shell.jpg`)
+2. Intercept the request using **Burp Suite**
+3. Modify the filename in the request to use a **PHP extension**:
+
+```
+filename="shell.php"
+```
+
+![Filtered output](images/front-end-filter5.PNG)
+
+After forwarding the modified request, the server accepts and stores the file. The upload location can be identified by inspecting the page source:
+
+```html
+<img src='/profile_images/shell.php' class='profile-image' id='profile-image'>
+```
+
+![Filtered output](images/front-end-filter7.PNG)
+
+Finally, we navigate to the uploaded file and interact with the web shell using the `cmd` parameter:
+
+```
+http://94.237.122.95:42771/profile_images/shell.php?cmd=id
+```
+
+![Filtered output](images/front-end-filter6.PNG)
+
+This confirms successful bypass of front-end validation and results in **remote code execution**.
+
+---
+
+

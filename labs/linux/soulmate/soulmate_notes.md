@@ -7,15 +7,6 @@
 This report documents my exploitation of the **Soulmate** machine on HackTheBox.
 The attack path involved:
 
-REWRITE FOR CORRECT LAB!
-- Discovering an exposed ISAKMP (IKE) service over UDP
-- Extracting and cracking an IKE PSK hash
-- Using the recovered PSK to authenticate over SSH
-- Performing local privilege escalation by exploiting a vulnerable sudo version
-- Gaining root access and retrieving both user and root flags
-
-The compromise reflects weaknesses in VPN configuration, cryptographic key management, and outdated system components.
-
 ---
 
 ## Reconnaissance
@@ -26,7 +17,7 @@ I began with a full TCP port scan:
 sudo nmap -p- 10.129.15.231
 ```
 
-Two ports were open: 22 (SSH) and 80 (HTTP).
+Two ports were open: `22` (SSH) and `80` (HTTP).
 
 ![Filtered output](images/nmap1.PNG)
 
@@ -36,7 +27,7 @@ I followed up with a service and default script scan:
 sudo nmap  -p 22,80 -sV -sC 10.129.15.231
 ```
 
-The target was running OpenSSH 8.9p1 on port 22 and an nginx 1.18.0 server on port 80. I also discovered a domain name and added it to the **/etc/hosts** file:
+The target was running `OpenSSH 8.9p1` on port `22` and an `nginx 1.18.0` server on port `80`. I also discovered a domain name and added it to the **/etc/hosts** file:
 
 ```bash
 echo "10.129.15.231 soulmate.htb" | sudo tee -a /etc/hosts
@@ -44,7 +35,7 @@ echo "10.129.15.231 soulmate.htb" | sudo tee -a /etc/hosts
 
 ![Filtered output](images/nmap2.PNG)
 
-I ran some targeted http scripts with NSE, but it did not reveal anything of importance, except that the web page runs on PHP. 
+I ran some targeted http scripts with `NSE`, but it did not reveal anything of importance, except that the web page runs on PHP. 
 
 ```bash
 sudo nmap -p 80 --script http-* --script-timeout 30s 10.129.15.231
