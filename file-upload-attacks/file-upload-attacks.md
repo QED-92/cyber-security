@@ -435,7 +435,7 @@ shell.php.jpg
 shell.jpg.php
 ```
 
-In our case, however, these payloads still trigger the `Extension not allowed error`:
+In our case, however, these payloads still trigger the `Extension not allowed` error:
 
 ```
 filename=shell.php.jpg
@@ -474,11 +474,11 @@ Common injection characters include:
 
 The null-byte character (`%00`) works with PHP versions `5.X` or earlier. It causes the server to ignore anything after the null-byte, making it useful for double extension bypasses:
 
-- shell.php%00.jpg &rarr; shell.php
+- `shell.php%00.jpg` &rarr; `shell.php`
 
 The colon (`:`) accomplishes the same thing on Windows servers:
 
-- shell.aspx:.jpg &rarr; shell.aspx
+- `shell.aspx:.jpg` &rarr; `shell.aspx`
 
 To systematically identify bypasses, we generate filename permutations combining:
 
@@ -536,6 +536,6 @@ Visiting the uploaded file confirms remote code execution:
 http://94.237.120.119:48470/profile_images/shell.phar.jpg?cmd=id
 ```
 
-![Filtered output](images/whitelist-filter1+.PNG)
+![Filtered output](images/whitelist-filter1.PNG)
 
 ---
