@@ -11,7 +11,8 @@ This section documents common techniques for identifying and exploiting **file u
   - [Basic Exploitation](#basic-exploitation)
   - [Web Shells](#web-shells)
   - [Reverse Shells](#reverse-shells)
-  - [Front-End Validation](#front-end-validation)
+  - [Front-End Filters](#front-end-filters)
+  - [Blacklist Filters](#blacklist-filters)
 
 ---
 
@@ -248,7 +249,7 @@ If successful, a reverse shell will connect back to the specified listener.
 
 ---
 
-## Front-End Validation
+## Front-End Filters
 
 Some applications rely solely on front-end validation to restrict uploaded file types. This approach is inherently weak, as client-side controls can be bypassed by interacting directly with the back-end using a web proxy such as **Burp Suite**.
 
@@ -316,4 +317,62 @@ This confirms successful bypass of front-end validation and results in **remote 
 
 ---
 
+## Blacklist Filters
 
+Blacklist filters are implemented on the back-end and are therefore more robust than front-end validation. An extension-based blacklist consists of a list of **disallowed file extensions**. When a file is uploaded, its extension is compared against each entry in the blacklist, and the upload is rejected if a match is found.
+
+This approach is inherently insecure. Any executable file extension **not explicitly included** in the blacklist may still be accepted and processed by the server, potentially leading to remote code execution.
+
+A common technique for bypassing blacklist filters is to **fuzz for allowed file extensions** and upload a malicious file using an alternative extension that is still interpreted by the server.
+
+When attempting to upload a file named `shell.php`, we initially encounter the same front-end restriction as in the previous section. As before, we bypass the front-end validation by:
+
+1. Uploading the file with an allowed extension (e.g., `shell.jpg`)
+2. Intercepting the request using **Burp Suite**
+3. Modifying the filename in the request to use a **PHP extension**:
+
+However, when changing the extension to `.php`, the back-end server throws an error:
+
+```
+Extension not allowed
+```
+
+![Filtered output](images/blacklist-filter.PNG)
+
+This confirms the presence of a **back-end blacklist filter**.
+
+When keeping the `.jpg` extension, the upload succeeds—even though the file contains PHP code. This indicates that the filter validates **only the file extension**, not the file contents.
+
+To identify extensions that are not included in the blacklist, we can fuzz for allowed file extensions using `ffuf`. First, we save the intercepted upload request to a file:
+
+![Filtered output](images/request.PNG)
+
+We then use `ffuf` to fuzz the filename extension while filtering out responses containing the error message:
+
+```bash
+ffuf -w web-extensions.txt:FUZZ -request req.txt -request-proto http -fr "Extension not allowed"
+```
+
+This reveals several allowed extensions, including:
+
+- `.php2`
+- `.php3`
+- `.php4`
+- `.php6`
+- `.phar`
+
+![Filtered output](images/allowed-extensions.PNG)
+
+Not all PHP-related extensions are supported by every web server configuration. Testing the discovered extensions shows that none of the `.php*` variants result in code execution.
+
+However, the `.phar` extension **is processed as PHP** by the server. Uploading the web shell with this extension successfully leads to remote code execution:
+
+```
+http://94.237.51.160:49130/profile_images/shell.phar?cmd=id
+```
+
+![Filtered output](images/phar-rce.PNG)
+
+This confirms that the blacklist filter can be bypassed by identifying an alternative executable extension supported by the server.
+
+---
