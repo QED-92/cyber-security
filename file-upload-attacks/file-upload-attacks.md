@@ -4,23 +4,25 @@ This section documents common techniques for identifying and exploiting **file u
 
 ---
 
-## Table of Contents
+# Table of Contents
 
 - [File Upload Attacks](#file-upload-attacks)
-  - [Overview](#overview)
-  - [Basic Exploitation](#basic-exploitation)
-  - [Web Shells](#web-shells)
-  - [Reverse Shells](#reverse-shells)
+- [Overview](#overview)
+- [Basic Exploitation](#basic-exploitation)
+- [Shells](#shells)
+    - [Web Shells](#web-shells)
+    - [Reverse Shells](#reverse-shells)
+- [Bypassing Filters](#bypassing-filters)
   - [Front-End Filters](#front-end-filters)
   - [Blacklist Filters](#blacklist-filters)
   - [Whitelist Filters](#whitelist-filters)
-  - [Content-Type Filter](#content-type-filter)
-  - [File Content Filter](#file-content-filter)
-  - [Exploitation Example -1](#exploitation-example---1)
+  - [Content-Type Filters](#content-type-filters)
+  - [File Content Filters](#file-content-filters)
+- [Exploitation Example -1](#exploitation-example---1)
 
 ---
 
-## Overview
+# Overview
 
 Many web applications provide functionality for users to upload files. If these uploads are not properly validated and restricted, attackers may be able to upload malicious files to the back-end server.
 
@@ -30,7 +32,7 @@ The most severe form of this vulnerability is an `unauthenticated arbitrary file
 
 ---
 
-## Basic Exploitation
+# Basic Exploitation
 
 In the simplest scenario, a target application implements no effective security controls on its file upload functionality. This allows an attacker to upload arbitrary files, including **web shells**, directly to the server.
 
@@ -107,6 +109,8 @@ http://94.237.57.115:31571/uploads/shell.php?cmd=id
 At this point, we have successfully achieved remote code execution (RCE) through an unrestricted file upload vulnerability.
 
 ---
+
+# Shells
 
 ## Web Shells
 
@@ -252,6 +256,8 @@ http://94.237.50.221:56396/uploads/reverse.php
 If successful, a reverse shell will connect back to the specified listener.
 
 ---
+
+# Bypassing Filters
 
 ## Front-End Filters
 
@@ -543,7 +549,7 @@ http://94.237.120.119:48470/profile_images/shell.phar.jpg?cmd=id
 
 ---
 
-## Content-Type Filter
+## Content-Type Filters
 
 Relying solely on file extension checks—whether via blacklists or whitelists—is insufficient to prevent file upload vulnerabilities. More robust applications also validate the file content to ensure it matches the expected file type.
 
@@ -622,7 +628,7 @@ The `Content-Type` header does not influence whether server-side code executes. 
 
 ---
 
-## File Content Filter
+## File Content Filters
 
 A more robust approach to file validation is inspecting the actual file contents rather than relying on extensions or HTTP headers. This is typically done by validating the file’s `MIME` type.
 
@@ -658,7 +664,7 @@ The file is now recognized as a GIF image by the `MIME` filter. This technique d
 
 ---
 
-## Exploitation Example - 1
+# Exploitation Example - 1
 
 This example demonstrates a full exploitation chain against a file upload functionality protected by multiple layered defenses, including:
 
