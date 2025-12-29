@@ -14,6 +14,8 @@ This section documents common techniques for identifying and exploiting **file u
   - [Front-End Filters](#front-end-filters)
   - [Blacklist Filters](#blacklist-filters)
   - [Whitelist Filters](#whitelist-filters)
+  - [Content-Type Filter](#content-type-filter)
+  - [MIME Filter](#mime-filter)
 
 ---
 
@@ -539,3 +541,84 @@ http://94.237.120.119:48470/profile_images/shell.phar.jpg?cmd=id
 ![Filtered output](images/whitelist-filter10.PNG)
 
 ---
+
+## Content-Type Filter
+
+Relying solely on file extension checks—whether via blacklists or whitelists—is insufficient to prevent file upload vulnerabilities. More robust applications also validate the file content to ensure it matches the expected file type.
+
+One common approach is validating uploads based on the `Content-Type` HTTP header.
+
+When attempting to upload a file containing PHP code, the application responds with the following error:
+
+```
+Only images are allowed
+```
+
+![Filtered output](images/content-type-filter.PNG)
+
+This error persists even when attempting previously discussed blacklist or whitelist bypass techniques. This behavior indicates that the application is validating uploads based on file content, either by inspecting the `Content-Type` header or by performing deeper file inspection.
+
+A typical `Content-Type` validation mechanism in PHP may look like this:
+
+```php
+$type = $_FILES['uploadFile']['type'];
+
+if (!in_array($type, array('image/jpg', 'image/jpeg', 'image/png', 'image/gif'))) {
+    echo "Only images are allowed";
+    die();
+}
+```
+
+In this example, the application reads the uploaded file’s `Content-Type` header and compares it against a list of allowed `MIME` types.
+
+When a file is selected for upload, the browser automatically sets the `Content-Type` header, usually based on the file extension. Since this occurs client-side, the header can be **intercepted and modified** using a web proxy such as **Burp Suite**. In some cases, changing this header alone is sufficient to bypass the filter.
+
+Uploading a legitimate image succeeds as expected:
+
+```
+File successfully uploaded
+```
+
+![Filtered output](images/content-type-filter2.PNG)
+
+In this case, the browser sets the `Content-Type` to `image/png`. When intercepting the request and changing the header to `text/plain`, the upload fails:
+
+```
+Only images are allowed
+```
+
+![Filtered output](images/content-type-filter3.PNG)
+
+This confirms that the application actively validates the `Content-Type` header.
+
+To identify which `MIME` types are accepted, we can fuzz the `Content-Type` header using a known-good image file and filter responses based on the error message.
+
+A commonly used wordlist for this purpose is:
+
+- https://github.com/danielmiessler/SecLists/blob/master/Discovery/Web-Content/web-all-content-types.txt
+
+Insert the `FUZZ` placeholder into the intercepted request and save it to a file:
+
+![Filtered output](images/content-type-filter4.PNG)
+
+Then fuzz the `Content-Type` header using `ffuf`:
+
+```bash
+ffuf -w web-all-content-types.txt:FUZZ -request req.txt -request-proto http -fr "Only images are allowed"
+```
+
+The scan reveals that only the following `MIME` types are accepted:
+
+- `image/jpeg`
+- `image/png`
+- `image/gif`
+
+![Filtered output](images/content-type-filter5.PNG)
+
+If the application relies only on the `Content-Type` header for validation, the filter can be bypassed by intercepting the upload request and changing the header to an allowed value.
+
+The `Content-Type` header does not influence whether server-side code executes. As long as the uploaded file uses a PHP-related extension and is stored in an executable location, embedded PHP code may still execute—even if the file is labeled as an image.
+
+---
+
+## MIME Filter
