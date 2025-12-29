@@ -15,7 +15,7 @@ This section documents common techniques for identifying and exploiting **file u
   - [Blacklist Filters](#blacklist-filters)
   - [Whitelist Filters](#whitelist-filters)
   - [Content-Type Filter](#content-type-filter)
-  - [MIME Filter](#mime-filter)
+  - [File Content Filter](#file-content-filter)
 
 ---
 
@@ -569,7 +569,7 @@ if (!in_array($type, array('image/jpg', 'image/jpeg', 'image/png', 'image/gif'))
 }
 ```
 
-In this example, the application reads the uploaded file’s `Content-Type` header and compares it against a list of allowed `MIME` types.
+In this example, the application reads the uploaded file’s `Content-Type` header and compares it against a list of allowed `Content-Type` values.
 
 When a file is selected for upload, the browser automatically sets the `Content-Type` header, usually based on the file extension. Since this occurs client-side, the header can be **intercepted and modified** using a web proxy such as **Burp Suite**. In some cases, changing this header alone is sufficient to bypass the filter.
 
@@ -591,7 +591,7 @@ Only images are allowed
 
 This confirms that the application actively validates the `Content-Type` header.
 
-To identify which `MIME` types are accepted, we can fuzz the `Content-Type` header using a known-good image file and filter responses based on the error message.
+To identify which types are accepted, we can fuzz the `Content-Type` header using a known-good image file and filter responses based on the error message.
 
 A commonly used wordlist for this purpose is:
 
@@ -607,7 +607,7 @@ Then fuzz the `Content-Type` header using `ffuf`:
 ffuf -w web-all-content-types.txt:FUZZ -request req.txt -request-proto http -fr "Only images are allowed"
 ```
 
-The scan reveals that only the following `MIME` types are accepted:
+The scan reveals that only the following `Content-Type` values are accepted:
 
 - `image/jpeg`
 - `image/png`
@@ -621,4 +621,42 @@ The `Content-Type` header does not influence whether server-side code executes. 
 
 ---
 
-## MIME Filter
+## File Content Filter
+
+A more robust approach to file validation is inspecting the actual file contents rather than relying on extensions or HTTP headers. This is typically done by validating the file’s `MIME` type.
+
+**Multipurpose Internet Mail Extensions (MIME)** define file types based on a file’s structure and byte patterns, rather than its name. Servers commonly determine the `MIME` type by examining the **file signature**, also known as the **magic bytes**, which are located at the beginning of a file.
+
+For example, a file starting with `GIF8`, `GIF87a` or `GIF89a` is identified as a GIF image, regardless of its extension.
+
+Common file signatures include:
+
+| File Type       | ASCII Signature       | HEX Signature   |
+| ----------------| --------------------- |---------------- |
+| `GIF`           | `GIF87a` or `GIF89a`  | 47 49 46 38     |
+| `PNG`           | `.PNG`                | 89 50 4e 47     |
+| `BMP`           | `BM`                  | 42 4D           |
+| `JPG`           |                       | ff d8 ff e0     |
+
+When an application validates files based on `MIME` type, modifying the file’s magic bytes can be enough to bypass the filter.
+
+In this scenario, uploading a PHP web shell fails even when using allowed extensions and valid `Content-Type` headers. This indicates that the server is validating the file’s `MIME` type by inspecting its contents.
+
+By prepending valid image magic bytes to the file, we can trick the server into identifying it as an image while still embedding executable PHP code.
+
+For example, adding the `GIF8` signature at the beginning of the file:
+
+```php
+GIF8
+<?php system($_GET["cmd"]); ?>
+```
+
+![Filtered output](images/mime-type-filter.png)
+
+The file is now recognized as a GIF image by the `MIME` filter. This technique demonstrates that MIME-based validation alone is insufficient if executable content is not explicitly stripped or rendered inert after upload.
+
+---
+
+## Exploitation Example - 1
+
+This example ties everything together. The targets file upload functionality is protected by front-end, blacklist, whitelist, content-type and MIME-type filters. 
