@@ -801,3 +801,69 @@ All upload defenses were successfully bypassed, resulting in remote code executi
 
 ---
 
+## Limited File Uploads
+
+So far we have been dealing with vulnerable filters related to **arbitrary file uploads**. Some upload forms have secure filters that only allow us to upload specific file types (limited file uploads). These filters may not be bypassed with the techniques discussed thus far. However, some types of attacks may still be possible.
+
+Certain file types, such as `SVG`, `HTML` and `XML` may allow us to upload malicious files. This is why fuzzing for allowed file extensions is a crucial part of all file upload attacks. Knowing that file extensions are accepted, enables us to determine what type of attacks may be achievable. 
+
+### Cross-Site Scripting (XSS)
+
+Certain file types can be abused to achieve **stored cross-site scripting (XSS)** when an application allows file uploads and subsequently renders user-controlled content without proper sanitization.
+
+HTML files do not allow direct server-side code execution, but they can be leveraged to execute **client-side JavaScript**. If an attacker is able to upload an HTML file containing malicious JavaScript, the payload will execute whenever the file is opened in a browser.
+
+For this attack to succeed, a victim must be tricked into opening the uploaded file. This is commonly achieved through **social engineering or phishing**. While this does not result in remote code execution, it can be used for session hijacking, credential theft, CSRF attacks, or further client-side exploitation.
+
+Some applications extract and display metadata from uploaded images. If metadata fields are rendered without proper output encoding, they may become a vector for stored XSS.
+
+Image metadata fields that commonly accept free-form text include:
+
+- `Comment`
+- `Artist`
+- `ImageDescription`
+
+An XSS payload can be embedded into such fields using tools like `exiftool`:
+
+Install `exiftool`:
+
+```bash
+sudo apt install exiftool -y
+```
+
+Inject XSS payload:
+
+```bash
+exiftool -Comment=' "><img src=1 onerror=alert(window.origin)>' picture.jpg
+```
+
+Verify the injected metadata:
+
+```bash
+exiftool picture.jpg
+```
+
+![Filtered output](images/limited-file-uploads.PNG)
+
+When the application displays this metadata in a web page without proper sanitization, the injected JavaScript executes in the victim’s browser.
+
+`Scalable Vector Graphics (SVG)` files are XML-based and can contain embedded JavaScript. If an application allows SVG uploads and renders them inline, they can be abused to execute XSS payloads.
+
+An example malicious SVG file (`payload.svg`) is shown below:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="1" height="1">
+    <rect x="1" y="1" width="1" height="1" fill="green" stroke="black" />
+    <script type="text/javascript">alert(window.origin);</script>
+</svg>
+```
+
+Once uploaded, the JavaScript payload executes whenever the SVG is rendered by the application, resulting in stored XSS.
+
+![Filtered output](images/limited-file-uploads2.PNG)
+
+---
+
+### XML External Entity (XXE) Injection
