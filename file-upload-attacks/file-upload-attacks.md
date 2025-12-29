@@ -19,6 +19,9 @@ This section documents common techniques for identifying and exploiting **file u
         - [Content-Type Filters](#content-type-filters)
         - [File Content Filters](#file-content-filters)
     - [Exploitation Example -1](#exploitation-example---1)
+    - [Limited File Uploads](#limited-file-uploads)
+        - [Cross-Site Scripting (XSS)](#cross-site-scripting-xss)
+        - [XML External Entity (XXE) Injection](#xml-external-entity-xxe-injection)
 
 ---
 
