@@ -812,6 +812,8 @@ While limited file uploads may not be bypassable using the techniques discussed 
 
 File types such as `SVG`, `HTML`, and `XML` can often be leveraged for client-side attacks, including **stored Cross-Site Scripting (XSS)**, **CSRF**, or **data exfiltration**. As a result, **fuzzing for allowed file extensions** remains a critical step in any file upload assessment. Identifying which file types are accepted enables us to determine the potential attack surface and pivot toward alternative exploitation techniques when direct code execution is not possible.
 
+---
+
 ### Cross-Site Scripting (XSS)
 
 Certain file types can be abused to achieve **stored cross-site scripting (XSS)** when an application allows file uploads and subsequently renders user-controlled content without proper sanitization.
