@@ -7,22 +7,22 @@ This section documents common techniques for identifying and exploiting **file u
 # Table of Contents
 
 - [File Upload Attacks](#file-upload-attacks)
-- [Overview](#overview)
-- [Basic Exploitation](#basic-exploitation)
-- [Shells](#shells)
-    - [Web Shells](#web-shells)
-    - [Reverse Shells](#reverse-shells)
-- [Bypassing Filters](#bypassing-filters)
-  - [Front-End Filters](#front-end-filters)
-  - [Blacklist Filters](#blacklist-filters)
-  - [Whitelist Filters](#whitelist-filters)
-  - [Content-Type Filters](#content-type-filters)
-  - [File Content Filters](#file-content-filters)
-- [Exploitation Example -1](#exploitation-example---1)
+    - [Overview](#overview)
+    - [Basic Exploitation](#basic-exploitation)
+    - [Shells](#shells)
+        - [Web Shells](#web-shells)
+        - [Reverse Shells](#reverse-shells)
+    - [Bypassing Filters](#bypassing-filters)
+        - [Front-End Filters](#front-end-filters)
+        - [Blacklist Filters](#blacklist-filters)
+        - [Whitelist Filters](#whitelist-filters)
+        - [Content-Type Filters](#content-type-filters)
+        - [File Content Filters](#file-content-filters)
+    - [Exploitation Example -1](#exploitation-example---1)
 
 ---
 
-# Overview
+## Overview
 
 Many web applications provide functionality for users to upload files. If these uploads are not properly validated and restricted, attackers may be able to upload malicious files to the back-end server.
 
@@ -32,7 +32,7 @@ The most severe form of this vulnerability is an `unauthenticated arbitrary file
 
 ---
 
-# Basic Exploitation
+## Basic Exploitation
 
 In the simplest scenario, a target application implements no effective security controls on its file upload functionality. This allows an attacker to upload arbitrary files, including **web shells**, directly to the server.
 
@@ -110,9 +110,9 @@ At this point, we have successfully achieved remote code execution (RCE) through
 
 ---
 
-# Shells
+## Shells
 
-## Web Shells
+### Web Shells
 
 Web shells are a common post-exploitation technique used to obtain and maintain remote code execution on a target system. A web shell is typically a script written in the same language as the back-end application and executed through a web-accessible endpoint.
 
@@ -184,7 +184,7 @@ Interactive web shells like `phpbash` can significantly improve usability during
 
 ---
 
-## Reverse Shells
+### Reverse Shells
 
 Web shells are not always reliable. In some cases, web application firewalls (WAFs), restrictive PHP configurations, or disabled system functions may prevent web shell execution. In these situations, deploying a reverse shell is often a more effective approach.
 
@@ -257,9 +257,9 @@ If successful, a reverse shell will connect back to the specified listener.
 
 ---
 
-# Bypassing Filters
+## Bypassing Filters
 
-## Front-End Filters
+### Front-End Filters
 
 Some applications rely solely on front-end validation to restrict uploaded file types. This approach is inherently weak, as client-side controls can be bypassed by interacting directly with the back-end using a web proxy such as **Burp Suite**.
 
@@ -327,7 +327,7 @@ This confirms successful bypass of front-end validation and results in **remote 
 
 ---
 
-## Blacklist Filters
+### Blacklist Filters
 
 Blacklist filters are implemented on the back-end and are therefore more robust than front-end validation. An extension-based blacklist consists of a list of **disallowed file extensions**. When a file is uploaded, its extension is compared against each entry in the blacklist, and the upload is rejected if a match is found.
 
@@ -387,7 +387,7 @@ This confirms that the blacklist filter can be bypassed by identifying an altern
 
 ---
 
-## Whitelist Filters
+### Whitelist Filters
 
 Whitelist-based validation is generally more secure than blacklist filtering. With a whitelist, **only explicitly permitted file extensions are allowed**, and all others are rejected by default. This significantly reduces the attack surface, as uncommon or obscure executable extensions are excluded unless intentionally permitted.
 
@@ -549,7 +549,7 @@ http://94.237.120.119:48470/profile_images/shell.phar.jpg?cmd=id
 
 ---
 
-## Content-Type Filters
+### Content-Type Filters
 
 Relying solely on file extension checks—whether via blacklists or whitelists—is insufficient to prevent file upload vulnerabilities. More robust applications also validate the file content to ensure it matches the expected file type.
 
@@ -628,7 +628,7 @@ The `Content-Type` header does not influence whether server-side code executes. 
 
 ---
 
-## File Content Filters
+### File Content Filters
 
 A more robust approach to file validation is inspecting the actual file contents rather than relying on extensions or HTTP headers. This is typically done by validating the file’s `MIME` type.
 
@@ -664,7 +664,7 @@ The file is now recognized as a GIF image by the `MIME` filter. This technique d
 
 ---
 
-# Exploitation Example - 1
+## Exploitation Example - 1
 
 This example demonstrates a full exploitation chain against a file upload functionality protected by multiple layered defenses, including:
 
@@ -800,3 +800,4 @@ All upload defenses were successfully bypassed, resulting in remote code executi
 ![Filtered output](images/exploitation9.PNG)
 
 ---
+
