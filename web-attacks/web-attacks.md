@@ -11,7 +11,8 @@ This document covers common techniques for identifying and exploiting **web vuln
     - [HTTP Verb Tampering](#http-verb-tampering)
         - [Bypassing Basic Authentication](#bypassing-basic-authentication)
         - [Bypassing Security Filters](#bypassing-security-filters)
-
+    - [Insecure Direct Object References (IDOR)](#insecure-direct-object-references-idor)
+        - [Identifying IDORs](#identifying-idors)
 
 ---
 
@@ -226,4 +227,26 @@ This demonstrates how **HTTP verb tampering can be used to bypass security contr
 
 ---
 
+## Insecure Direct Object References (IDOR)
 
+Insecure Direct Object Reference (IDOR) vulnerabilities occur when an application exposes **direct references to internal resources** stored on the back-end server without enforcing proper access control. **IDOR is among the most common web vulnerabilities** encountered in real-world applications.
+
+Consider an application that exposes direct references to uploaded files, such as:
+
+```
+download.php?file_id=123
+```
+
+In this example, the application directly references a file using a numeric identifier. An attacker may attempt to access a different resource by modifying the identifier value:
+
+```
+download.php?file_id=120
+```
+
+If the application relies solely on the provided identifier and fails to verify whether the requesting user is authorized to access the referenced object, unauthorized files may be disclosed. In such cases, an attacker can easily **enumerate object identifiers** and access sensitive resources belonging to other users.
+
+It is important to note that exposing a direct reference to an object is **not inherently a vulnerability**. The issue arises when direct object references are combined with **missing or broken access control checks**, allowing unauthorized access to protected resources.
+
+---
+
+### Identifying IDORs
