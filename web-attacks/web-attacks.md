@@ -156,3 +156,72 @@ This is a classic example of **HTTP Verb Tampering leading to authentication byp
 
 ---
 
+### Bypassing Security Filters
+
+Another, more common form of HTTP verb tampering vulnerability arises from **incomplete or flawed input validation logic**. Security filters are often implemented to mitigate attacks such as SQL injection, command injection, and malicious file uploads. However, these filters are frequently applied only to specific HTTP methods, such as `GET` or `POST`.
+
+When validation is enforced inconsistently, an attacker may bypass the filter simply by changing the HTTP method used in the request.
+
+The target is the same application used in the previous section. This time, a security filter has been implemented to protect against various injection attacks.
+
+We begin by attempting **command injection** using common command separators
+
+```
+GET /index.php?filename=test;
+GET /index.php?filename=test'
+```
+
+![Filtered output](images/filer-bypass.PNG)
+
+All attempts result in an error message:
+
+```
+Malicious Request Denied!
+```
+
+This behavior indicates that a security filter is present on the back-end server and is actively blocking malicious input.
+
+Next, we attempt to bypass the filter using HTTP verb tampering. We change the request method from `GET` to `POST` and resend the payload:
+
+```
+POST /index.php
+filename=test;
+```
+
+![Filtered output](images/filter-bypass2.PNG)
+
+This time, the request is processed successfully, confirming that the input validation logic is applied only to `GET` requests. We have successfully bypassed the security filter by using an alternative HTTP method.
+
+With command injection confirmed, we escalate by executing a system command to read a sensitive file:
+
+```bash
+# Original
+filename=test;cat /etc/passwd
+
+# URL encoded
+filename=test%3bcat+/etc/passwd
+```
+
+The server returns the contents of `/etc/passwd`, confirming **arbitrary command execution**:
+
+![Filtered output](images/filter-bypass3.PNG)
+
+Alternatively, we can copy the file into the web root and access it directly:
+
+```bash
+# Original
+filename=test;cp /etc/passwd .
+
+# URL encoded
+filename=test%3bcp+/etc/passwd+.
+```
+
+![Filtered output](images/filter-bypass4.PNG)
+
+This vulnerability exists because **input validation was enforced only for specific HTTP methods**. By switching from `GET` to `POST`, the attacker bypassed the security filter and achieved command execution.
+
+This demonstrates how **HTTP verb tampering can be used to bypass security controls**, ultimately leading to sensitive file disclosure and full compromise of the application.
+
+---
+
+
