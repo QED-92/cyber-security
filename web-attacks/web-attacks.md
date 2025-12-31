@@ -250,3 +250,103 @@ It is important to note that exposing a direct reference to an object is **not i
 ---
 
 ### Identifying IDORs
+
+To identify IDOR vulnerabilities, it is essential to closely examine **HTTP requests and responses**. Pay particular attention to **URL parameters, cookies, and API requests** that contain object references, such as:
+
+```
+?uid=1
+
+?filename=file_1.pdf
+```
+
+In the most basic cases, simply modifying the object reference may result in unauthorized information disclosure:
+
+```
+?uid=2
+
+?filename=file_2.pdf
+```
+
+It is common to automate this enumeration process using fuzzing to identify accessible object identifiers.
+
+Another effective technique for identifying IDOR vulnerabilities is analyzing the **front-end source code**. Unused parameters, hidden API endpoints, or privileged functionality can often be discovered by inspecting **JavaScript and AJAX calls**. Some applications insecurely expose function calls on the client side and rely on front-end logic to restrict access based on the user’s role.
+
+A basic AJAX request may look like the following:
+
+```javascript
+function changeUserPassword() {
+    $.ajax({
+        url:"change_password.php",
+        type: "post",
+        dataType: "json",
+        data: {uid: user.uid, password: user.password, is_admin: is_admin},
+        success:function(result){
+            //
+        }
+    });
+}
+```
+
+Although this function may only be triggered for administrative users through the interface, its presence in the page source allows an attacker to **manually invoke the request** and test for IDOR vulnerabilities.
+
+Object references are often **encoded or hashed** in an attempt to obscure their values. These references may still be exploitable if the back-end does not enforce proper access control. Common encoding or hashing schemes include `base64` and `md5`.
+
+When a reference is encoded, the typical approach is to decode the value, modify it, and re-encode it. For example:
+
+```bash
+# Base64-encoded
+filename=ZmlsZV8xMjMucGRm
+
+# Plain text
+filename=file_123.pdf
+
+# Modified plain text
+filename=file_124.pdf
+
+# Base64-encoded
+filename=ZmlsZV8xMjQucGRm
+```
+
+If the object reference appears to be hashed, tools such as `hashid` can be used to identify the hashing algorithm. Additionally, inspecting the page source may reveal the function responsible for generating the hash.
+
+Suppose the following object reference is observed:
+
+```
+filename=c81e728d9d4c2f636f067f89cc14862c
+```
+
+Further inspection of the page source reveals the following JavaScript code:
+
+```javascript
+$.ajax({
+    url:"download.php",
+    type: "post",
+    dataType: "json",
+    data: {filename: CryptoJS.MD5('file_1.pdf').toString()},
+    success:function(result){
+        //
+    }
+});
+```
+
+In this case, the application uses `md5` to hash object references. Once the plaintext filename is identified—using tools such as `hashcat` or online services like `CrackStation`—an attacker can generate valid hashes for other files following the same naming pattern.
+
+A more advanced IDOR technique involves **comparing object references across multiple user accounts**. This approach typically requires the ability to register or control multiple users. By comparing HTTP requests made by different users, it may be possible to identify how object identifiers are generated and forge requests to access other users’ data.
+
+For example, one user may trigger the following API response:
+
+```json
+{
+  "attributes" : 
+    {
+      "type" : "salary",
+      "url" : "/services/data/salaries/users/1"
+    },
+  "Id" : "1",
+  "Name" : "User1"
+}
+```
+
+Another user may not have direct access to this API endpoint. However, by replicating the request and modifying the object reference, an attacker can test whether the application properly enforces access control or discloses sensitive data.
+
+---
