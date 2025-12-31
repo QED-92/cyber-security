@@ -8,7 +8,7 @@ This document covers common techniques for identifying and exploiting **web vuln
 
 - [Web Attacks](#web-attacks)
     - [Overview](#overview)
-    - [HTTP Verb Tampering - Overview](#http-verb-tampering---overview)
+    - [HTTP Verb Tampering](#http-verb-tampering)
 
 
 ---
@@ -29,7 +29,7 @@ Three common web attacks include:
 
 ---
 
-## HTTP Verb Tampering - Overview
+## HTTP Verb Tampering
 
 The HTTP protocol supports multiple request methods, commonly referred to as **HTTP verbs**. Web applications are typically configured to accept specific verbs for particular functionalities and perform different actions depending on the method used.
 
@@ -73,3 +73,86 @@ if(preg_match($pattern, $_GET["code"])) {
 In this case, the input validation is applied only to parameters received via `GET`. An attacker could still inject malicious SQL payloads by supplying the code parameter via a `POST` request, effectively bypassing the filter.
 
 ---
+
+### Bypassing Basic Authentication
+
+The target application is a simple file manager. New files can be added by entering a filename into the input field:
+
+![Filtered output](images/basic-auth.png)
+
+When attempting to delete a file by clicking the red `Reset` button, an **HTTP Basic Authentication** prompt appears and requests valid credentials:
+
+![Filtered output](images/basic-auth2.png)
+
+Since no valid credentials are available, the request is denied and the user is redirected to a `401 Unauthorized` page:
+
+![Filtered output](images/basic-auth3.png)
+
+Inspecting the redirected URL reveals that the restricted resource is located at `/admin/reset.php`:
+
+```
+http://94.237.57.115:53252/admin/reset.php?
+```
+
+At this point, it is unclear whether access is restricted only to `reset.php` or to the entire `/admin` directory. Attempting to browse directly to `/admin/` again results in an authentication prompt:
+
+```
+http://94.237.57.115:53252/admin/
+```
+
+![Filtered output](images/basic-auth4.png)
+
+This confirms that the entire `/admin` directory is protected by HTTP Basic Authentication.
+
+The first step in exploiting this behavior is identifying which HTTP method the application uses to trigger the reset functionality. To do this, we intercept the request in **Burp Suite** when clicking the `Reset` button:
+
+```
+GET /admin/reset.php?
+```
+
+![Filtered output](images/basic-auth5.png)
+
+The application uses a `GET` request to perform the action.
+
+We then attempt to bypass authentication by changing the HTTP method. In Burp Suite, `right-click` the request and select `Change request method`, replacing `GET` with `POST`:
+
+```
+POST /admin/reset.php?
+```
+
+![Filtered output](images/basic-auth6.png)
+
+The server still responds with `401 Unauthorized`, indicating that both `GET` and `POST` methods are correctly protected.
+
+Next, we test additional HTTP methods such as `HEAD` and `OPTIONS`:
+
+```
+HEAD /admin/reset.php?
+```
+
+This request also returns `401 Unauthorized`, suggesting that `HEAD` is covered by the authentication rules.
+
+Finally, we send an `OPTIONS` request:
+
+```
+OPTIONS /admin/reset.php?
+```
+
+This time, the server responds with `200 OK`, allowing the request to be processed without authentication:
+
+![Filtered output](images/basic-auth8.PNG)
+
+Returning to the main page confirms that the reset functionality was executed. The files have been removed and replaced with a flag:
+
+```
+HTB{4lw4y5_c0v3r_4ll_v3rb5}
+```
+
+![Filtered output](images/basic-auth9.png)
+
+This vulnerability exists because **authentication controls were applied only to specific HTTP methods**. The server failed to enforce authentication consistently across all supported verbs, allowing an attacker to trigger sensitive functionality using an unexpected method.
+
+This is a classic example of **HTTP Verb Tampering leading to authentication bypass**.
+
+---
+
