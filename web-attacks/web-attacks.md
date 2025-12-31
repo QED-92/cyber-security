@@ -9,6 +9,8 @@ This document covers common techniques for identifying and exploiting **web vuln
 - [Web Attacks](#web-attacks)
     - [Overview](#overview)
     - [HTTP Verb Tampering](#http-verb-tampering)
+        - [Bypassing Basic Authentication](#bypassing-basic-authentication)
+        - [Bypassing Security Filters](#bypassing-security-filters)
 
 
 ---
