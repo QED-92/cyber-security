@@ -19,6 +19,9 @@ This document covers common techniques for identifying and exploiting **web vuln
         - [Encoded Object References](#encoded-object-references)
         - [IDOR in APIs](#idor-in-apis)
 
+    - [XML External Entity (XXE) Injection](#xml-external-entity-xxe-injection)
+        - [XML Overview](#xml-overview)
+
 ---
 
 ## Overview
@@ -608,5 +611,181 @@ Executing the script reveals an administrative account with the role `staff_admi
 Finally, by issuing a `PUT` request to modify the administrator’s email address to `flag@idor.htb`, the application displays the flag on the profile page:
 
 ![Filtered output](images/idor-api9.png)
+
+---
+
+## XML External Entity (XXE) Injection
+
+**XML External Entity (XXE) Injection** vulnerabilities occur when an application processes **user-supplied XML input** without securely configuring its XML parser. When external entities are enabled, an attacker may be able to manipulate the XML structure to access local files, interact with internal services, or cause denial-of-service conditions.
+
+Due to its potential impact, XXE injection is considered one of the **OWASP Top 10 Web Security Risks**.
+
+### XML Overview
+
+**Extensible Markup Language (XML)** is designed for structured storage and transfer of data. Unlike HTML, which focuses on presentation, XML is primarily used to represent data in hierarchical structures.
+
+An XML document is composed of an **element tree**, where:
+
+- Each element is defined by an opening and closing tag
+- The top-level element is known as the `root element`
+- All nested elements are referred to as `child elements`
+
+A simple XML document may appear as follows:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<email>
+  <date>01-01-2022</date>
+  <time>10:00 am UTC</time>
+  <sender>john@inlanefreight.com</sender>
+  <recipients>
+    <to>HR@inlanefreight.com</to>
+    <cc>
+        <to>billing@inlanefreight.com</to>
+        <to>payslips@inlanefreight.com</to>
+    </cc>
+  </recipients>
+  <body>
+  Hello,
+      Kindly share with me the invoice for the payment made on January 1, 2022.
+  Regards,
+  John
+  </body> 
+</email>
+```
+
+In this example, <email> is the `root element`, while all other tags represent `child elements`.
+
+**A Document Type Definition (DTD)** is used to define and validate the structure of an XML document. It specifies which elements are allowed, their order, and their content types.
+
+The DTD for the XML document above may look like the following:
+
+```xml
+<!DOCTYPE email [
+  <!ELEMENT email (date, time, sender, recipients, body)>
+  <!ELEMENT recipients (to, cc?)>
+  <!ELEMENT cc (to*)>
+  <!ELEMENT date (#PCDATA)>
+  <!ELEMENT time (#PCDATA)>
+  <!ELEMENT sender (#PCDATA)>
+  <!ELEMENT to  (#PCDATA)>
+  <!ELEMENT body (#PCDATA)>
+]>
+```
+
+This DTD declares:
+
+- `email` as the root element
+- The required child elements and their order
+- Elements containing raw character data using `#PCDATA`
+
+A DTD may be declared **inline** within the XML document, immediately after the XML declaration:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE email [
+  <!ELEMENT email (date, time, sender, recipients, body)>
+  <!ELEMENT recipients (to, cc?)>
+  <!ELEMENT cc (to*)>
+  <!ELEMENT date (#PCDATA)>
+  <!ELEMENT time (#PCDATA)>
+  <!ELEMENT sender (#PCDATA)>
+  <!ELEMENT to  (#PCDATA)>
+  <!ELEMENT body (#PCDATA)>
+]>
+<email>
+  <date>01-01-2022</date>
+  <time>10:00 am UTC</time>
+  <sender>john@inlanefreight.com</sender>
+  <recipients>
+    <to>HR@inlanefreight.com</to>
+    <cc>
+        <to>billing@inlanefreight.com</to>
+        <to>payslips@inlanefreight.com</to>
+    </cc>
+  </recipients>
+  <body>
+  Hello,
+      Kindly share with me the invoice for the payment made on January 1, 2022.
+  Regards,
+  John
+  </body> 
+</email>
+```
+
+DTD definitions may also be stored in an **external file** and referenced using the `SYSTEM` keyword:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE email SYSTEM "email.dtd">
+<email>
+  <date>01-01-2022</date>
+  <time>10:00 am UTC</time>
+  <sender>john@inlanefreight.com</sender>
+  <recipients>
+    <to>HR@inlanefreight.com</to>
+    <cc>
+        <to>billing@inlanefreight.com</to>
+        <to>payslips@inlanefreight.com</to>
+    </cc>
+  </recipients>
+  <body>
+  Hello,
+      Kindly share with me the invoice for the payment made on January 1, 2022.
+  Regards,
+  John
+  </body> 
+</email>
+```
+
+The external DTD can also be referenced via a **remote URL**, which is often abused during XXE exploitation:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE email SYSTEM "http://IP:PORT/email.dtd">
+<email>
+  <date>01-01-2022</date>
+  <time>10:00 am UTC</time>
+  <sender>john@inlanefreight.com</sender>
+  <recipients>
+    <to>HR@inlanefreight.com</to>
+    <cc>
+        <to>billing@inlanefreight.com</to>
+        <to>payslips@inlanefreight.com</to>
+    </cc>
+  </recipients>
+  <body>
+  Hello,
+      Kindly share with me the invoice for the payment made on January 1, 2022.
+  Regards,
+  John
+  </body> 
+</email>
+```
+
+When external entity resolution is enabled, the parser may retrieve and process remote resources, leading to **file disclosure, SSRF, or remote code execution** depending on the parser configuration.
+
+XML allows the definition of **custom entities**, which function as XML variables. Entities are declared using the `ENTITY` keyword:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE email [
+  <!ENTITY company "Inlane Freight">
+]>
+```
+
+Entities are referenced using an ampersand (`&`) and a semicolon (`;`), such as `&company;`. During parsing, the entity reference is replaced with its defined value.
+
+Entities may also reference external resources using the `SYSTEM` keyword:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE email [
+  <!ENTITY company SYSTEM "http://localhost/company.txt">
+  <!ENTITY signature SYSTEM "file:///var/www/html/signature.txt">
+]>
+```
+
+When improperly handled, external entity resolution enables attackers to **read local files, access internal network resources, or exfiltrate data** through out-of-band channels.
 
 ---
