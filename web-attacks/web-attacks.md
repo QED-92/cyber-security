@@ -17,6 +17,7 @@ This document covers common techniques for identifying and exploiting **web vuln
         - [Identifying IDORs](#identifying-idors)
         - [IDOR Enumeration](#idor-enumeration)
         - [Encoded Object References](#encoded-object-references)
+        - [IDOR in APIs](#idor-in-apis)
 
 ---
 
@@ -531,5 +532,81 @@ ls | xargs cat
 Most files are empty; however, one file contains the flag:
 
 ![Filtered output](images/encoded-idor4.png)
+
+---
+
+### IDOR in APIs
+
+IDOR vulnerabilities frequently occur in **API endpoints and back-end function calls**, where user-controlled identifiers are used to reference internal objects. When access control checks are missing or improperly enforced, an attacker may be able to perform actions on behalf of other users, resulting in unauthorized data access or modification.
+
+In this scenario, we assess the target’s `Edit Profile` functionality. 
+
+![Filtered output](images/idor-api.png)
+
+The `Edit Profile` feature allows employees to modify their own profile information.
+
+![Filtered output](images/idor-api2.png)
+
+By intercepting the request in **Burp Suite**, we observe that the application sends profile updates via a `PUT` request containing `JSON` data to the following API endpoint:
+
+```
+/profile/api.php/profile/1
+```
+
+![Filtered output](images/idor-api3.png)
+
+We also note that the application relies on a client-side cookie to define the user’s role:
+
+```
+Cookie: role=employee
+```
+
+This indicates that authorization logic is at least **partially handled client-side**, which is a common security anti-pattern. In such cases, an attacker may attempt to escalate privileges by manipulating the role value (e.g., changing it to `admin`) or by modifying user identifiers such as `uid`.
+
+However, attempts to directly modify the `role` or `uid` parameters fail. This suggests that the application enforces server-side authorization checks for these specific operations, and the endpoint is not vulnerable to **insecure function calls via direct parameter tampering**.
+
+We continue testing the API for **information disclosure vulnerabilities** by manipulating the HTTP method. Instead of using `PUT`, we switch to a `GET` request and attempt to retrieve data associated with another user by specifying a different user ID:
+
+```
+/profile/api.php/profile/5
+```
+
+![Filtered output](images/idor-api4.png)
+
+This request succeeds, and the API returns sensitive information belonging to another user:
+
+![Filtered output](images/idor-api5.png)
+
+Most notably, the response reveals the user’s `UUID`, which was previously unknown and could not be predicted. This `UUID` can be leveraged to perform authenticated actions against the target user’s profile.
+
+Using the disclosed `UUID`, we send a PUT request to update the victim’s `full_name` field to `PWNED!`:
+
+![Filtered output](images/idor-api6.png)
+
+Repeating the `GET` request confirms that the profile information has been successfully modified:
+
+![Filtered output](images/idor-api7.png)
+
+At this stage, we have successfully identified and exploited an **IDOR vulnerability caused by information disclosure via HTTP verb tampering**. The application exposes sensitive user data when accessed with unsupported HTTP methods, enabling unauthorized object access and modification.
+
+The next logical step is to leverage this vulnerability to enumerate additional users. To do so, we write a simple `Bash` script that iterates through user IDs in the range 1–20 and filters for accounts containing the string `admin`:
+
+```bash
+#!/bin/bash
+
+url=http://IP:PORT
+
+for i in {1..20}; do
+    curl -s "$url/profile/api.php/profile/$i" | grep -i "admin" | jq
+done
+```
+
+Executing the script reveals an administrative account with the role `staff_admin`:
+
+![Filtered output](images/idor-api8.png)
+
+Finally, by issuing a `PUT` request to modify the administrator’s email address to `flag@idor.htb`, the application displays the flag on the profile page:
+
+![Filtered output](images/idor-api9.png)
 
 ---
