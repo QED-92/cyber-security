@@ -988,7 +988,7 @@ Upon submission, we observe an inbound request to our server, confirming that th
 10.129.234.170 - - [03/Jan/2026 13:56:08] "GET /xxe.dtd HTTP/1.0" 200 -
 ```
 
-![Filtered output](images/xxe-advanced3.PNG)
+![Filtered output](images/xxe-advanced3.png)
 
 The application returns the contents of the target file, wrapped safely inside a `CDATA` section:
 
@@ -996,7 +996,7 @@ The application returns the contents of the target file, wrapped safely inside a
 <?php $flag = "HTB{3rr0r5_c4n_l34k_d474}"; ?>
 ```
 
-![Filtered output](images/xxe-advanced2.PNG)
+![Filtered output](images/xxe-advanced2.png)
 
 ---
 
