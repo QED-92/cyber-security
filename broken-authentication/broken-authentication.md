@@ -9,6 +9,9 @@ This document covers common techniques for identifying and exploiting vulnerabil
 - [Broken Authentication](#broken-authentication)
     - [Overview](#overview)
 
+    - [Brute Force Attacks](#brute-force-attacks)
+        - [Enumerating Users](#enumerating-users)
+
 ---
 
 ## Overview
@@ -59,5 +62,109 @@ While often more difficult to bypass, biometric systems introduce unique securit
 - Something the user is (biometric data)
 
 MFA significantly increases security by reducing the impact of compromised credentials.
+
+---
+
+## Brute Force Attacks
+
+Brute forcing can be applied to a wide variety of scenarios, such as:
+
+- User enumeration
+- Brute forcing passwords
+- Brute forcing password reset tokens
+- Brute forcing 2FA codes
+
+Common brute forcing tools include:
+
+- `Hydra`
+- `Hashcat`
+- `JohnTheRipper`
+- `ffuf`
+
+### Enumerating Users
+
+**User enumeration** vulnerabilities occur when an application responds differently to **valid versus invalid inputs**. These issues are most commonly found in:
+
+- Login forms
+- Registration forms
+- Password reset mechanisms
+
+Because many users reuse the same usernames across multiple services (e.g., SSH, RDP, FTP, and web applications), successful username enumeration often becomes the **foundation for further attacks**, such as password brute-forcing, credential stuffing, or targeted phishing.
+
+Preventing username enumeration can negatively impact the user experience, which is why many applications—including **WordPress**—allow it by default.
+
+When attempting to authenticate to WordPress with an **invalid username**, the application returns the following error message:
+
+```
+Unknown username. Check again or try your email address. 
+```
+
+![Filtered output](images/user-enumeration.PNG)
+
+When attempting to authenticate with a **valid username** but an **invalid password**, WordPress responds differently:
+
+```
+The password you entered for the username <username> is incorrect. 
+```
+
+![Filtered output](images/user-enumeration2.PNG)
+
+This discrepancy allows an attacker to reliably distinguish between valid and invalid username
+
+User enumeration can be automated using tools such as `ffuf`. Common username wordlists are available in the **SecLists** repository:
+
+- https://github.com/danielmiessler/SecLists/tree/master/Usernames
+
+When attempting to authenticate to the target application with an invalid username (`abc`), the following response is returned:
+
+```
+Unknown user.
+```
+
+![Filtered output](images/user-enumeration3.PNG)
+
+However, when using a valid username (`htb-stdnt`) with an incorrect password, the response changes:
+
+```
+Invalid credentials.
+```
+
+![Filtered output](images/user-enumeration4.PNG)
+
+This difference confirms the presence of a user enumeration vulnerability.
+
+We can leverage `ffuf` to brute-force valid usernames by filtering out responses associated with invalid users.
+
+Example command using a direct POST request:
+
+```bash
+ffuf -w xato-net-10-million-usernames.txt -u http://172.17.0.2/index.php -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "username=FUZZ&password=invalid" -fr "Unknown user"
+```
+
+A more reliable approach is to capture the authentication request in **Burp Suite**, save it to a file, and let `ffuf` parse it automatically.
+
+Captured request body:
+
+```
+username=FUZZ&password=invalid
+```
+
+![Filtered output](images/user-enumeration5.PNG)
+
+Run `ffuf` using the saved request:
+
+```bash
+ffuf -w xato-net-10-million-usernames.txt:FUZZ -request req.txt -request-proto http -fr "Unknown user"
+```
+
+This technique reduces errors and ensures accurate request replication.
+
+Using this method, we successfully identify a valid username:
+
+```
+cookster
+```
+
+![Filtered output](images/user-enumeration6.PNG)
 
 ---
