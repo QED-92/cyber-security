@@ -26,6 +26,8 @@ This document covers common techniques for identifying and exploiting **web vuln
         - [Advanced File Disclosure - Error Based](#advanced-file-disclosure---error-based)
         - [Out-of-band Data Exfiltration](#out-of-band-data-exfiltration)
         - [Automated Out-of-band Data Exfiltration](#automated-out-of-band-data-exfiltration)
+    
+    - [Web Attacks - Exploitation Example](#web-attacks---exploitation-example)
 
 ---
 
