@@ -24,7 +24,7 @@ This document covers common techniques for identifying and exploiting **web vuln
         - [Local File Disclosure (LFI)](#local-file-disclosure-lfi)
         - [Advanced File Disclosure - CDATA](#advanced-file-disclosure---cdata)
         - [Advanced File Disclosure - Error Based](#advanced-file-disclosure---error-based)
-        - [Out.of-band Data Exfiltration](#out-of-band-data-exfiltration)
+        - [Out-of-band Data Exfiltration](#out-of-band-data-exfiltration)
 
 ---
 
