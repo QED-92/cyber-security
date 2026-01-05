@@ -507,3 +507,122 @@ Several well-maintained resources provide extensive lists of default credentials
 ---
 
 ### Vulnerable Password Reset
+
+Brute-forcing passwords or reset tokens is often mitigated through **rate limiting, CAPTCHAs, or account lockout mechanisms**. However, even when these protections are in place, applications may still be vulnerable due to **logical flaws in password-reset workflows**.
+
+One such flaw occurs when applications rely on **security questions** instead of cryptographically secure, single-use reset tokens.
+
+Some applications allow users to reset their password by answering predefined **security questions** during the reset process. These questions are typically configured during account registration.
+
+Common examples include:
+
+```
+What is your mother's maiden name?
+
+What city where you born in?
+
+What was the name of your first pet?
+```
+
+This approach is fundamentally insecure for several reasons:
+
+- All users are often presented with the same questions
+- Answers are frequently predictable or reused
+- Responses may be obtained via OSINT
+- Many applications fail to rate-limit or lock out repeated attempts
+
+As a result, security questions often introduce an **alternative authentication bypass**.
+
+When attempting to reset the password for the `admin` account, the application presents the following security question:
+
+```
+What city were you born in?
+```
+
+![Filtered output](images/security-questions.PNG)
+
+Since city names are both predictable and enumerable, we can attempt to brute-force the answer using a wordlist of known cities.
+
+A suitable dataset is available here:
+
+- https://github.com/datasets/world-cities/blob/main/data/world-cities.csv
+
+This file contains over **25,000 cities worldwide**, stored in CSV format.
+
+The first column of the CSV file contains the city names. We extract this column to create a wordlist:
+
+```bash
+cut -d ',' -f1 world-cities.csv > cities.txt
+```
+
+We submit an incorrect city name and intercept the request using **Burp Suite**:
+
+![Filtered output](images/security-questions2.PNG)
+
+The application responds with a predictable error message:
+
+```
+Incorrect response.
+```
+
+This consistent response allows us to filter failed attempts during brute forcing.
+
+We insert the `FUZZ` keyword into the security question parameter and save the request to a file (`req.txt`):
+
+![Filtered output](images/security-questions3.PNG)
+
+We then brute-force the answer using `ffuf`:
+
+```bash
+ffuf -w cities.txt -request req.txt -request-proto http -fr "Incorrect response"
+```
+
+The correct answer is identified as:
+
+```
+Manchester
+```
+
+![Filtered output](images/security-questions4.PNG)
+
+Once the correct answer is submitted, the application redirects us to the password reset page:
+
+```
+http://94.237.52.208:58938/reset_password.php
+```
+
+We reset the administrator password to `password123` and receive confirmation:
+
+```
+The password for the user admin has been reset.
+```
+
+![Filtered output](images/security-questions5.PNG)
+
+Logging in with the new credentials grants access to the administrator dashboard:
+
+```
+admin:password123
+```
+
+We successfully retrieve the flag:
+
+```
+HTB{d4740b1801d9880ff70de227a54309f0}
+```
+
+![Filtered output](images/security-questions6.PNG)
+
+**Summary:**
+
+In this attack, we:
+
+- Identified a logic flaw in the password-reset workflow
+- Exploited insecure security-question-based authentication
+- Brute-forced the answer due to lack of rate limiting
+- Reset the administrator password
+- Achieved full account takeover
+
+This demonstrates that **security questions should never be treated as a secure authentication factor**. Even when brute-force protections exist elsewhere, weak reset logic can completely undermine account security.
+
+---
