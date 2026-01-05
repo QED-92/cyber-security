@@ -16,6 +16,8 @@ This document covers common techniques for identifying and exploiting vulnerabil
         - [Brute Forcing 2FA Codes](#brute-forcing-2fa-codes)
     
     - [Password Attacks](#password-attacks)
+        - [Default Credentials](#default-credentials)
+        - [Vulnerable Password Reset](#vulnerable-password-reset)
 ---
 
 ## Overview
@@ -465,3 +467,43 @@ This demonstrates that **2FA alone is not sufficient** if it is improperly imple
 ---
 
 ## Password Attacks
+
+Password attacks target weaknesses in how credentials are chosen, stored, transmitted, or managed. Despite improvements in authentication mechanisms, password-based access remains widespread and frequently misconfigured. One of the most overlooked yet effective techniques is testing for default credentials.
+
+---
+
+### Default Credentials
+
+Many applications and services are deployed with **preconfigured default credentials** to simplify initial access during installation or setup. These credentials are **intended to be changed immediately after deployment**. However, in practice, this step is often forgotten, skipped, or deliberately left unchanged for convenience.
+
+As a result, default credentials remain a **common and highly effective attack vector**, especially in internal applications, development environments, IoT devices, network appliances, and industrial systems.
+
+Testing for default credentials should always be one of the **first steps** during an authentication assessment.
+
+Default credentials are frequently found in:
+
+- Web applications (admin panels, CMS platforms)
+- Network devices (routers, firewalls, switches)
+- Databases
+- Monitoring dashboards
+- IoT devices and embedded systems
+- SCADA and ICS environments
+
+Examples include:
+
+```
+admin:admin
+admin:password
+root:root
+admin:1234
+```
+
+Several well-maintained resources provide extensive lists of default credentials:
+
+- https://cirt.net/passwords/
+- https://github.com/danielmiessler/SecLists/tree/master/Passwords/Default-Credentials
+- https://github.com/scadastrangelove/SCADAPASS
+
+---
+
+### Vulnerable Password Reset
