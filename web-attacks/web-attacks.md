@@ -1238,7 +1238,6 @@ The objective of this exercise is to escalate privileges and exploit multiple vu
 
 ```
 /flag.php
-
 ```
 Authenticate to `IP:PORT` using the following credentials:
 

