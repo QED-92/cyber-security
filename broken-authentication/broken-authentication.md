@@ -22,6 +22,10 @@ This document covers common techniques for identifying and exploiting vulnerabil
     - [Authentication Bypasses](#authentication-bypasses)
         - [Authentication Bypass via Direct Access](#authentication-bypass-via-direct-access)
         - [Authentication Bypass via Parameter Modification](#authentication-bypass-via-parameter-modification)
+    
+    - [Attacking Session Tokens](#attacking-session-tokens)
+
+    - [Exploit - Example](#exploit---example)
 
 ---
 
@@ -931,3 +935,5 @@ HTB{d1f5d760d130f7dd11de93f0b393abda}
 This confirms a successful **session hijack via token forgery**.
 
 ---
+
+## Exploit - Example
