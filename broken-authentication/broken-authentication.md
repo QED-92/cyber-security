@@ -18,6 +18,10 @@ This document covers common techniques for identifying and exploiting vulnerabil
     - [Password Attacks](#password-attacks)
         - [Default Credentials](#default-credentials)
         - [Vulnerable Password Reset](#vulnerable-password-reset)
+    
+    - [Authentication Bypasses](#authentication-bypasses)
+        - [Authentication Bypass via Direct Access](#authentication-bypass-via-direct-access)
+
 ---
 
 ## Overview
@@ -624,5 +628,116 @@ In this attack, we:
 - Achieved full account takeover
 
 This demonstrates that **security questions should never be treated as a secure authentication factor**. Even when brute-force protections exist elsewhere, weak reset logic can completely undermine account security.
+
+---
+
+## Authentication Bypasses
+
+---
+
+### Authentication Bypass via Direct Access
+
+An authentication bypass occurs when an unauthenticated attacker is able to access protected functionality or sensitive information due to insufficient access control checks.
+
+In some applications, developers rely solely on the **login workflow** to restrict access instead of enforcing authentication checks on **every protected endpoint**. If authorization is not properly validated server-side, attackers may directly access restricted resources.
+
+After successful authentication, users are redirected to:
+
+```
+/admin.php
+```
+
+If the application assumes that only authenticated users will ever reach this endpoint, an attacker may simply navigate to it directly:
+
+```
+http://83.136.253.132:52619/admin.php
+```
+
+In this scenario, the application attempts to enforce authentication using the following PHP code:
+
+```php
+if(!$_SESSION['active']) {
+	header("Location: index.php");
+}
+```
+
+The issue lies in **how the redirection is implemented**. Although the application sends a `Location` header, execution of the PHP script continues. As a result:
+
+- The browser receives a `302` redirect
+- The protected content is still generated
+- Sensitive data is leaked in the HTTP response body
+
+This creates an **authentication bypass via response manipulation**.
+
+When accessing `/admin.php` directly without authentication, the server responds with a redirect—but still includes the admin page in the response body:
+
+```
+http://83.136.253.132:52619/admin.php
+```
+
+![Filtered output](images/direct-access.PNG)
+
+Even though the browser follows the redirect automatically, the sensitive content is already exposed.
+
+To exploit this behavior, we intercept the response using **Burp Suite** and force the browser to render the leaked content.
+
+1. Intercept the request to /admin.php
+2. Enable response interception:
+    `Do intercept` &rarr; `Response to this request`
+3. `Forward` the request to capture the response
+
+![Filtered output](images/direct-access2.PNG)
+
+The server responds with:
+
+```
+HTTP/1.1 302 Found
+```
+
+![Filtered output](images/direct-access3.PNG)
+
+We modify the response status code from:
+
+```
+HTTP/1.1 302 Found
+```
+
+to:
+
+```
+HTTP/1.1 200 OK
+```
+
+This tricks the browser into rendering the response body instead of following the redirect.
+
+![Filtered output](images/direct-access4.PNG)
+
+Forwarding the modified response reveals the administrator dashboard:
+
+![Filtered output](images/direct-access5.PNG)
+
+The flag is displayed on the admin page:
+
+```
+HTB{913ab2d84b8db21854c696dee1f1db68}
+```
+
+This confirms a **successful authentication bypass without valid credentials**.
+
+A simple fix can prevent this vulnerability from occuring, simply add `exit` to terminate script execution after the redirect:
+
+```php
+if(!$_SESSION['active']) {
+	header("Location: index.php");
+    exit;
+}
+```
+
+Although this exact flaw is uncommon in mature applications, similar issues still appear in production systems, including:
+
+- Missing `return` or `exit` statements after redirects
+- Authorization checks performed only in UI logic
+- API endpoints lacking authentication validation
+- Client-side-only access control enforcement
 
 ---
