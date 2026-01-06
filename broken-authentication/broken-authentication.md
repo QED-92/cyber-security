@@ -741,3 +741,97 @@ Although this exact flaw is uncommon in mature applications, similar issues stil
 - Client-side-only access control enforcement
 
 ---
+
+### Authentication Bypass via Parameter Modification
+
+Authentication and authorization mechanisms can be severely weakened when an application relies on **client-supplied HTTP parameters** to determine a user’s identity or privilege level. When these parameters are not properly validated server-side, attackers may manipulate them to bypass access controls.
+
+This class of vulnerability is closely related to **Insecure Direct Object Reference (IDOR)** issues, where internal object identifiers are exposed and trusted without sufficient authorization checks.
+
+We are provided with valid user credentials:
+
+```
+htb-stdnt:AcademyStudent!
+```
+
+After successful authentication, the application redirects us to:
+
+```
+/admin.php?user_id=183
+```
+
+![Filtered output](images/parameter-mod.PNG)
+
+Although we are authenticated, we do not have administrative privileges:
+
+![Filtered output](images/parameter-mod2.PNG)
+
+The application uses the `user_id` parameter to determine **which user** context should be loaded. Instead of binding the session to the authenticated user server-side, the application trusts the value supplied by the client.
+
+This creates two critical issues:
+
+- User identity is client-controlled
+- Authorization checks are either missing or improperly enforced
+
+If an attacker can guess or enumerate another user’s ID—especially an administrator—they may gain unauthorized access.
+
+While browsing the dashboard, we observe the following message:
+
+```
+Could not load admin data. Please check your privileges.
+```
+
+This response indicates that:
+
+- The request is processed successfully
+- The user_id parameter is evaluated
+- Authorization is performed after the user context is loaded
+
+This behavior allows us to brute-force valid administrator user IDs.
+
+We generate a wordlist of possible user IDs:
+
+```bash
+seq 0 500 > ids.txt
+```
+
+We intercept the request, replace the `user_id` value with the `FUZZ` keyword, and save the request to file (`req.txt`):
+
+![Filtered output](images/parameter-mod3.PNG)
+
+We then use `ffuf` to enumerate valid administrator IDs by filtering out responses containing the error message:
+
+```bash
+ffuf -w ids.txt:FUZZ -request req.txt -request-proto http -fr "Could not load admin data"
+```
+
+The scan reveals a valid administrator user ID:
+
+```
+372
+
+```
+
+![Filtered output](images/parameter-mod4.PNG)
+
+By modifying the request accordingly:
+
+```
+/admin.php?user_id=372
+```
+
+![Filtered output](images/parameter-mod5.PNG)
+
+We gain access to the administrative interface:
+
+![Filtered output](images/parameter-mod6.PNG)
+
+The flag is displayed on the administrator dashboard:
+
+```
+HTB{63593317426484ea6d270c2159335780}
+```
+
+This confirms a successful **authentication and authorization bypass via parameter manipulation**.
+
+---
