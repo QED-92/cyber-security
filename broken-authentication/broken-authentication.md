@@ -21,6 +21,7 @@ This document covers common techniques for identifying and exploiting vulnerabil
     
     - [Authentication Bypasses](#authentication-bypasses)
         - [Authentication Bypass via Direct Access](#authentication-bypass-via-direct-access)
+        - [Authentication Bypass via Parameter Modification](#authentication-bypass-via-parameter-modification)
 
 ---
 
