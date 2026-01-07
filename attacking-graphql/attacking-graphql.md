@@ -8,6 +8,8 @@ This document outlines common techniques for identifying and exploiting vulnerab
 
 - [GraphQL](#graphql)
     - [Overview](#overview)
+    - [Information Disclosure](#information-disclosure)
+    - [Insecure Direct Object Reference (IDOR)](#insecure-direct-object-reference-idor)
 
 ---
 
@@ -361,3 +363,5 @@ The server responds with the following data:
 This confirms that **sensitive data is accessible without proper authorization**, demonstrating an information disclosure vulnerability caused by unrestricted GraphQL introspection and inadequate access controls.
 
 ---
+
+## Insecure Direct Object Reference (IDOR)
