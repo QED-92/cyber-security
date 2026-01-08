@@ -7,13 +7,15 @@ This document outlines common techniques for identifying and exploiting vulnerab
 # Table of Contents
 
 - [GraphQL](#graphql)
-    - [Overview](#overview)
+  - [Overview](#overview)
     
-    - [Attacking GraphQL](#attacking-graphql)
-      - [Information Disclosure](#information-disclosure)
-      - [Insecure Direct Object Reference (IDOR)](#insecure-direct-object-reference-idor)
-      - [SQL Injection](#sql-injection)
-      - [Mutations](#mutations)
+  - [Attacking GraphQL](#attacking-graphql)
+    - [Information Disclosure](#information-disclosure)
+    - [Insecure Direct Object Reference (IDOR)](#insecure-direct-object-reference-idor)
+    - [SQL Injection](#sql-injection)
+    - [Mutations](#mutations)
+
+  - [Tools](#tools)
 
 
 ---
@@ -896,5 +898,67 @@ HTB{f7082828b5e5ad40d955846ba415d17f}
 ![Filtered output](images/mutation6.PNG)
 
 This demonstrates a **mass assignment and privilege escalation vulnerability** caused by insufficient authorization checks on GraphQL mutations. Allowing clients to supply sensitive fields such as `role` enables attackers to escalate privileges and fully compromise the application.
+
+---
+
+## Tools
+
+In a previous section (`Information Disclosure`), we covered the GraphQL fingerprinting tool `graphW00f`. Another useful tool is `GraphQL-Cop`, a security auditing tool designed to identify common GraphQL misconfigurations and vulnerabilities.
+
+`GraphQL-Cop` performs automated checks against a GraphQL endpoint and reports potential issues related to information disclosure, denial of service, and misconfigurations.
+
+Clone the GitHub repository:
+
+```bash
+git clone https://github.com/dolevf/graphql-cop
+```
+
+Install the required dependencies:
+
+```bash
+python3 -m venv path/to/venv
+source path/to/venv/bin/activate
+python3 -m pip install -r requirements.txt
+```
+
+Run the tool against the GraphQL endpoint using the `-t` flag:
+
+```bash
+python3 graphql-cop.py -t https://IP:PORT/graphql
+```
+
+Example output:
+
+```
+[HIGH] Alias Overloading - Alias Overloading with 100+ aliases is allowed (Denial of Service - /graphql)
+[HIGH] Array-based Query Batching - Batch queries allowed with 10+ simultaneous queries (Denial of Service - /graphql)
+[HIGH] Directive Overloading - Multiple duplicated directives allowed in a query (Denial of Service - /graphql)
+[HIGH] Field Duplication - Queries are allowed with 500 of the same repeated field (Denial of Service - /graphql)
+[LOW] Field Suggestions - Field Suggestions are Enabled (Information Leakage - /graphql)
+[MEDIUM] GET Method Query Support - GraphQL queries allowed using the GET method (Possible Cross Site Request Forgery (CSRF) - /graphql)
+[LOW] GraphQL IDE - GraphiQL Explorer/Playground Enabled (Information Leakage - /graphql)
+[HIGH] Introspection - Introspection Query Enabled (Information Leakage - /graphql)
+[MEDIUM] POST based url-encoded query (possible CSRF) - GraphQL accepts non-JSON queries over POST (Possible Cross Site Request Forgery - /graphql)
+```
+
+This output highlights several high-impact issues, including unrestricted introspection and multiple denial-of-service vectors caused by excessive query complexity.
+
+Another useful tool is `InQL`, a Burp Suite extension available through the **BApp Store**. `InQL` adds a dedicated `InQL` tab to Burp Suite, along with GraphQL-specific functionality in Proxy and Repeater.
+
+This significantly simplifies the modification and testing of GraphQL queries by removing the need to manually handle JSON syntax.
+
+![Filtered output](images/tools.PNG)
+
+`InQL` also includes a built-in scanner that can automatically generate queries to extract introspection data related to available queries and mutations.
+
+To run the InQL scanner:
+
+`Extensions` &rarr; `InQL - GraphQL Scanner` &rarr; `Generate queries wit InQL Scanner`
+
+![Filtered output](images/tools2.PNG)
+
+All extracted schema and introspection information is displayed within the `InQL` tab for the scanned host:
+
+![Filtered output](images/tools3.PNG)
 
 ---
