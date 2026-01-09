@@ -1023,7 +1023,7 @@ fragment TypeRef on __Type {
 }
 ```
 
-Reponse:
+**Reponse:**
 
 ```graphql
 {
@@ -1114,7 +1114,7 @@ The `addEmployee` mutation is of particular interest, as it may allow **privileg
 }
 ```
 
-Response:
+**Response:**
 
 ```graphql
 {
@@ -1166,7 +1166,7 @@ Before exploiting this, we query existing employees to understand how employee d
 }
 ```
 
-Response:
+**Response:**
 
 ```graphql
 {
@@ -1214,7 +1214,7 @@ mutation {
 }
 ```
 
-Response:
+**Response:**
 
 ```graphql
 {
@@ -1248,7 +1248,7 @@ mutation {
 }
 ```
 
-Response:
+**Response:**
 
 ```graphql
 {
@@ -1297,7 +1297,7 @@ SQL injection attempt:
 }
 ```
 
-Not injectable:
+**Not injectable:**
 
 ```graphql
 {
@@ -1307,7 +1307,7 @@ Not injectable:
 }
 ```
 
-SQL injection attempt:
+**SQL injection attempt:**
 
 ```graphql
 {
@@ -1317,7 +1317,7 @@ SQL injection attempt:
 }
 ```
 
-Not injectable:
+**Not injectable:**
 
 ```graphql
 {
@@ -1327,8 +1327,7 @@ Not injectable:
 }
 ```
 
-
-SQL injection attempt:
+**SQL injection attempt:**
 
 ```graphql
 {
@@ -1340,7 +1339,7 @@ SQL injection attempt:
 }
 ```
 
-Not injectable:
+**Not injectable:**
 
 ```graphql
 {
@@ -1390,7 +1389,7 @@ The remaining queries require an `apiKey`. We enumerate valid API keys using the
 }
 ```
 
-SQL injection attempt:
+**SQL injection attempt:**
 
 ```graphql
 {
@@ -1404,7 +1403,7 @@ allCustomers(apiKey: "0711a879ed751e63330a78a4b195bbad'") {
 }
 ```
 
-Not injectable:
+**Not injectable:**
 
 ```graphql
 {
@@ -1428,7 +1427,7 @@ allCustomers(apiKey: "0711a879ed751e63330a78a4b195bbad") {
 }
 ```
 
-Response:
+**Response:**
 
 ```graphql
 {
