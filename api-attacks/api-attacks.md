@@ -14,7 +14,7 @@ This document outlines common techniques for identifying and exploiting **API re
     - [Excessive Data Exposure](#excessive-data-exposure)
     - [Mass Assignment](#mass-assignment)
   - [Unrestricted Resource Consumption](#unrestricted-resource-consumption)
-  - [Broken Function Level Authorization](#broken-function-level-authorization)
+  - [Broken Function Level Authorization (BFLA)](#broken-function-level-authorization-bfla)
 ---
 
 ## Overview
@@ -888,4 +888,144 @@ Executing the script triggers repeated SMS requests. After the tenth request, th
 
 ---
 
-## Broken Function Level Authorization
+## Broken Function Level Authorization (BFLA)
+
+An API is vulnerable to **Broken Function Level Authorization (BFLA)** when it allows users to invoke **privileged or restricted endpoints** without possessing the required authorization. Unlike **Broken Object Level Authorization (BOLA)**—where a user is authorized to access an endpoint but not a specific object—**BFLA occurs when a user is not authorized to access the endpoint at all**, yet the API still processes the request.
+
+The target is vulnerable to [CWE-200, Exposure of Sensitive Information to an Unauthorized Actor](https://cwe.mitre.org/data/definitions/200.html). 
+
+A brief description of the weakness is shown below:
+
+```
+The product exposes sensitive information to an actor that is not explicitly authorized to have access to that information.
+```
+
+Authentication is performed via the `/api/v1/authentication/customers/sign-in` endpoint:
+
+```
+{
+  "Email": "htbpentester9@hackthebox.com",
+  "Password": "HTBPentester9"
+}
+```
+
+The server responds with a valid JWT:
+
+```json
+{
+{
+  "jwt": "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6Imh0YnBlbnRlc3RlcjlAaGFja3RoZWJveC5jb20iLCJleHAiOjE3NjgwNjIwNjksImlzcyI6Imh0dHA6Ly9hcGkuaW5sYW5lZnJlaWdodC5odGIiLCJhdWQiOiJodHRwOi8vYXBpLmlubGFuZWZyZWlnaHQuaHRiIn0.TCDUxkZz4j0SAttN7HFjVoNJTtYIGtyDkIb7T42h2haFhVFmgqMf3ls-AOS4bk2Kr3s8RWjCzlTY1Of8o7OPgw"
+}
+}
+```
+
+After authorizing with the JWT, querying `/api/v1/roles/current-user` shows that the authenticated user has **no roles assigned**.
+
+This makes the account an ideal candidate for testing **function-level authorization controls**, as it should only be able to access endpoints that explicitly require no roles.
+
+We systematically enumerate API endpoints and identify the following endpoint of interest:
+
+```
+/api/v1/products/discounts
+```
+
+![Filtered output](images/bfla.PNG)
+
+According to the API documentation, this endpoint requires the role:
+
+```
+ProductDiscounts_GetAll
+```
+
+However, despite lacking this role, sending a request to the endpoint returns discount data for all products:
+
+```json
+{
+  "productDiscounts": [
+    {
+      "productID": "a923b706-0aaa-49b2-ad8d-21c97ff6fac7",
+      "ratePercentage": 70,
+      "startDate": "2023-03-15",
+      "endDate": "2023-09-15"
+    },
+    {
+      "productID": "a61e2b25-2f6e-468e-9f15-c51864db4133",
+      "ratePercentage": 30,
+      "startDate": "2023-01-20",
+      "endDate": "2023-07-05"
+    },
+    {
+      "productID": "f6ebdcab-fcbf-4121-8be8-dddc427c68e3",
+      "ratePercentage": 50,
+      "startDate": "2023-01-15",
+      "endDate": "2023-08-10"
+    },
+    .
+    .
+    .
+```
+
+![Filtered output](images/bfla2.PNG)
+
+This confirms a **Broken Function Level Authorization** vulnerability. Although the endpoint is documented as restricted, **no role-based access control is enforced**, allowing unauthorized users to retrieve sensitive business data such as discount rates and campaign periods.
+
+Continuing endpoint enumeration reveals another vulnerable endpoint:
+
+```
+/api/v1/customers/billing-addresses
+```
+
+![Filtered output](images/bfla3.PNG)
+
+This endpoint is documented as requiring the role:
+
+```
+CustomerBillingAddresses_GetAll
+```
+
+Despite lacking this role, the endpoint responds with billing addresses for all customers:
+
+```json
+{
+  "customersBillingAddresses": [
+    {
+      "customerID": "fe4a4b39-3df6-425a-9525-a7b2914f711b",
+      "city": "Esbjerg",
+      "country": "Denmark",
+      "street": "851 Kongensgade",
+      "postalCode": 76079
+    },
+    {
+      "customerID": "3589e7f7-2d8a-4873-8bd9-b2c20b7a0ad2",
+      "city": "Zurich",
+      "country": "Switzerland",
+      "street": "992 Bahnhofstrasse",
+      "postalCode": 11746
+    },
+    {
+      "customerID": "a0683cc9-a71f-4957-8fbb-45ead732040e",
+      "city": "Fier",
+      "country": "Albania",
+      "street": "787 Bulevardi Dëshmorët e Kombit",
+      "postalCode": 64633
+    },
+    .
+    .
+    .
+```
+
+This exposes **highly sensitive personally identifiable information (PII)**, including residential addresses, to unauthorized users.
+
+Saving the response to a file and filtering for the flag yields:
+
+```bash
+grep -i "htb" billing-addresses.txt
+```
+
+Flag:
+
+```
+HTB{1e2095c564baf0d2d316080217040dae}
+```
+
+---
