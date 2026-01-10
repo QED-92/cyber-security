@@ -15,6 +15,9 @@ This document outlines common techniques for identifying and exploiting **API re
     - [Mass Assignment](#mass-assignment)
   - [Unrestricted Resource Consumption](#unrestricted-resource-consumption)
   - [Broken Function Level Authorization (BFLA)](#broken-function-level-authorization-bfla)
+  - [Unrestricted Access to Sensitive Business Flows](#unrestricted-access-to-sensitive-business-flows)
+  - [Server Side Request Forgery (SSRF)](#server-side-request-forgery-ssrf)
+  
 ---
 
 ## Overview
@@ -1029,3 +1032,45 @@ HTB{1e2095c564baf0d2d316080217040dae}
 ```
 
 ---
+
+## Unrestricted Access to Sensitive Business Flows
+
+All businesses operate with the primary goal of generating revenue. When an API exposes operations or data that allow users to **manipulate or abuse critical business logic**, it becomes vulnerable to **Unrestricted Access to Sensitive Business Flows**. These vulnerabilities do not necessarily stem from traditional technical flaws, but rather from insufficient protection of business-critical processes.
+
+In the previous section (`Broken Function Level Authorization – BFLA`), we exploited an authorization flaw that allowed unauthorized access to **product discount data**. This issue directly results in **Unrestricted Access to Sensitive Business Flows**, as it exposes strategic pricing information that should only be available to privileged internal users.
+
+By accessing the `/api/v1/products/discounts` endpoint without the required authorization, we obtained information about:
+
+- Discounted products
+- Discount percentages
+- Discount start and end dates
+
+For example, the following response reveals that the product with ID
+`a923b706-0aaa-49b2-ad8d-21c97ff6fac7` is discounted by **70%** between **2023-03-15** and **2023-09-15**:
+
+```json
+{
+  "productDiscounts": [
+    {
+      "productID": "a923b706-0aaa-49b2-ad8d-21c97ff6fac7",
+      "ratePercentage": 70,
+      "startDate": "2023-03-15",
+      "endDate": "2023-09-15"
+    }
+  ]
+}
+```
+
+With this knowledge, an attacker can strategically time purchases to maximize financial gain, undermining the platform’s pricing strategy and intended customer incentives.
+
+If the purchasing endpoint additionally lacks **rate-limiting controls** (as discussed in the `Unrestricted Resource Consumption` section), the impact becomes significantly more severe. An attacker could:
+
+- Purchase the entire available stock immediately when a discount becomes active
+- Artificially limit availability for legitimate customers
+- Resell the products later at a higher price, generating direct profit
+
+This demonstrates how **business logic vulnerabilities** can be chained with technical weaknesses, resulting in substantial financial loss, reputational damage, and disruption of normal business operations.
+
+---
+
+## Server Side Request Forgery (SSRF)
