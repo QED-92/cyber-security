@@ -31,6 +31,8 @@ This document outlines common techniques for identifying and exploiting vulnerab
 
   - [Customer Service Management and Configuration Management](#customer-service-management-and-configuration-management)
     - [osTicket](#osticket)
+    - [Gitlab - Discovery & Enumeration](#gitlab---discovery--enumeration)
+    - [Attacking Gitlab](#attacking-gitlab)
 
 ---
 
@@ -1226,7 +1228,7 @@ As soon as the application is uploaded, Splunk executes the scripted input, trig
 
 ### PRTG Network Monitor
 
-**P**RTG Network Monitor** is an agentless network monitoring solution used to track bandwidth usage, uptime, and performance metrics across a wide range of devices, including routers, switches, servers, and virtual infrastructure.
+**PRTG Network Monitor** is an agentless network monitoring solution used to track bandwidth usage, uptime, and performance metrics across a wide range of devices, including routers, switches, servers, and virtual infrastructure.
 
 PRTG performs **automatic network discovery**, scanning defined network ranges and building a device inventory. Once devices are identified, PRTG collects data using protocols such as:
 
@@ -1307,3 +1309,162 @@ The exploit succeeds, yielding a reverse shell on the target system:
 ## Customer Service Management and Configuration Management
 
 ### osTicket
+
+osTicket is an open-source support ticketing system written in PHP, typically backed by a MySQL database. It can be deployed on both Linux and Windows platforms and is commonly used as a customer-facing support portal.
+
+osTicket exposes relatively few direct, publicly exploitable vulnerabilities. In many environments, its primary value during a penetration test is **information gathering and lateral pivoting**, rather than immediate remote code execution.
+
+osTicket can often be identified visually via the footer of the web interface, which includes the osTicket logo and the phrase `powered by osTicket`:
+
+![Filtered output](images/osticket.PNG)
+
+Another reliable identification method is inspecting HTTP cookies. osTicket uses a distinctive session cookie named `OSTSESSID`:
+
+```
+Cookie: OSTSESSID=l1bfgck9dvgd474t4ij53b3uee
+```
+
+![Filtered output](images/osticket2.PNG)
+
+osTicket enforces role separation by design:
+
+- End users
+  - Can submit and view their own tickets
+- Staff / Administrators
+  - Have access to the admin panel and backend configuration
+
+The administrative interface is not publicly accessible without valid credentials, and osTicket is generally well maintained, resulting in a limited number of exploitable vulnerabilities in modern versions.
+
+Although osTicket may not directly lead to remote code execution, it can still be valuable from an attacker’s perspective.
+
+If ticket submission is enabled, attackers can often:
+
+- Interact with the support workflow
+- Observe automated responses
+- Harvest internal email addresses tied to the organization’s domain
+
+![Filtered output](images/osticket3.PNG)
+
+In this case, creating a new support ticket resulted in an automated response revealing a valid internal email address:
+
+```
+If you want to add more information to your ticket, just email 971708@inlanefreight.local.
+```
+
+![Filtered output](images/osticket4.PNG)
+
+Discovered email addresses can be leveraged in subsequent attack paths, such as:
+
+Registering accounts on:
+
+- Internal wikis
+- Chat platforms (Slack, Mattermost, Rocket.Chat)
+- Git repositories (GitLab, Bitbucket)
+- Password reset abuse
+- Phishing or social engineering
+- Username enumeration on other exposed services
+
+Support portals are frequently **overlooked assets** and often leak valuable organizational metadata.
+
+---
+
+### Gitlab - Discovery & Enumeration
+
+GitLab is a web-based Git repository management platform that provides source control, issue tracking, wiki functionality, and CI/CD pipeline automation. It is functionally similar to **GitHub and Bitbucket** and is frequently deployed as a **self-hosted service** within enterprise environments.
+
+During penetration tests, Git repositories often contain high-value data, including:
+
+- Source code
+- API interaction scripts
+- Infrastructure configuration files
+- Accidentally committed credentials, tokens, or SSH keys
+
+GitLab supports three repository visibility levels:
+
+- Public — accessible without authentication
+- Internal — accessible to authenticated users
+- Private — restricted to specific users or groups
+
+Identifying a GitLab instance is trivial. Browsing to the target URL typically presents the GitLab login page and logo:
+
+![Filtered output](images/gitlab.PNG)
+
+Unlike some other web applications, GitLab does **not** expose its version number publicly. The version can only be confirmed by accessing the `/help` endpoint **after authentication**.
+
+If the GitLab instance allows self-registration, we can create an account and use it to fingerprint the version.
+
+In this case, account registration is enabled:
+
+```
+http://gitlab.inlanefreight.local:8081/users/sign_up
+```
+
+After logging in, visiting the `/help` page reveals the GitLab version:
+
+```
+http://gitlab.inlanefreight.local:8081/help
+```
+
+The instance is running GitLab version `13.10.2`.
+
+![Filtered output](images/gitlab2.PNG)
+
+Without elevated privileges, the most valuable initial enumeration step is browsing public projects via the `/explore` endpoint:
+
+```
+http://gitlab.inlanefreight.local:8081/explore/
+```
+
+A public project named `Inlanefreight Dev` is discovered.
+
+![Filtered output](images/gitlab3.PNG)
+
+Public repositories frequently contain:
+
+- Development or test code
+- Legacy configuration files
+- Hard-coded credentials accidentally committed during development
+
+Although the `Inlanefreight Dev` project appears to be a basic example repository:
+
+![Filtered output](images/gitlab4.PNG)
+
+Further inspection reveals hard-coded database credentials inside the `phpunit_pgsql.xml` configuration file:
+
+```xml
+<var name="db_username" value="postgres"/>
+<var name="db_password" value="postgres"/>
+```
+
+![Filtered output](images/gitlab5.PNG)
+
+These credentials may be reused elsewhere in the environment and can often be leveraged to:
+
+- Access backend databases
+- Authenticate to other services
+- Escalate privileges through lateral movement
+
+Previously we created an account through:
+
+```
+http://gitlab.inlanefreight.local:8081/users/sign_up
+```
+
+GitLab’s registration form can also be abused for **username enumeration**. When attempting to register with an existing username, GitLab returns a distinct error message:
+
+```
+Username is already taken.
+```
+
+![Filtered output](images/gitlab6.PNG)
+
+This behavior can be used to enumerate valid user accounts, which may later be targeted through:
+
+- Password spraying
+- Credential stuffing
+- Phishing
+- Password reset abuse
+
+---
+
+### Attacking Gitlab
