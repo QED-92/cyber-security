@@ -43,6 +43,7 @@ This document outlines common techniques for identifying and exploiting vulnerab
     - [Attacking ColdFusion](#attacking-coldfusion)
     - [IIS Tilde Enumeration](#iis-tilde-enumeration)
     - [Attacking LDAP](#attacking-ldap)
+    - [Web Mass Assignment Vulnerabilities](#web-mass-assignment-vulnerabilities)
 
 
 ---
@@ -2087,3 +2088,242 @@ transfer.aspx
 ---
 
 ### Attacking LDAP
+
+**LDAP (Lightweight Directory Access Protocol)** is a protocol used to access and manage directory information. A directory is a hierarchical data store containing information about network resources such as **users, groups, computers, printers, and services**.
+
+LDAP is commonly used to provide a centralized directory service within an organization. Directory services store sensitive identity information (e.g., usernames, group memberships, and authentication data), making LDAP-backed applications a high-value target during penetration tests.
+
+LDAP follows a **client–server architecture**, where a client submits a query to an LDAP server, which searches the directory and returns matching entries.
+
+The two most common LDAP implementations are:
+
+- OpenLDAP
+  - Open-source and widely deployed on Linux systems
+- Microsoft Active Directory
+  - Microsoft’s directory service built on LDAP
+
+`ldapsearch` is a command-line utility used to query LDAP directories. 
+
+Example:
+
+```bash
+ldapsearch -H ldap://ldap.example.com:389 -D "cn=admin,dc=example,dc=com" -w secret123 -b "ou=people,dc=example,dc=com" "(mail=john.doe@example.com)"
+```
+
+This command can be broken down as follows:
+
+- Connect to the server `ldap.example.com` on port `389`
+- Authenticate as `cn=admin,dc=example,dc=com` with password `secret123`
+- Search under the base DN `ou=people,dc=example,dc=com`
+- Use the filter (`mail=john.doe@example.com`) to find entries that have this email address
+
+**LDAP injection** occurs when user-supplied input is improperly sanitized before being embedded into an LDAP query. An attacker can manipulate query logic to:
+
+- Bypass authentication
+- Enumerate directory objects
+- Access sensitive identity data
+
+Common LDAP injection metacharacters include:
+
+| Payload    | Description                       |
+| ---------- | --------------------------------- | 
+| `*`        | Wildcard (match any value)        | 
+| `()`       | Group expressions                 | 
+| `\|`       | Logical OR                        | 
+| `&`        | Logical AND                       | 
+| `(cn=*)`   | Always-true condition             | 
+
+Assume an application uses the following LDAP filter for authentication:
+
+```php
+(&(objectClass=user)(sAMAccountName=$username)(userPassword=$password))
+```
+
+Injecting a wildcard into the username field matches any user object:
+
+```php
+$username = "*";
+$password = "dummy";
+(&(objectClass=user)(sAMAccountName=$username)(userPassword=$password))
+```
+
+Resulting LDAP query:
+
+```php
+(&(objectClass=user)(sAMAccountName=*)(userPassword=dummy))
+```
+
+This causes the directory to match any user, effectively bypassing username validation.
+
+Injecting a wildcard into the password field matches any password:
+
+```php
+$username = "dummy";
+$password = "*";
+(&(objectClass=user)(sAMAccountName=$username)(userPassword=$password))
+```
+
+Resulting LDAP query:
+
+```php
+(&(objectClass=user)(sAMAccountName=dummy)(userPassword=*))
+```
+
+If the application only checks for a successful LDAP bind, authentication may succeed regardless of the actual password.
+
+An initial `nmap` scan reveals an LDAP service alongside a web application:
+
+```bash
+sudo nmap -p- --open -sV 10.129.205.18
+```
+
+Discovered services:
+
+- Port `80` – HTTP (web application)
+- Port `389` – LDAP
+
+![Filtered output](images/ldap.PNG)
+
+This strongly suggests that the web application relies on LDAP for authentication.
+
+Browsing to the web application presents a login form:
+
+```
+http://10.129.205.18:80
+```
+
+![Filtered output](images/ldap2.PNG)
+
+By injecting a wildcard into both the username and password fields:
+
+```
+Username: *
+Password: *
+```
+
+Authentication is bypassed successfully:
+
+![Filtered output](images/ldap3.PNG)
+
+---
+
+### Web Mass Assignment Vulnerabilities
+
+Some web frameworks provide **mass assignment** features to simplify development. Mass assignment allows an application to automatically map user-supplied input (such as form fields or JSON data) directly to object properties or database fields.
+
+A **mass assignment vulnerability** occurs when an application blindly trusts client-supplied parameters and allows attackers to modify **internal or sensitive attributes** that were never intended to be user-controllable.
+
+Frameworks historically affected include:
+
+- Ruby on Rails
+- Django (older implementations)
+- Laravel (misconfigured `$fillable` / `$guarded`)
+- Custom Flask / Express applications
+
+Assume a `User` model with the following attributes:
+
+```ruby
+class User < ActiveRecord::Base
+  attr_accessible :username, :email
+end
+```
+
+Only `username` and `email` are explicitly allowed for mass assignment. However, if server-side validation is misconfigured or bypassed, an attacker may still be able to inject `non-exposed attributes`.
+
+For example, an attacker could submit the following payload when creating a new account:
+
+```ruby
+{
+  "user" => {
+    "username" => "hacker",
+    "email" => "hacker@example.com",
+    "admin" => true
+  }
+}
+```
+
+If the application does not properly enforce attribute whitelisting, the attacker may gain **administrator privileges**.
+
+The target is an **Asset Manager** application:
+
+![Filtered output](images/mass-assignment.PNG)
+
+When registering a new account, the application responds with:
+
+```
+Success!!
+```
+
+However, when attempting to log in, access is denied:
+
+```
+Account is pending approval
+```
+
+This indicates that administrator approval is required before a user account becomes active.
+
+Reviewing the authentication logic reveals the following snippet:
+
+```python
+for i, j, k in cur.execute(
+    'select * from users where username=? and password=?',
+    (username, password)
+):
+    if k:
+        session['user'] = i
+        return redirect("/home", code=302)
+    else:
+        return render_template('login.html', value='Account is pending for approval')
+```
+
+Key observation:
+
+- The variable `k` controls login authorization
+- If `k` is `True`, login is permitted
+- If `k` is `False`, the account is considered pending approval
+
+This strongly suggests that `k` represents a confirmation / approval flag stored in the database.
+
+Examining the registration handler shows the root cause:
+
+```python
+try:
+    if request.form['confirmed']:
+        cond = True
+except:
+    cond = False
+
+with sqlite3.connect("database.db") as con:
+    cur = con.cursor()
+    cur.execute('select * from users where username=?', (username,))
+    if cur.fetchone():
+        return render_template('index.html', value='User exists!!')
+    else:
+        cur.execute(
+            'insert into users values(?,?,?)',
+            (username, password, cond)
+        )
+        con.commit()
+        return render_template('index.html', value='Success!!')
+```
+
+Critical issues:
+
+- The application trusts the client to supply the `confirmed` parameter
+- No server-side authorization check is performed
+- Any value supplied for `confirmed` sets `cond` = `True`
+- `cond` directly controls account activation
+
+By manually adding the `confirmed` parameter to the registration request, we can bypass administrator approval.
+
+Malicious POST payload:
+
+```
+username=new&password=test&confirmed=test
+```
+
+The mass assignment vulnerability is successfully exploited.
+
+![Filtered output](images/mass-assignment2.PNG)
+
+---
