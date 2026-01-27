@@ -4,7 +4,7 @@ Windows event logs store logs from different components of the system. Analysing
 
 Event logs are accessed through the **Event Viewer**.
 
-![Filtered output](images/event-viewer.PNG)
+![Filtered output](.images/event-viewer.PNG)
 
 Event logs are categorized into five categories:
 
@@ -14,11 +14,11 @@ Event logs are categorized into five categories:
 - System
 - Forwarded Events
 
-![Filtered output](images/event-log-categories.PNG)
+![Filtered output](.images/event-log-categories.PNG)
 
 Event logs can be saved in binary format (.evtx) and opened with the **Event Viewer**. Saved logs are found under the **Saved Logs** section.
 
-![Filtered output](images/saved-logs.PNG)
+![Filtered output](.images/saved-logs.PNG)
 
 Each event contains the following primary components:
 
@@ -35,17 +35,17 @@ Each event contains the following primary components:
 | `Logged`            | `Date and time when the event was logged.`                            |
 | `Computer`          | `Name of computer where the event ocurred.`                           |
 
-![Filtered output](images/event-components.PNG)
+![Filtered output](.images/event-components.PNG)
 
 The **Keywords** field is particularly useful when filtering for specific types of events. 
 
 All event information is also stored in detailed XML format under the **Details** tab.
 
-![Filtered output](images/event-xml.png)
+![Filtered output](.images/event-xml.png)
 
 Custom XML queries can be utilized for more granular log analysis. Navigate to **Filter Current Log** &rarr; **XML** &rarr; **Edit Query Manually**.
 
-![Filtered output](images/filter-xml.PNG)
+![Filtered output](.images/filter-xml.PNG)
 
 The **Event ID** serves as an event identifier. Some useful IDs include:
 

