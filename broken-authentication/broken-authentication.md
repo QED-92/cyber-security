@@ -8,23 +8,18 @@ This document covers common techniques for identifying and exploiting vulnerabil
 
 - [Broken Authentication](#broken-authentication)
     - [Overview](#overview)
-
     - [Brute Force Attacks](#brute-force-attacks)
         - [Enumerating Users](#enumerating-users)
         - [Brute Forcing Passwords](#brute-forcing-passwords)
         - [Brute Forcing Password Reset Tokens](#brute-forcing-password-reset-tokens)
         - [Brute Forcing 2FA Codes](#brute-forcing-2fa-codes)
-    
     - [Password Attacks](#password-attacks)
         - [Default Credentials](#default-credentials)
-        - [Vulnerable Password Reset](#vulnerable-password-reset)
-    
+        - [Vulnerable Password Reset](#vulnerable-password-reset)  
     - [Authentication Bypasses](#authentication-bypasses)
         - [Authentication Bypass via Direct Access](#authentication-bypass-via-direct-access)
-        - [Authentication Bypass via Parameter Modification](#authentication-bypass-via-parameter-modification)
-    
+        - [Authentication Bypass via Parameter Modification](#authentication-bypass-via-parameter-modification) 
     - [Attacking Session Tokens](#attacking-session-tokens)
-
     - [Exploit - Example](#exploit---example)
 
 ---
@@ -35,7 +30,7 @@ This document covers common techniques for identifying and exploiting vulnerabil
 
 Authentication serves as the **first line of defense** against unauthorized access in web applications. The most common authentication mechanism is the **login form**, where users provide a username and password to prove their identity.
 
-![Filtered output](.images/login-form.PNG)
+![Filtered output](images/login-form.PNG)
 
 Authentication mechanisms are commonly categorized into three major types:
 
@@ -116,7 +111,7 @@ When attempting to authenticate to WordPress with an **invalid username**, the a
 Unknown username. Check again or try your email address. 
 ```
 
-![Filtered output](.images/user-enumeration.PNG)
+![Filtered output](images/user-enumeration.PNG)
 
 When attempting to authenticate with a **valid username** but an **invalid password**, WordPress responds differently:
 
@@ -124,7 +119,7 @@ When attempting to authenticate with a **valid username** but an **invalid passw
 The password you entered for the username <username> is incorrect. 
 ```
 
-![Filtered output](.images/user-enumeration2.PNG)
+![Filtered output](images/user-enumeration2.PNG)
 
 This discrepancy allows an attacker to reliably distinguish between valid and invalid username
 
@@ -138,7 +133,7 @@ When attempting to authenticate to the target application with an invalid userna
 Unknown user.
 ```
 
-![Filtered output](.images/user-enumeration3.PNG)
+![Filtered output](images/user-enumeration3.PNG)
 
 However, when using a valid username (`htb-stdnt`) with an incorrect password, the response changes:
 
@@ -146,7 +141,7 @@ However, when using a valid username (`htb-stdnt`) with an incorrect password, t
 Invalid credentials.
 ```
 
-![Filtered output](.images/user-enumeration4.PNG)
+![Filtered output](images/user-enumeration4.PNG)
 
 This difference confirms the presence of a user enumeration vulnerability.
 
@@ -166,7 +161,7 @@ Captured request body:
 username=FUZZ&password=invalid
 ```
 
-![Filtered output](.images/user-enumeration5.PNG)
+![Filtered output](images/user-enumeration5.PNG)
 
 Run `ffuf` using the saved request:
 
@@ -182,7 +177,7 @@ Using this method, we successfully identify a valid username:
 cookster
 ```
 
-![Filtered output](.images/user-enumeration6.PNG)
+![Filtered output](images/user-enumeration6.PNG)
 
 ---
 
@@ -203,7 +198,7 @@ Due to a recent security issue, please update your password to meet the followin
 - minimum length of 10 characters
 ```
 
-![Filtered output](.images/brute-forcing-passwords.PNG)
+![Filtered output](images/brute-forcing-passwords.PNG)
 
 Based on this information, we can take a large wordlist, such as `rockyou.txt`, and filter it to contain only the passwords that adhere to the targets password policy. This saves a lot of time when brute forcing. 
 
@@ -213,7 +208,7 @@ Based on this information, we can take a large wordlist, such as `rockyou.txt`, 
 wc -l rockyou.txt
 ```
 
-![Filtered output](.images/brute-forcing-passwords2.PNG)
+![Filtered output](images/brute-forcing-passwords2.PNG)
 
 When we use `grep` to filter based on the password policy, we reduce the wordlist to around 150 thousand passwords:
 
@@ -221,7 +216,7 @@ When we use `grep` to filter based on the password policy, we reduce the wordlis
 grep '[[:upper:]]' rockyou.txt | grep '[[:lower:]]' | grep '[[:digit:]]' | grep -E '.{10}' > custom_wordlist.txt
 ```
 
-![Filtered output](.images/brute-forcing-passwords3.PNG)
+![Filtered output](images/brute-forcing-passwords3.PNG)
 
 An alternative to the above `grep` command, is to use a single `awk` command:
 
@@ -235,11 +230,11 @@ Suppose that we have found a valid username of `admin` by utilizing the techniqu
 Invalid username or password.
 ```
 
-![Filtered output](.images/brute-forcing-passwords5.PNG)
+![Filtered output](images/brute-forcing-passwords5.PNG)
 
 We copy the request to file (`req.txt`):
 
-![Filtered output](.images/brute-forcing-passwords4.PNG)
+![Filtered output](images/brute-forcing-passwords4.PNG)
 
 We then attempt to brute force the password with `ffuf` and our custom wordlist:
 
@@ -253,7 +248,7 @@ We successfully found the admin password:
 admin:Ramirez120992
 ```
 
-![Filtered output](.images/brute-forcing-passwords5.PNG)
+![Filtered output](images/brute-forcing-passwords5.PNG)
 
 ---
 
@@ -271,7 +266,7 @@ To assess the strength of a password reset token, we typically need to:
 
 In this case, the application does **not** allow user registration. However, we already know that a user named `admin` exists. We therefore attempt to reset the administrator’s password.
 
-![Filtered output](.images/reset-token.PNG)
+![Filtered output](images/reset-token.PNG)
 
 The application responds with the following message:
 
@@ -279,7 +274,7 @@ The application responds with the following message:
 Instructions for resetting your password have been sent to you e-mail address. You can reset it here: <link>
 ```
 
-![Filtered output](.images/reset-token2.PNG)
+![Filtered output](images/reset-token2.PNG)
 
 Clicking the link redirects us to the password reset page:
 
@@ -293,7 +288,7 @@ Immediately upon accessing the page, we receive the following error message:
 The provided token is invalid
 ```
 
-![Filtered output](.images/reset-token3.PNG)
+![Filtered output](images/reset-token3.PNG)
 
 When attempting to reset the password, the application sends a `POST` request to the back-end server with two parameters:
 
@@ -306,7 +301,7 @@ POST /reset_password.php?token=FUZZ
 password=password123
 ```
 
-![Filtered output](.images/reset-token5.PNG)
+![Filtered output](images/reset-token5.PNG)
 
 At this stage, the token structure is unknown. We therefore assume the token may be **weak** and attempt to brute-force it. 
 
@@ -322,11 +317,11 @@ The `-w` flag ensures consistent length by **padding** numbers with leading zero
 head tokens.txt
 ```
 
-![Filtered output](.images/tokens.PNG)
+![Filtered output](images/tokens.PNG)
 
 We then insert the `FUZZ` keyword into the request and save it to a file (`req.txt`):
 
-![Filtered output](.images/reset-token4.PNG)
+![Filtered output](images/reset-token4.PNG)
 
 We attempt to brute-force the reset token using `ffuf`, filtering out invalid responses:
 
@@ -354,11 +349,11 @@ This time, `ffuf` identifies a valid reset token:
 3684
 ```
 
-![Filtered output](.images/reset-token6.PNG)
+![Filtered output](images/reset-token6.PNG)
 
 We submit the valid token to reset the administrator password to `password123`:
 
-![Filtered output](.images/reset-token7.PNG)
+![Filtered output](images/reset-token7.PNG)
 
 Although the application still responds with an error message:
 
@@ -368,7 +363,7 @@ The provided token is invalid
 
 the password change **does in fact succeed**. When attempting to authenticate using the new credentials, we are granted access to the administrator account:
 
-![Filtered output](.images/reset-token8.PNG)
+![Filtered output](images/reset-token8.PNG)
 
 After successfully logging in as the administrator, we are able to access the admin dashboard and retrieve the flag:
 
@@ -419,13 +414,13 @@ Upon successful username and password authentication, the application prompts fo
 Welcome admin. Please provide your 4-digit One-Time Password (OTP).
 ```
 
-![Filtered output](.images/otp.PNG)
+![Filtered output](images/otp.PNG)
 
 The response clearly indicates that the OTP consists of **4 digits**, resulting in only **10,000 possible combinations**, making brute-forcing a feasible attack vector. 
 
 We submit a random OTP value (`1234`) and intercept the request using **Burp Suite**. The OTP is transmitted to the back-end server via a `POST` request:
 
-![Filtered output](.images/otp2.PNG)
+![Filtered output](images/otp2.PNG)
 
 Since the OTP is invalid, the application returns a consistent error message:
 
@@ -433,7 +428,7 @@ Since the OTP is invalid, the application returns a consistent error message:
 Invalid 2FA code
 ```
 
-![Filtered output](.images/otp3.PNG)
+![Filtered output](images/otp3.PNG)
 
 This predictable response allows us to **filter invalid attempts** during brute-force attacks.
 
@@ -445,7 +440,7 @@ seq -w 0 9999 > tokens.txt
 
 We insert the `FUZZ` keyword into the OTP parameter and save the intercepted request to a file (`req.txt`):
 
-![Filtered output](.images/otp4.PNG)
+![Filtered output](images/otp4.PNG)
 
 We then use `ffuf` to brute-force the OTP while filtering out invalid responses:
 
@@ -454,13 +449,13 @@ ffuf -w tokens.txt:FUZZ -request req.txt -request-proto http -fr "Invalid 2FA co
 ```
 Multiple successful responses are returned. This occurs because **once the correct OTP is submitted**, the session is authenticated and subsequent requests no longer require a valid OTP.
 
-![Filtered output](.images/otp5.PNG)
+![Filtered output](images/otp5.PNG)
 
 Since `0039` is the first valid response, we can infer that it is the correct OTP.
 
 After submitting the correct OTP (`0039`), we are successfully authenticated as the administrator:
 
-![Filtered output](.images/otp6.PNG)
+![Filtered output](images/otp6.PNG)
 
 **Summary:**
 
@@ -548,7 +543,7 @@ When attempting to reset the password for the `admin` account, the application p
 What city were you born in?
 ```
 
-![Filtered output](.images/security-questions.PNG)
+![Filtered output](images/security-questions.PNG)
 
 Since city names are both predictable and enumerable, we can attempt to brute-force the answer using a wordlist of known cities.
 
@@ -566,7 +561,7 @@ cut -d ',' -f1 world-cities.csv > cities.txt
 
 We submit an incorrect city name and intercept the request using **Burp Suite**:
 
-![Filtered output](.images/security-questions2.PNG)
+![Filtered output](images/security-questions2.PNG)
 
 The application responds with a predictable error message:
 
@@ -578,7 +573,7 @@ This consistent response allows us to filter failed attempts during brute forcin
 
 We insert the `FUZZ` keyword into the security question parameter and save the request to a file (`req.txt`):
 
-![Filtered output](.images/security-questions3.PNG)
+![Filtered output](images/security-questions3.PNG)
 
 We then brute-force the answer using `ffuf`:
 
@@ -592,7 +587,7 @@ The correct answer is identified as:
 Manchester
 ```
 
-![Filtered output](.images/security-questions4.PNG)
+![Filtered output](images/security-questions4.PNG)
 
 Once the correct answer is submitted, the application redirects us to the password reset page:
 
@@ -606,7 +601,7 @@ We reset the administrator password to `password123` and receive confirmation:
 The password for the user admin has been reset.
 ```
 
-![Filtered output](.images/security-questions5.PNG)
+![Filtered output](images/security-questions5.PNG)
 
 Logging in with the new credentials grants access to the administrator dashboard:
 
@@ -620,7 +615,7 @@ We successfully retrieve the flag:
 HTB{d4740b1801d9880ff70de227a54309f0}
 ```
 
-![Filtered output](.images/security-questions6.PNG)
+![Filtered output](images/security-questions6.PNG)
 
 **Summary:**
 
@@ -680,7 +675,7 @@ When accessing `/admin.php` directly without authentication, the server responds
 http://83.136.253.132:52619/admin.php
 ```
 
-![Filtered output](.images/direct-access.PNG)
+![Filtered output](images/direct-access.PNG)
 
 Even though the browser follows the redirect automatically, the sensitive content is already exposed.
 
@@ -691,7 +686,7 @@ To exploit this behavior, we intercept the response using **Burp Suite** and for
     `Do intercept` &rarr; `Response to this request`
 3. `Forward` the request to capture the response
 
-![Filtered output](.images/direct-access2.PNG)
+![Filtered output](images/direct-access2.PNG)
 
 The server responds with:
 
@@ -699,7 +694,7 @@ The server responds with:
 HTTP/1.1 302 Found
 ```
 
-![Filtered output](.images/direct-access3.PNG)
+![Filtered output](images/direct-access3.PNG)
 
 We modify the response status code from:
 
@@ -715,11 +710,11 @@ HTTP/1.1 200 OK
 
 This tricks the browser into rendering the response body instead of following the redirect.
 
-![Filtered output](.images/direct-access4.PNG)
+![Filtered output](images/direct-access4.PNG)
 
 Forwarding the modified response reveals the administrator dashboard:
 
-![Filtered output](.images/direct-access5.PNG)
+![Filtered output](images/direct-access5.PNG)
 
 The flag is displayed on the admin page:
 
@@ -765,11 +760,11 @@ After successful authentication, the application redirects us to:
 /admin.php?user_id=183
 ```
 
-![Filtered output](.images/parameter-mod.PNG)
+![Filtered output](images/parameter-mod.PNG)
 
 Although we are authenticated, we do not have administrative privileges:
 
-![Filtered output](.images/parameter-mod2.PNG)
+![Filtered output](images/parameter-mod2.PNG)
 
 The application uses the `user_id` parameter to determine **which user** context should be loaded. Instead of binding the session to the authenticated user server-side, the application trusts the value supplied by the client.
 
@@ -802,7 +797,7 @@ seq 0 500 > ids.txt
 
 We intercept the request, replace the `user_id` value with the `FUZZ` keyword, and save the request to file (`req.txt`):
 
-![Filtered output](.images/parameter-mod3.PNG)
+![Filtered output](images/parameter-mod3.PNG)
 
 We then use `ffuf` to enumerate valid administrator IDs by filtering out responses containing the error message:
 
@@ -816,7 +811,7 @@ The scan reveals a valid administrator user ID:
 372
 ```
 
-![Filtered output](.images/parameter-mod4.PNG)
+![Filtered output](images/parameter-mod4.PNG)
 
 By modifying the request accordingly:
 
@@ -824,11 +819,11 @@ By modifying the request accordingly:
 /admin.php?user_id=372
 ```
 
-![Filtered output](.images/parameter-mod5.PNG)
+![Filtered output](images/parameter-mod5.PNG)
 
 We gain access to the administrative dashboard:
 
-![Filtered output](.images/parameter-mod6.PNG)
+![Filtered output](images/parameter-mod6.PNG)
 
 The flag is displayed on the administrator dashboard:
 
@@ -854,7 +849,7 @@ Consider the following example:
 Set Cookie: session=a5fd
 ```
 
-![Filtered output](.images/session-attacks.PNG)
+![Filtered output](images/session-attacks.PNG)
 
 A four-character session token provides an extremely small key space and can be brute-forced quickly, allowing an attacker to hijack arbitrary user sessions.
 
@@ -878,7 +873,7 @@ After authenticating and intercepting the response, we observe the following ses
 Set-Cookie: session=757365723d6874622d7374646e743b726f6c653d75736572
 ```
 
-![Filtered output](.images/session-attacks2.PNG)
+![Filtered output](images/session-attacks2.PNG)
 
 The session token appears long enough at first glance (49 characters). We verify its length:
 
@@ -924,7 +919,7 @@ We replace the session cookie in the intercepted request:
 Cookie: session=757365723d6874622d7374646e743b726f6c653d61646d696e0a;
 ```
 
-![Filtered output](.images/session-attacks3.PNG)
+![Filtered output](images/session-attacks3.PNG)
 
 After forwarding the modified request, we gain access to the administrative dashboard. The flag is visible in the page source:
 
@@ -946,7 +941,7 @@ Based on the URL structure, the target is clearly a **PHP-based web application*
 http://94.237.63.176:38382/index.php
 ```
 
-![Filtered output](.images/exploitation.PNG)
+![Filtered output](images/exploitation.PNG)
 
 The application appears unfinished, as most endpoints are non-functional. However, the login functionality is accessible at:
 
@@ -954,7 +949,7 @@ The application appears unfinished, as most endpoints are non-functional. Howeve
 http://94.237.63.176:38382/login.php
 ```
 
-![Filtered output](.images/exploitation2.PNG)
+![Filtered output](images/exploitation2.PNG)
 
 Clicking `Register a new account` redirects us to:
 
@@ -976,7 +971,7 @@ reveals the application's password policy:
 - Contains NO special characters
 - Is exactly 12 characters long
 
-![Filtered output](.images/exploitation3.PNG)
+![Filtered output](images/exploitation3.PNG)
 
 This information leak significantly reduces the password search space and is extremely valuable for brute-forcing.
 
@@ -992,7 +987,7 @@ The application confirms successful registration:
 Success!
 ```
 
-![Filtered output](.images/exploitation4.PNG)
+![Filtered output](images/exploitation4.PNG)
 
 Logging in with this account results in the following message:
 
@@ -1000,7 +995,7 @@ Logging in with this account results in the following message:
 You do not have admin privileges. The site is still under construction and only available to admins at this time.
 ```
 
-![Filtered output](.images/exploitation5.PNG)
+![Filtered output](images/exploitation5.PNG)
 
 With a valid account, we analyze the login functionality for **differential error messages**.
 
@@ -1016,7 +1011,7 @@ produces:
 Unknown username or password.
 ```
 
-![Filtered output](.images/exploitation6.PNG)
+![Filtered output](images/exploitation6.PNG)
 
 Attempting to log in with a valid username but invalid password:
 
@@ -1030,13 +1025,13 @@ produces a different message:
 Invalid credentials.
 ```
 
-![Filtered output](.images/exploitation7.PNG)
+![Filtered output](images/exploitation7.PNG)
 
 This behavior allows reliable **username enumeration**.
 
 We insert the `FUZZ` keyword into the intercepted login request and save it to `req.txt`:
 
-![Filtered output](.images/exploitation8.PNG)
+![Filtered output](images/exploitation8.PNG)
 
 Using `ffuf`, we brute-force usernames while filtering out invalid responses:
 
@@ -1050,7 +1045,7 @@ We identify a valid username:
 gladys
 ```
 
-![Filtered output](.images/exploitation9.PNG)
+![Filtered output](images/exploitation9.PNG)
 
 At this point, no password-reset functionality, session manipulation, or parameter abuse is available. Given the leaked password policy, **password brute-forcing** is the most viable attack vector.
 
@@ -1066,11 +1061,11 @@ This reduces the wordlist from ~14 million entries to approximately 17,000 passw
 wc -l custom_wordlist.txt
 ```
 
-![Filtered output](.images/exploitation10.PNG)
+![Filtered output](images/exploitation10.PNG)
 
 We replace the `password` parameter with `FUZZ` and save the request:
 
-![Filtered output](.images/exploitation11.PNG)
+![Filtered output](images/exploitation11.PNG)
 
 We brute-force the password while filtering on the error message shown for valid usernames:
 
@@ -1084,7 +1079,7 @@ A valid password is quickly discovered:
 dWinaldasD13
 ```
 
-![Filtered output](.images/exploitation12.PNG)
+![Filtered output](images/exploitation12.PNG)
 
 Logging in with the compromised credentials:
 
@@ -1098,7 +1093,7 @@ triggers a second authentication step:
 Please provide your 2FA OTP
 ```
 
-![Filtered output](.images/exploitation13.PNG)
+![Filtered output](images/exploitation13.PNG)
 
 Submitting a random OTP (`1234`) results in:
 
@@ -1106,7 +1101,7 @@ Submitting a random OTP (`1234`) results in:
 Invalid OTP.
 ```
 
-![Filtered output](.images/exploitation14.PNG)
+![Filtered output](images/exploitation14.PNG)
 
 Brute-forcing OTPs of varying lengths (3–5 digits, padded and unpadded) does not succeed.
 
@@ -1126,7 +1121,7 @@ We log in as `gladys`, intercept the request in **Burp Suite**, and follow the r
 /2fa.php
 ```
 
-![Filtered output](.images/bypass2.PNG)
+![Filtered output](images/bypass2.PNG)
 
 Before submitting any OTP, we manually modify the request URL:
 
@@ -1134,7 +1129,7 @@ Before submitting any OTP, we manually modify the request URL:
 /profile.php
 ```
 
-![Filtered output](.images/flag.PNG)
+![Filtered output](images/flag.PNG)
 
 The application fails to enforce the 2FA check server-side and directly serves the protected resource.
 
