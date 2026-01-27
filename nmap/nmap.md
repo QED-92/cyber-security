@@ -59,7 +59,7 @@ nmap 10.129.2.0/24 -sn -oA hosts
 
 The **-sn** flag disables port scanning, while **-oA** saves output in all major formats.
 
-![Filtered output](.images/nmap2.PNG)
+![Filtered output](..images/nmap2.PNG)
 
 ### Extracting Live Hosts
 
@@ -69,7 +69,7 @@ To extract only IP addresses and hostnames from the output:
 nmap 10.129.2.0/24 -sn | grep for | cut -d " " -f5
 ```
 
-![Filtered output](.images/nmap1.PNG)
+![Filtered output](..images/nmap1.PNG)
 
 ### Scanning From a Host List
 
@@ -103,7 +103,7 @@ View sent and received packets:
 nmap 10.129.2.18 -sn --packet-trace
 ```
 
-![Filtered output](.images/nmap3.PNG)
+![Filtered output](..images/nmap3.PNG)
 
 Understand why a host is marked as "up":
 
@@ -111,7 +111,7 @@ Understand why a host is marked as "up":
 nmap 10.129.2.18 -sn --reason
 ```
 
-![Filtered output](.images/nmap4.PNG)
+![Filtered output](..images/nmap4.PNG)
 
 ### Forcing ICMP Discovery
 
@@ -163,7 +163,7 @@ This makes it relatively stealthy.
 sudo nmap 10.129.2.49
 ```
 
-![Filtered output](.images/nmap5.PNG)
+![Filtered output](..images/nmap5.PNG)
 
 Without root privileges, Nmap falls back to a **TCP Connect scan** (-sT), which completes the handshake and is more easily logged.
 
@@ -201,7 +201,7 @@ OS detection requires at least one open and one closed port to be reliable.
 nmap 10.129.2.49 -p 22,80,445 -sV -O
 ```
 
-![Filtered output](.images/nmap6.PNG)
+![Filtered output](..images/nmap6.PNG)
 
 ---
 

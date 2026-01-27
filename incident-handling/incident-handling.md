@@ -55,7 +55,7 @@ Examples of incidents include:
 
 The cyber kill chain consists of seven stages, describing the lifecycle of an attack. 
 
-![Filtered output](.images/cyber-kill-chain.PNG)
+![Filtered output](..images/cyber-kill-chain.PNG)
 
 Keep in mind that adversaries rarely operate linearly, as the cyber kill chain suggests. Some stages might be repeated multiple times, and some stages might be skipped.
 
@@ -111,17 +111,17 @@ Example objectives are:
 
 MITRE ATT&CK is another framework for understanding adversary behavior. It is a matrix-based system of tactics and techniques observed in the wild. The columns represent adversary goals, and the rows (cells) represent the techniques used to achieve those goals.
 
-![Filtered output](.images/mitre.PNG)
+![Filtered output](..images/mitre.PNG)
 
 ## The Hive
 
-![Filtered output](.images/the-hive.PNG)
+![Filtered output](..images/the-hive.PNG)
 
 A case management platform designed to effectively handle incidents by processing alerts. It collects alerts from various devices and presents them in a centralized way. 
 
 The Hive has the capability to import all MITRE ATT&CK tactics and techniques into its alert management system. 
 
-![Filtered output](.images/the-hive2.PNG)
+![Filtered output](..images/the-hive2.PNG)
 
 ---
 
@@ -196,7 +196,7 @@ When an incident is detected, the following information should be collected:
 
 The information is usually collected from the security system that generated the alert:
 
-![Filtered output](.images/the-hive3.PNG)
+![Filtered output](..images/the-hive3.PNG)
 
 ### Investigation
 
@@ -211,7 +211,7 @@ An iterative 3-step process is used:
 
 IOCs can be added to alerts in The Hive:
 
-![Filtered output](.images/the-hive4.PNG)
+![Filtered output](..images/the-hive4.PNG)
 
 
 ## Containment, Eradication and Recovery

