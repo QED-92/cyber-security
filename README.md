@@ -8,9 +8,9 @@ This repository contains detailed documentation and exercises from **Hack The Bo
 
 | Module | Description |
 |--------|-------------|
-| [API Attacks](api-attacks/api-attacks.md) | Exploiting insecure APIs, authentication bypass, and data manipulation |
+| [API Attacks](api-attacks/api-attacks.md) | Exploiting insecure REST APIs |
 | [Attacking Common Applications](attacking-common-applications/attacking-common-applications.md) | Security flaws in widely-used applications |
-| [Attacking GraphQL](attacking-graphql/attacking-graphql.md) | Exploiting GraphQL APIs and finding vulnerabilities |
+| [Attacking GraphQL](attacking-graphql/attacking-graphql.md) | Exploiting GraphQL APIs |
 | [Broken Authentication](broken-authentication/broken-authentication.md) | Broken authentication scenarios and exploitation |
 | [Command Injections](command-injections/command-injections.md) | Command injection and remote code execution techniques |
 | [Cross-Site Scripting](cross-site-scripting/xss.md) | Reflected, stored, and DOM-based XSS examples |
@@ -19,12 +19,12 @@ This repository contains detailed documentation and exercises from **Hack The Bo
 | [File Upload Attacks](file-upload-attacks/file-upload-attacks.md) | Exploiting insecure file upload mechanisms |
 | [Hashcat](hashcat/hashcat.md) | Password cracking with Hashcat |
 | [Hydra](hydra/hydra.md) | Brute-force attacks using Hydra |
-| [Incident Handling](incident-handling/incident-handling.md) | Incident response exercises |
+| [Incident Handling](incident-handling/incident-handling.md) | Incident response frameworks |
 | [Nmap](nmap/nmap.md) | Network scanning and enumeration |
 | [Server-Side Attacks](server-side-attacks/server-side-attacks.md) | Server-side attack techniques |
-| [SQL Injections](sql-injections/sql-injections.md) | Manual SQL injection examples |
-| [SQLMap](sqlmap/sqlmap.md) | Automated SQL injection with SQLMap |
-| [Web Attacks](web-attacks/web-attacks.md) | General web exploitation exercises |
+| [SQL Injections](sql-injections/sql-injections.md) | SQL theory and manual SQL injections |
+| [SQLMap](sqlmap/sqlmap.md) | Automated SQL injections with SQLMap |
+| [Web Attacks](web-attacks/web-attacks.md) | General web exploitation techniques |
 | [Windows Event Logs](windows-event-logs/windows-event-logs.md) | Analysis of Windows Event Logs for security monitoring |
 
 > Click the module name to open the full documentation.
