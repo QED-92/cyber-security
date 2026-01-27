@@ -94,7 +94,7 @@ The authentication request is sent as JSON:
 }
 ```
 
-![Filtered output](..images/bola.PNG)
+![Filtered output](./.images/bola.PNG)
 
 The server responds with a valid JWT:
 
@@ -104,19 +104,19 @@ The server responds with a valid JWT:
 }
 ```
 
-![Filtered output](..images/bola2.PNG)
+![Filtered output](./.images/bola2.PNG)
 
 The JWT is supplied to the API by using the `Authorize` feature in the Swagger interface:
 
-![Filtered output](..images/bola3.PNG)
+![Filtered output](./.images/bola3.PNG)
 
 After entering the token, authorization succeeds:
 
-![Filtered output](..images/bola4.PNG)
+![Filtered output](./.images/bola4.PNG)
 
 Next, endpoints within the **Suppliers** group are reviewed. An endpoint named `/api/v1/suppliers/current-user` is identified. The `current-user` naming convention suggests that the endpoint relies on the JWT to determine the authenticated user context.
 
-![Filtered output](..images/bola5.PNG)
+![Filtered output](./.images/bola5.PNG)
 
 Invoking this endpoint returns details associated with the authenticated supplier, including the internal `id` and `companyID` values:
 
@@ -132,7 +132,7 @@ Invoking this endpoint returns details associated with the authenticated supplie
 }
 ```
 
-![Filtered output](..images/bola6.PNG)
+![Filtered output](./.images/bola6.PNG)
 
 Further inspection of the **Supplier** endpoints reveals the following endpoint, which accepts a user-controlled integer identifier:
 
@@ -140,7 +140,7 @@ Further inspection of the **Supplier** endpoints reveals the following endpoint,
 /api/v1/suppliers/quarterly-reports/{ID}
 ```
 
-![Filtered output](..images/bola7.PNG)
+![Filtered output](./.images/bola7.PNG)
 
 By modifying the `{ID}` parameter, it is possible to retrieve quarterly reports belonging to other suppliers. For example, requesting the report with an `id` value of `2` returns data associated with a different supplier:
 
@@ -157,7 +157,7 @@ By modifying the `{ID}` parameter, it is possible to retrieve quarterly reports 
 }
 ```
 
-![Filtered output](..images/bola8.PNG)
+![Filtered output](./.images/bola8.PNG)
 
 This confirms the presence of a **BOLA/IDOR** vulnerability, as the API does not enforce ownership or authorization checks on the requested object.
 
@@ -188,7 +188,7 @@ Flag:
 HTB{e76651e1f516eb5d7260621c26754776}
 ```
 
-![Filtered output](..images/bola9.PNG)
+![Filtered output](./.images/bola9.PNG)
 
 This vulnerability allows **authenticated users to access sensitive financial and operational data belonging to other suppliers** by simply modifying a numeric identifier. The lack of object-level authorization checks enables large-scale data exposure and demonstrates a critical API security flaw.
 
@@ -227,7 +227,7 @@ The authentication request is sent as JSON:
 }
 ```
 
-![Filtered output](..images/broken-auth.PNG)
+![Filtered output](./.images/broken-auth.PNG)
 
 The server responds with a valid JWT:
 
@@ -237,15 +237,15 @@ The server responds with a valid JWT:
 }
 ```
 
-![Filtered output](..images/broken-auth2.PNG)
+![Filtered output](./.images/broken-auth2.PNG)
 
 The JWT is supplied to the API using the `Authorize` feature in the Swagger interface:
 
-![Filtered output](..images/broken-auth3.PNG)
+![Filtered output](./.images/broken-auth3.PNG)
 
 Authorization succeeds after providing the token:
 
-![Filtered output](..images/broken-auth4.PNG)
+![Filtered output](./.images/broken-auth4.PNG)
 
 Querying the `/api/v1/roles/current-user` endpoint reveals that the authenticated user is assigned the following roles:
 
@@ -253,7 +253,7 @@ Querying the `/api/v1/roles/current-user` endpoint reveals that the authenticate
 - `Customers_Get`
 - `Customers_GetAll`
 
-![Filtered output](..images/broken-auth5.PNG)
+![Filtered output](./.images/broken-auth5.PNG)
 
 The `Customers_GetAll` role permits access to the `/api/v1/customers` endpoint, which returns records for all customers:
 
@@ -261,7 +261,7 @@ The `Customers_GetAll` role permits access to the `/api/v1/customers` endpoint, 
 http://83.136.248.107:32741/api/v1/customers
 ```
 
-![Filtered output](..images/broken-auth6.PNG)
+![Filtered output](./.images/broken-auth6.PNG)
 
 This endpoint exposes sensitive information such as email addresses, phone numbers, and birth dates. While this constitutes an authorization issue, it does not directly allow account takeover.
 
@@ -279,7 +279,7 @@ Inspection of the `/api/v1/customers/current-user` **PATCH** endpoint shows that
 }
 ```
 
-![Filtered output](..images/broken-auth7.PNG)
+![Filtered output](./.images/broken-auth7.PNG)
 
 When attempting to set a weak password such as `passw`, the API rejects the request, indicating a minimum password length requirement:
 
@@ -325,7 +325,7 @@ When the password is set to a weak but valid value such as `123456`, the update 
 }
 ```
 
-![Filtered output](..images/broken-auth9.PNG)
+![Filtered output](./.images/broken-auth9.PNG)
 
 Response:
 
@@ -335,7 +335,7 @@ Response:
 }
 ```
 
-![Filtered output](..images/broken-auth10.PNG)
+![Filtered output](./.images/broken-auth10.PNG)
 
 This confirms the presence of a **weak password policy**, making brute-force and credential abuse viable.
 
@@ -386,7 +386,7 @@ The response indicates success:
 }
 ```
 
-![Filtered output](..images/broken-auth12.PNG)
+![Filtered output](./.images/broken-auth12.PNG)
 
 The password reset confirmation endpoint requires an OTP value:
 
@@ -422,7 +422,7 @@ A valid OTP is successfully identified:
 6307
 ```
 
-![Filtered output](..images/broken-auth11.PNG)
+![Filtered output](./.images/broken-auth11.PNG)
 
 Using the valid OTP, the victim’s password is reset to `123456`:
 
@@ -434,7 +434,7 @@ Using the valid OTP, the victim’s password is reset to `123456`:
 }
 ```
 
-![Filtered output](..images/broken-auth13.PNG)
+![Filtered output](./.images/broken-auth13.PNG)
 
 The new credentials are then used to authenticate successfully:
 
@@ -455,7 +455,7 @@ Response:
 
 After supplying the JWT via the `Authorize` interface, querying `/api/v1/customers/current-user` confirms successful account takeover:
 
-![Filtered output](..images/broken-auth14.PNG)
+![Filtered output](./.images/broken-auth14.PNG)
 
 
 ```json
@@ -470,7 +470,7 @@ After supplying the JWT via the `Authorize` interface, querying `/api/v1/custome
 }
 ```
 
-![Filtered output](..images/broken-auth15.PNG)
+![Filtered output](./.images/broken-auth15.PNG)
 
 With full access to the compromised account, sensitive financial data can be accessed via the following endpoint:
 
@@ -543,7 +543,7 @@ Authentication is performed via the `/api/v1/authentication/customers/sign-in` e
 }
 ```
 
-![Filtered output](..images/data-exposure.PNG)
+![Filtered output](./.images/data-exposure.PNG)
 
 The server responds with a valid JWT:
 
@@ -555,14 +555,14 @@ The server responds with a valid JWT:
 
 The JWT is supplied using the `Authorize` functionality:
 
-![Filtered output](..images/data-exposure2.PNG)
+![Filtered output](./.images/data-exposure2.PNG)
 
 Querying the `/api/v1/roles/current-user` endpoint reveals that the authenticated user has been assigned the following roles:
 
 - `Suppliers_Get`
 - `Suppliers_GetAll`
 
-![Filtered output](..images/data-exposure3.PNG)
+![Filtered output](./.images/data-exposure3.PNG)
 
 Invoking the `/api/v1/suppliers` **GET** endpoint returns a list of suppliers that includes sensitive properties such as:
 
@@ -572,7 +572,7 @@ Invoking the `/api/v1/suppliers` **GET** endpoint returns a list of suppliers th
 - `email`
 - `phoneNumber`
 
-![Filtered output](..images/data-exposure4.PNG)
+![Filtered output](./.images/data-exposure4.PNG)
 
 While allowing customers to view supplier listings is typical for e-commerce platforms, exposing **direct contact information** such as email addresses and phone numbers is inappropriate. This information enables customers to bypass the marketplace entirely by contacting suppliers directly, undermining the platform’s business model.
 
@@ -616,7 +616,7 @@ After authorizing with the JWT, querying `/api/v1/roles/current-user` shows that
 - `SupplierCompanies_Update`
 - `SupplierCompanies_Get`
 
-![Filtered output](..images/mass-assignment.PNG)
+![Filtered output](./.images/mass-assignment.PNG)
 
 The `/api/v1/supplier-companies/current-user` endpoint reveals that the supplier company associated with the authenticated user (`PentesterCompany`) has the following property set:
 
@@ -624,7 +624,7 @@ The `/api/v1/supplier-companies/current-user` endpoint reveals that the supplier
 "isExemptedFromMarketplaceFee": 0
 ```
 
-![Filtered output](..images/mass-assignment2.PNG)
+![Filtered output](./.images/mass-assignment2.PNG)
 
 This indicates that the supplier company is subject to marketplace fees on each sale.
 
@@ -640,7 +640,7 @@ Examining the `/api/v1/supplier-companies` **PATCH** endpoint reveals that it ac
 }
  ```
 
- ![Filtered output](..images/mass-assignment3.PNG)
+ ![Filtered output](./.images/mass-assignment3.PNG)
 
 An initial request fails due to missing required fields:
 
@@ -690,7 +690,7 @@ The server responds successfully:
 }
  ```
 
-![Filtered output](..images/mass-assignment4.PNG)
+![Filtered output](./.images/mass-assignment4.PNG)
 
 Revisiting the `/api/v1/supplier-companies/current-user` endpoint confirms that the value has been updated:
 
@@ -706,7 +706,7 @@ Revisiting the `/api/v1/supplier-companies/current-user` endpoint confirms that 
 }
 ```
 
-![Filtered output](..images/mass-assignment5.PNG)
+![Filtered output](./.images/mass-assignment5.PNG)
 
 This confirms that the authenticated supplier was able to modify a **business-critical property** that should not be user-controllable.
 
@@ -748,7 +748,7 @@ After authorizing with the JWT, querying `/api/v1/roles/current-user` shows that
 - `SupplierCompanies_Get`
 - `SupplierCompanies_UploadCertificateOfIncorporation`
 
-![Filtered output](..images/r-consumption.PNG)
+![Filtered output](./.images/r-consumption.PNG)
 
 Reviewing the `SupplierCompanies` endpoints shows that only one endpoint is associated with the `SupplierCompanies_UploadCertificateOfIncorporation` role:
 
@@ -756,7 +756,7 @@ Reviewing the `SupplierCompanies` endpoints shows that only one endpoint is asso
 /api/v1/supplier-companies/certificates-of-incorporation POST
 ```
 
-![Filtered output](..images/r-consumption2.PNG)
+![Filtered output](./.images/r-consumption2.PNG)
 
 This endpoint allows suppliers to upload a **certificate of incorporation** in PDF format. The request requires both a file upload and a `CompanyID`.
 
@@ -808,7 +808,7 @@ The upload succeeds, and the response confirms both the file size and storage lo
 }
 ```
 
-![Filtered output](..images/r-consumption3.PNG)
+![Filtered output](./.images/r-consumption3.PNG)
 
 This demonstrates that the endpoint does **not enforce file size limits**. Without additional safeguards such as rate limiting, an attacker could repeatedly upload large files and exhaust available disk storage, leading to denial-of-service conditions and increased operational costs.
 
@@ -936,7 +936,7 @@ We systematically enumerate API endpoints and identify the following endpoint of
 /api/v1/products/discounts
 ```
 
-![Filtered output](..images/bfla.PNG)
+![Filtered output](./.images/bfla.PNG)
 
 According to the API documentation, this endpoint requires the role:
 
@@ -972,7 +972,7 @@ However, despite lacking this role, sending a request to the endpoint returns di
     .
 ```
 
-![Filtered output](..images/bfla2.PNG)
+![Filtered output](./.images/bfla2.PNG)
 
 This confirms a **Broken Function Level Authorization** vulnerability. Although the endpoint is documented as restricted, **no role-based access control is enforced**, allowing unauthorized users to retrieve sensitive business data such as discount rates and campaign periods.
 
@@ -982,7 +982,7 @@ Continuing endpoint enumeration reveals another vulnerable endpoint:
 /api/v1/customers/billing-addresses
 ```
 
-![Filtered output](..images/bfla3.PNG)
+![Filtered output](./.images/bfla3.PNG)
 
 This endpoint is documented as requiring the role:
 
@@ -1111,7 +1111,7 @@ After authorizing with the JWT, querying `/api/v1/roles/current-user` reveals th
 - `SupplierCompanies_Update`
 - `SupplierCompanies_UploadCertificateOfIncorporation`
 
-![Filtered output](..images/ssrf.PNG)
+![Filtered output](./.images/ssrf.PNG)
 
 Reviewing the **Supplier-Companies** section reveals three endpoints associated with the assigned roles:
 
@@ -1119,7 +1119,7 @@ Reviewing the **Supplier-Companies** section reveals three endpoints associated 
 - `api/v1/supplier-companies/{ID}/certificates-of-incorporation`
 - `/api/v1/supplier-companies/certificates-of-incorporation`
 
-![Filtered output](..images/ssrf2.PNG)
+![Filtered output](./.images/ssrf2.PNG)
 
 Invoking the `/api/v1/supplier-companies/current-user` endpoint confirms that the authenticated user belongs to the supplier company with the following ID:
 
@@ -1139,7 +1139,7 @@ b75a7c76-e149-4ca7-9c55-d9fc4ffa87be
 }
 ```
 
-![Filtered output](..images/ssrf3.PNG)
+![Filtered output](./.images/ssrf3.PNG)
 
 The `/api/v1/supplier-companies/certificates-of-incorporation` **POST** endpoint allows supplier-company staff to upload a certificate of incorporation in PDF format. This endpoint requires the `SupplierCompanies_UploadCertificateOfIncorporation` role, which we possess.
 
@@ -1186,7 +1186,7 @@ Querying `/api/v1/supplier-companies/current-user` again confirms that the `cert
 }
 ```
 
-![Filtered output](..images/ssrf4.PNG)
+![Filtered output](./.images/ssrf4.PNG)
 
 The `/api/v1/supplier-companies` **PATCH** endpoint requires the `SupplierCompanies_Update` role and allows supplier-company staff to update company attributes, including the `CertificateOfIncorporationPDFFileURI` field:
 
@@ -1199,7 +1199,7 @@ The `/api/v1/supplier-companies` **PATCH** endpoint requires the `SupplierCompan
   }
 }
 ```
-![Filtered output](..images/ssrf5.PNG)
+![Filtered output](./.images/ssrf5.PNG)
 
 Because the API does not validate the URI scheme or file path, we can perform an **SSRF / Local File Inclusion (LFI)** attack by pointing the field to an arbitrary local file:
 
@@ -1213,7 +1213,7 @@ Because the API does not validate the URI scheme or file path, we can perform an
 }
 ```
 
-![Filtered output](..images/ssrf6.PNG)
+![Filtered output](./.images/ssrf6.PNG)
 
 Response:
 
@@ -1243,7 +1243,7 @@ Response:
 }
 ```
 
-![Filtered output](..images/ssrf7.PNG)
+![Filtered output](./.images/ssrf7.PNG)
 
 Decoding the base64 data reveals the contents of `/etc/passwd`:
 
@@ -1251,7 +1251,7 @@ Decoding the base64 data reveals the contents of `/etc/passwd`:
 echo "<base64 string>" | base64 -d
 ```
 
-![Filtered output](..images/ssrf8.PNG)
+![Filtered output](./.images/ssrf8.PNG)
 
 ---
 
@@ -1301,7 +1301,7 @@ The only endpoint related to that role is:
 
 The endpoint accepts a string parameter and returns the total number of products containing the supplied substring:
 
-![Filtered output](..images/sqli.PNG)
+![Filtered output](./.images/sqli.PNG)
 
 Supplying a valid string such as `laptop` returns the expected result:
 
@@ -1337,7 +1337,7 @@ Response:
 }
 ```
 
-![Filtered output](..images/sqli2.PNG)
+![Filtered output](./.images/sqli2.PNG)
 
 The presence of an unhandled SQL syntax error strongly indicates a **SQL injection vulnerability**.
 
@@ -1382,7 +1382,7 @@ sqlmap -r req.txt --risk=3 --level=5 --technique=b --tables --batch
 
 We discover 13 tables:
 
-![Filtered output](..images/sqli4.PNG)
+![Filtered output](./.images/sqli4.PNG)
 
 We can then dump sensitive data from individual tables, such as the `Supplier` table:
 
@@ -1392,7 +1392,7 @@ sqlmap -r req.txt --risk=3 --level=5 --technique=b -T Supplier --dump --batch
 
 This reveals sensitive information, including email addresses and password hashes:
 
-![Filtered output](..images/sqli5.PNG)
+![Filtered output](./.images/sqli5.PNG)
 
 ---
 
@@ -1402,7 +1402,7 @@ As APIs **mature and evolve**, it is critical to implement **proper versioning a
 
 In the previous sections, all interaction was limited to **version** `v1` of the target API. However, when examining the API documentation dropdown labeled `Select a definition`, an additional version—`v0`—is discovered:
 
-![Filtered output](..images/inventory-management.PNG)
+![Filtered output](./.images/inventory-management.PNG)
 
 Selecting `v0` reveals that this version contains **legacy and deleted data**, as indicated by the following description:
 
@@ -1411,11 +1411,11 @@ Inlanefreight E-Commerce Marketplace API Specification.
 Need to delete this version. Not maintained anymore... We will keep it to retrieve legacy/deleted data whenever needed.
 ```
 
-![Filtered output](..images/inventory-management2.PNG)
+![Filtered output](./.images/inventory-management2.PNG)
 
 Unlike the `v1` endpoints, none of the `v0` endpoints display the **lock icon**, which is used to indicate that authentication is required. This suggests that **no authorization or authentication controls** are enforced for the legacy API version:
 
-![Filtered output](..images/inventory-management3.PNG)
+![Filtered output](./.images/inventory-management3.PNG)
 
 When invoking the `/api/v0/customers/deleted` endpoint, the API responds with **deleted customer records**, exposing highly sensitive information, including:
 
@@ -1446,7 +1446,7 @@ When invoking the `/api/v0/customers/deleted` endpoint, the API responds with **
   },
 ```
 
-![Filtered output](..images/inventory-management4.PNG)
+![Filtered output](./.images/inventory-management4.PNG)
 
 This behavior demonstrates **Improper Inventory Management**, where an obsolete and unauthenticated API version exposes sensitive and previously deleted data. Such information can be leveraged in:
 
@@ -1564,7 +1564,7 @@ The response contains detailed supplier information, including the field:
 professionalCVPDFFileURI
 ```
 
-![Filtered output](..images/exploitation2.PNG)
+![Filtered output](./.images/exploitation2.PNG)
 
 One of the JSON parameters is called:
 
@@ -1618,7 +1618,7 @@ B.Rogers1535@globalsolutions.com
 M.Alexander1650@globalsolutions.com
 ```
 
-![Filtered output](..images/exploitation6.PNG)
+![Filtered output](./.images/exploitation6.PNG)
 
 ### Brute-Forcing Security Question Answers
 
@@ -1628,7 +1628,7 @@ Under the `Authentication` section, the following password reset functionality i
 /api/v2/authentication/suppliers/passwords/resets/security-question-answers
 ```
 
-![Filtered output](..images/exploitation7.PNG)
+![Filtered output](./.images/exploitation7.PNG)
 
 A wordlist containing common colors is used to brute-force the security question answers. The request template is fuzzed using `ffuf`:
 
@@ -1645,7 +1645,7 @@ A valid combination is discovered:
     * FUZZ2: rust
 ```
 
-![Filtered output](..images/exploitation8.PNG)
+![Filtered output](./.images/exploitation8.PNG)
 
 Using the recovered credentials, authentication as the supplier is successful:
 
@@ -1696,7 +1696,7 @@ Querying the supplier profile confirms that the local file path is stored in the
 }
 ```
 
-![Filtered output](..images/exploitation9.PNG)
+![Filtered output](./.images/exploitation9.PNG)
 
 ### Exploiting Unsafe API Consumption (SSRF / LFI)
 
@@ -1716,7 +1716,7 @@ The supplier profile update endpoint allows modification of the CV file URI:
 }
 ```
 
-![Filtered output](..images/exploitation10.PNG)
+![Filtered output](./.images/exploitation10.PNG)
 
 Because the API fails to validate the URI scheme or enforce path restrictions, the field can be manipulated to reference an arbitrary local file:
 
@@ -1730,7 +1730,7 @@ Because the API fails to validate the URI scheme or enforce path restrictions, t
 }
 ```
 
-![Filtered output](..images/exploitation11.PNG)
+![Filtered output](./.images/exploitation11.PNG)
 
 The request is accepted successfully.
 

