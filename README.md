@@ -25,7 +25,6 @@ This repository contains detailed documentation and exercises from **Hack The Bo
 | [SQL Injections](sql-injections/sql-injections.md) | SQL theory and manual SQL injections |
 | [SQLMap](sqlmap/sqlmap.md) | Automated SQL injections with SQLMap |
 | [Web Attacks](web-attacks/web-attacks.md) | General web exploitation techniques |
-| [Windows Event Logs](windows-event-logs/windows-event-logs.md) | Analysis of Windows Event Logs for security monitoring |
 
 > Click the module name to open the full documentation.
 
