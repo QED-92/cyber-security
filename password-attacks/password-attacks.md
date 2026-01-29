@@ -11,7 +11,10 @@ This document outlines common techniques used in **password attacks**. It is int
   - [Password Cracking Techniques](#password-cracking-techniques)
     - [John The Ripper](#john-the-ripper)
     - [Hashcat](#hashcat)
-
+    - [Cracking Protected Files](#cracking-protected-files)
+    - [Cracking Protected Archives](#cracking-protected-archives)
+  - [Remote Password Attacks](#remote-password-attacks)
+    - [Network Services](#network-services)
 
 ---
 
@@ -105,11 +108,12 @@ John the Ripper is an open-source password cracking utility that has been active
 Each mode targets different attack scenarios depending on the available data and password complexity.
 
 **Single Crack Mode**
+
 Single crack mode is a rule-based technique commonly used when targeting Linux credentials. Password candidates are generated using information associated with each account, including:
 
 - Username
 - Home directory name
-- GECOS fields (real name and metadata)
+- `GECOS` fields (real name and metadata)
 
 These values are typically extracted from `/etc/passwd`.
 
@@ -141,6 +145,7 @@ NAITSABES
 ```
 
 **Wordlist Mode**
+
 Wordlist mode performs a dictionary attack by hashing each entry from a supplied wordlist and comparing it against the target hash.
 
 The following example cracks a `RIPEMD-128` hash using `rockyou.txt`:
@@ -158,7 +163,8 @@ Recovered password:
 ```
 
 **Incremental Mode**
-Incremental mode is a brute-force–based technique that generates passwords dynamically using statistical models (Markov chains). Unlike wordlist attacks, it does not rely on predefined dictionaries.
+
+Incremental mode is a brute-force–based technique that generates passwords dynamically using statistical models (`Markov chains`). Unlike wordlist attacks, it does not rely on predefined dictionaries.
 
 Instead, candidate passwords are generated based on probabilistic patterns, making this approach more efficient than traditional brute force.
 
@@ -178,6 +184,7 @@ Recovered password:
 ```
 
 **Hash Identification**
+
 In some cases, hash types may not be immediately obvious. Tools such as `hashid` can assist with identification. Using the `-j` flag also displays the corresponding John the Ripper format:
 
 ```bash
@@ -216,6 +223,7 @@ The most commonly used Hashcat attack modes are:
 - Mask attack (`-a 3`)
 
 **Dictionary Attack**
+
 A dictionary attack compares one or more hashes against entries from a predefined wordlist.
 
 The attack mode is specified with `-a`, and the hash mode with `-m`. Dictionary attacks use mode `0`:
@@ -233,6 +241,7 @@ crazy!
 ![Filtered output](./.images/hashcat-dictionary.PNG)
 
 **Rule-Based Attacks**
+
 A raw wordlist may not always be sufficient. Hashcat supports rule-based mutations that modify each wordlist entry (adding digits, changing case, substituting characters, etc.).
 
 Predefined rule files are located at:
@@ -258,6 +267,7 @@ c0wb0ys1
 ![Filtered output](./.images/hashcat-rules-best64.PNG)
 
 **Mask Attacks**
+
 A mask attack (`-a 3`) is a targeted brute-force technique where the password structure is explicitly defined. This method is highly effective when password policies or formatting patterns are known.
 
 Hashcat provides built-in character sets represented by special symbols:
@@ -293,3 +303,237 @@ Mouse5!
 ![Filtered output](./.images/hashcat-mask.PNG)
 
 ---
+
+### Cracking Protected Files
+
+Encryption of sensitive files is increasingly common in both personal and enterprise environments. However, protected files can often be cracked given sufficient time, compute resources, and effective wordlists.
+
+Individual files and folders are typically protected using **symmetric encryption** algorithms such as `AES-256`, where the same key is used for both encryption and decryption. During transmission, **asymmetric encryption** is more commonly employed, using a public/private key pair.
+
+From an attacker’s perspective, the goal is to extract the underlying password hash from the protected file and perform offline cracking.
+
+**Identifying Encrypted Files**
+
+A simple bash one-liner can be used to locate commonly encrypted document types on a Linux system:
+
+```bash
+for ext in $(echo ".xls .xls* .xltx .od* .doc .doc* .pdf .pot .pot* .pp*");do echo -e "\nFile extension: " $ext; find / -name *$ext 2>/dev/null | grep -v "lib\|fonts\|share\|core" ;done
+```
+
+![Filtered output](./.images/hashcat-file-exts.PNG)
+
+Some sensitive files (such as SSH private keys) do not rely on file extensions. In these cases, searching for known headers or footers is effective.
+
+SSH private keys always begin with:
+
+```
+-----BEGIN [...SNIP...] PRIVATE KEY-----
+```
+
+Search for private SSH keys:
+
+```bash
+grep -rnE '^\-{5}BEGIN [A-Z0-9]+ PRIVATE KEY\-{5}$' /* 2>/dev/null
+```
+
+![Filtered output](./.images/ssh-private-keys.PNG)
+
+To determine whether an SSH key is encrypted, attempt to read it with `ssh-keygen`. Encrypted keys will prompt for a passphrase:
+
+```bash
+ssh-keygen -yf ~/.ssh/id_rsa
+```
+
+**Extracting Hashes with John the Ripper**
+
+John the Ripper includes multiple helper scripts for extracting hashes from protected files. These scripts typically follow the `*2john` naming convention.
+
+List available scripts:
+
+```bash
+locate *2john*
+```
+
+![Filtered output](./.images/john-scripts.PNG)
+
+Extract the hash from an SSH private key using `ssh2john.py`, then crack it with John:
+
+```bash
+# Extract hash
+ssh2john.py SSH.private > ssh.hash
+
+# Crack hash
+john --wordlist=rockyou.txt ssh.hash
+```
+
+Most enterprise documents are distributed as Microsoft Office files or PDFs.
+
+Use `office2john.py` to extract hashes from Office documents:
+
+```bash
+# Extract hash
+office2john.py Confidential.xlsx > confidential-xlsx.hash
+
+# Crack hash
+john --wordlist=rockyou.txt confidential-xlsx.hash
+```
+
+Recovered password:
+
+```
+beethoven
+```
+
+![Filtered output](./.images/john-excel.PNG)
+
+Extract hashes from PDF files using `pdf2john.py`:
+
+```bash
+# Extract hash
+pdf2john.py PDF.pdf > pdf.hash
+
+# Crack hash
+john --wordlist=rockyou.txt pdf.hash
+```
+
+---
+
+### Cracking Protected Archives
+
+There are many archive and container formats that may be encountered during engagements. Common examples include:
+
+- `tar`
+- `gz`
+- `gzip`
+- `zip`
+- `7z`
+- `rar`
+- `bitlocker`
+
+When attacking password-protected archives, the typical workflow is:
+
+- Extract the password hash
+- Perform offline cracking using John the Ripper or Hashcat
+
+**ZIP Archives**
+
+The `zip` format is commonly encountered on Windows systems.
+
+Use `zip2john` to extract the hash, then crack it with John:
+
+```bash
+# Extract hash
+zip2john ZIP.zip > zip.hash
+
+# Crack hash
+john --wordlist=rockyou.txt zip.hash
+```
+
+**GZIP/TAR Archives**
+
+Formats such as `gzip` and `tar` do not natively support password protection. However, they are often encrypted using tools such as `openssl` or `gpg`.
+
+Cracking OpenSSL-encrypted archives directly with John can be unreliable and may result in false positives. In these cases, manually attempting decryption using OpenSSL in a loop is often more effective.
+
+Example brute-force loop using OpenSSL:
+
+```bash
+for i in $(cat rockyou.txt);do openssl enc -aes-256-cbc -d -in GZIP.gzip -k $i 2>/dev/null| tar xz;done
+```
+
+If successful, decrypted files will be extracted to the current directory.
+
+**Bitlocker**
+
+BitLocker is a Windows full-disk encryption feature that uses `AES` (128-bit or 256-bit). If the primary password is unavailable, a 48-digit recovery key may also be used.
+
+The `bitlocker2john` script extracts four hashes:
+
+- The first two correspond to the user password
+- The latter two correspond to the recovery key
+
+Unless partial recovery key data is available, cracking the password hashes is typically more practical.
+
+Extract hashes:
+
+```bash
+# Extract all hashes
+bitlocker2john -i Private.vhd > backup.hashes
+
+# Grab password hash
+grep "bitlocker\$0" backup.hashes > backup.hash
+
+# Crack hash with John
+john --wordlist=rockyou.txt backup.hash
+
+# Crack hash with hashcat
+hashcat -a 0 -m 22100 backup.hash rockyou.txt
+```
+
+Recovered password:
+
+```
+francisco
+```
+
+![Filtered output](./.images/john-bitlocker.PNG)
+
+**Mounting Bitlocker Volumes on Linux**
+
+Once the BitLocker password is recovered, encrypted drives can be mounted on Linux using `dislocker`.
+
+Install `dislocker`:
+
+```bash
+sudo apt install dislocker
+```
+
+Create mount directories:
+
+```bash
+sudo mkdir -p /media/bitlocker
+sudo mkdir -p /media/bitlockermount
+```
+
+Attach the VHD as a loop device:
+
+```bash
+# Configure as loop-device
+sudo losetup -f -P Private.vhd
+```
+
+Identify the assigned loop device (`loop0p1`):
+
+```bash
+lsblk
+```
+
+![Filtered output](./.images/loop-device.PNG)
+
+Decrypt and mount:
+
+```bash
+# Decrypt
+sudo dislocker /dev/loop0p1 -ufrancisco -- /media/bitlocker
+
+# Mount
+sudo mount -o loop /media/bitlocker/dislocker-file /media/bitlockermount
+```
+
+Verify access:
+
+```bash
+cd /media/bitlockermount
+
+ls -la
+```
+
+![Filtered output](./.images/bitlocker-device.PNG)
+
+---
+
+## Remote Password Attacks
+
+---
+
+### Network Services
