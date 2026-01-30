@@ -1,6 +1,6 @@
 # Cyber Security Repository
 
-This repository contains detailed documentation and exercises from **Hack The Box CWES/CPTS modules**. Each module is self-contained with step-by-step documentation and supporting images.
+This repository contains detailed notes related to **Hack The Box CWES/CPTS modules**.
 
 ---
 
@@ -8,23 +8,24 @@ This repository contains detailed documentation and exercises from **Hack The Bo
 
 | Module | Description |
 |--------|-------------|
-| [API Attacks](api-attacks/api-attacks.md) | Exploiting insecure REST APIs |
-| [Attacking Common Applications](attacking-common-applications/attacking-common-applications.md) | Security flaws in widely-used applications |
-| [Attacking GraphQL](attacking-graphql/attacking-graphql.md) | Exploiting GraphQL APIs |
-| [Broken Authentication](broken-authentication/broken-authentication.md) | Broken authentication scenarios and exploitation |
-| [Command Injections](command-injections/command-injections.md) | Command injection and remote code execution techniques |
-| [Cross-Site Scripting](cross-site-scripting/xss.md) | Reflected, stored, and DOM-based XSS examples |
-| [FFUF](ffuf/ffuf.md) | Directory fuzzing and content discovery |
-| [File Inclusion](file-inclusion/file-inclusion.md) | Local and remote file inclusion attacks |
-| [File Upload Attacks](file-upload-attacks/file-upload-attacks.md) | Exploiting insecure file upload mechanisms |
-| [Hashcat](hashcat/hashcat.md) | Password cracking with Hashcat |
-| [Hydra](hydra/hydra.md) | Brute-force attacks using Hydra |
-| [Incident Handling](incident-handling/incident-handling.md) | Incident response frameworks |
-| [Nmap](nmap/nmap.md) | Network scanning and enumeration |
-| [Server-Side Attacks](server-side-attacks/server-side-attacks.md) | Server-side attack techniques |
-| [SQL Injections](sql-injections/sql-injections.md) | SQL theory and manual SQL injections |
-| [SQLMap](sqlmap/sqlmap.md) | Automated SQL injections with SQLMap |
-| [Web Attacks](web-attacks/web-attacks.md) | General web exploitation techniques |
+| [API Attacks](api-attacks/api-attacks.md) | Common vulnerabilities and attack vectors related to RESTful APIs. |
+| [Attacking Common Applications](attacking-common-applications/attacking-common-applications.md) | Discovery. footprinting, enumeration and exploitation of common applications. |
+| [Attacking GraphQL](attacking-graphql/attacking-graphql.md) | Common misconfigurations and vulnerabilities in GraphQL APIs |
+| [Attacking Web Applications with Ffuf](attacking-web-applications-with-ffuf/attacking-web-applications-with-ffuf.md) | Web content discovery through enumeration of directories, pages, parameters and subdomains. |
+| [Broken Authentication](broken-authentication/broken-authentication.md) | Common misconfigurations and vulnerabilities related to authentication. |
+| [Command Injections](command-injections/command-injections.md) | Identification and exploitation of OS command injection vulnerabilities. |
+| [Cracking Passwords with Hashcat](cracking-passwords-with-hashcat/cracking-passwords-with-hashcat.md) | Fundamentals of password cracking with implementations in Hashcat.|
+| [Cross-Site Scripting](cross-site-scripting/xss.md) | Identification and exploitation of XSS vulnerabilities. |
+| [File Inclusion](file-inclusion/file-inclusion.md) | Fundamentals of file inclusion attacks, including both LFI and RFI. |
+| [File Upload Attacks](file-upload-attacks/file-upload-attacks.md) | Identification and exploitation of file upload vulnerabilities. |
+| [Incident Handling](incident-handling/incident-handling.md) | Fundamentals of incident handling, including processes and security monitoring using SIEM. |
+| [Login Brute Forcing](login-brute-forcing/login-brute-forcing.md) | Fundamentals of password brute-forcing with implementations in Hydra. |
+| [Network Enumeration with Nmap](network-enumeration-with-nmap/network-enumeration-with-nmap.md) | Network enumeration and mapping using Nmap. |
+| [Password Attacks](password-attacks/password-attacks.md) | Fundamentals of password attacks, including implementations in Hashcat, John The Ripper, and NetExec.
+| [Server-Side Attacks](server-side-attacks/server-side-attacks.md) | Common server-side vulnerabilities, including SSRF, SSTI, SSI, and XSLT. |
+| [SQL Injection Fundamentals](sql-injection-fundamentals/sql-injection-fundamentals.md) | Manual identification and exploitation of SQL injection vulnerabilities. |
+| [SQLMap Essentials](sqlmap-essentials/sqlmap-essentials.md) | Automated identification and exploitation of SQL injection vulnerabilities. |
+| [Web Attacks](web-attacks/web-attacks.md) | Common web vulnerabilities, including Verb tampering, IDOR, and XXE. |
 
 > Click the module name to open the full documentation.
 
