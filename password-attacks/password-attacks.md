@@ -17,6 +17,7 @@ This document outlines common techniques used in **password attacks**. It is int
     - [Network Services](#network-services)
     - [Spraying, Stuffing, and Defaults](#spraying-stuffing-and-defaults)
   - [Extracting Passwords from Windows Systems](#extracting-passwords-from-windows-systems)
+    - [Attacking SAM, SYSTEM, and SECURITY](#attacking-sam-system-and-security)
 
 ---
 
@@ -773,3 +774,69 @@ hydra -C mysql-default-creds mysql://10.100.38.23
 ---
 
 ## Extracting Passwords from Windows Systems
+
+The Windows authentication process involves multiple components working together to validate users and enforce security policies. At the core of this process is the **Local Security Authority (LSA)**, a protected subsystem responsible for authentication, local security policy enforcement, and translation between usernames and Security Identifiers (SIDs).
+
+**LSASS**
+
+The **Local Security Authority Subsystem Service (LSASS)** governs authentication on Windows systems. It is located at:
+
+```
+%SystemRoot%\System32\lsass.exe
+```
+
+LSASS is responsible for:
+
+- Enforcing local security policies
+- Authenticating users
+- Managing credential material in memory
+- Forwarding security audit events to the Windows Event Log
+
+Because LSASS holds credential data in memory, it is a high-value target during post-exploitation.
+
+**SAM Database**
+
+The **Security Account Manager (SAM)** is a database that stores local user account credentials. Passwords are stored as `LM` (legacy) or `NTLM` hashes within the Windows registry.
+
+The SAM file is located at:
+
+```
+%SystemRoot%\System32\config\SAM
+```
+
+Accessing the SAM database requires SYSTEM-level privileges.
+
+Windows systems can operate in either:
+
+- **Workgroup mode** – credentials are stored locally in the SAM
+- **Domain mode** – authentication is handled by a Domain Controller (DC)
+
+On domain-joined systems, user credentials are validated against Active Directory, and the primary credential store becomes `NTDS.dit` on the DC.
+
+To increase resistance against offline attacks, Windows can protect the SAM database using **SYSKEY**, which partially encrypts credential material at rest.
+
+**NTDS** 
+
+In enterprise environments, Windows systems are commonly joined into an Active Directory domain. This centralizes authentication and system management.
+
+Each Domain Controller maintains a copy of:
+
+```
+%SystemRoot%\NTDS\ntds.dit
+```
+
+This database is replicated across all Domain Controllers in the forest (except Read-Only Domain Controllers).
+
+The `NTDS.dit` file contains:
+
+- Usernames and password hashes
+- Group accounts
+- Computer accounts
+- Group Policy Objects (GPOs)
+
+Compromising `NTDS.dit` effectively exposes all domain credentials, making Domain Controllers prime targets during lateral movement and privilege escalation.
+
+---
+
+### Attacking SAM, SYSTEM, and SECURITY
+
