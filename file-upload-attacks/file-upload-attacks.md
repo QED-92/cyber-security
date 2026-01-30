@@ -45,7 +45,7 @@ To achieve code execution, the uploaded payload must be written in the **same pr
 http://94.237.57.115:3157/index.php
 ```
 
-![Filtered output](...images/basic-exploitation.png)
+![Filtered output](./.images/basic-exploitation.png)
 
 If the file extension is not explicitly visible, it can be manually fingerprinted by requesting common variations of `index.ext` and observing server responses:
 
