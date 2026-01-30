@@ -16,6 +16,7 @@ This document outlines common techniques used in **password attacks**. It is int
   - [Remote Password Attacks](#remote-password-attacks)
     - [Network Services](#network-services)
     - [Spraying, Stuffing, and Defaults](#spraying-stuffing-and-defaults)
+  - [Extracting Passwords from Windows Systems](#extracting-passwords-from-windows-systems)
 
 ---
 
@@ -712,3 +713,63 @@ smbclient -U cassie \\\\10.129.202.136\\CASSIE
 ---
 
 ### Spraying, Stuffing, and Defaults
+
+Password-based attacks are not limited to traditional brute-force techniques. In enterprise environments, attackers frequently leverage **password spraying**, **credential stuffing**, and **default credentials** to gain initial access with minimal noise.
+
+**Password Spraying**
+
+Password spraying is a brute-force technique where a **single password** is tested against many user accounts or services. This approach avoids account lockouts and is especially effective in environments where users are initialized with default or weak passwords.
+
+In Active Directory environments, tools such as `NetExec` and `Kerbrute` are commonly used.
+
+Example password spray against SMB:
+
+```bash
+netexec smb 10.100.38.0/24 -u user-wordlist -p 'ChangeMe123!'
+```
+
+Password spraying is often performed with a small set of commonly used passwords to minimize detection.
+
+**Credential Stuffing**
+
+Credential stuffing involves testing **known username/password pairs** obtained from breaches or previous compromises against additional services.
+
+Because many users reuse credentials across platforms, this technique can quickly lead to lateral movement.
+
+If a file containing `username:password` pairs is available, `Hydra` can be used to target specific services such as SSH:
+
+```bash
+hydra -C user-pass-wordlist ssh://10.100.38.23
+```
+
+Credential stuffing is most effective when combined with service discovery and enumeration.
+
+**Default Credentials**
+
+Many devices and applications (routers, firewalls, databases, management platforms) ship with default credentials. These are frequently left unchanged, creating easy entry points.
+
+The `Default Credentials Cheat Sheet` tool automates searching for known default credentials.
+
+Install:
+
+```bash
+pip3 install defaultcreds-cheat-sheet
+```
+
+Search for defaults related to MySQL:
+
+```bash
+creds search mysql
+```
+
+![Filtered output](./.images/creds-default-credentials.PNG)
+
+After identifying potential credentials, they can be formatted as `username:password` pairs and tested with Hydra:
+
+```bash
+hydra -C mysql-default-creds mysql://10.100.38.23
+```
+
+---
+
+## Extracting Passwords from Windows Systems
