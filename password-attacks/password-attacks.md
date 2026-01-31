@@ -19,6 +19,8 @@ This document outlines common techniques used in **password attacks**. It is int
   - [Extracting Passwords from Windows Systems](#extracting-passwords-from-windows-systems)
     - [Attacking SAM, SYSTEM, and SECURITY](#attacking-sam-system-and-security)
     - [Attacking LSASS](#attacking-lsass)
+    - [Attacking Windows Credential Manager](#attacking-windows-credential-manager)
+    - [Attacking Active Directory and NTDS.dit](#attacking-active-directory-and-ntdsdit)
 
 ---
 
@@ -1084,3 +1086,80 @@ Mic@123
 ![Filtered output](./.images/hashcat-lsass.PNG)
 
 ---
+
+### Attacking Windows Credential Manager
+
+The **Windows Credential Manager** allows users and applications to store credentials for remote systems, services, and websites.
+
+Credential data is stored in encrypted directories within user and system profiles:
+
+- `%UserProfile%\AppData\Local\Microsoft\Vault\`
+- `%UserProfile%\AppData\Local\Microsoft\Credentials\`
+- `%UserProfile%\AppData\Roaming\Microsoft\Vault\`
+- `%ProgramData%\Microsoft\Vault\`
+- `%SystemRoot%\System32\config\systemprofile\AppData\Roaming\Microsoft\Vault\`
+
+Each vault directory contains a `policy.vpol` file holding AES (128- or 256-bit) keys protected by **DPAPI**. These AES keys encrypt the stored credentials.
+
+Modern Windows versions may also implement **Credential Guard**, which further protects DPAPI master keys and limits credential extraction.
+
+Windows stores two primary credential types:
+
+- Web Credentials
+  - Used for websites and online accounts
+- Windows Credentials
+  - Used for system authentication, network resources, and applications such as OneDrive
+
+**Exporting Credential Vaults**
+
+Vault contents can be exported as `.crd` files via the Control Panel:
+
+![Filtered output](./.images/credential-manager-backup.PNG)
+
+Alternatively, the Credential Manager UI can be opened directly:
+
+```powershell
+rundll32 keymgr.dll,KRShowKeyMgr
+```
+
+**Enumerating Stored Credentials**
+
+The built-in `cmdkey` utility lists credentials stored for the current user:
+
+```powershell
+cmdkey /list
+```
+
+![Filtered output](./.images/cmdkey.PNG)
+
+This indicates cached domain credentials for `SRV01\mcharles`. The interactive tag means the credentials are valid for interactive logons.
+
+If such credentials exist, they can often be abused using `runas`:
+
+```powershell
+runas /savecred /user:SRV01\mcharles cmd
+```
+
+![Filtered output](./.images/runas.PNG)
+
+This launches a new command prompt under the stored user context without prompting for a password.
+
+**Extracting Credentials with Mimikatz**
+
+`mimikatz` can retrieve Credential Manager entries either directly from memory using `sekurlsa` or by manually decrypting vault data via the `dpapi` module.
+
+A common approach is dumping credentials from LSASS memory:
+
+```powershell
+mimikatz.exe
+privilege::debug
+sekurlsa::credman
+```
+
+![Filtered output](./.images/mimikatz.PNG)
+
+If successful, this reveals usernames, domains, and sometimes plaintext passwords associated with Credential Manager entries.
+
+---
+
+### Attacking Active Directory and NTDS.dit
