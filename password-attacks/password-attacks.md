@@ -23,6 +23,8 @@ This document outlines common techniques used in **password attacks**. It is int
     - [Attacking Active Directory and NTDS.dit](#attacking-active-directory-and-ntdsdit)
     - [Credential Hunting in Windows](#credential-hunting-in-windows)
   - [Extracting Password from Linux Systems](#extracting-password-from-linux-systems)
+    - [Linux Authentication Process](#linux-authentication-process)
+    - [Credential Hunting in Linux](#credential-hunting-in-linux)
 
 ---
 
@@ -1450,3 +1452,158 @@ This technique is effective for discovering:
 ---
 
 ## Extracting Password from Linux Systems
+
+---
+
+### Linux Authentication Process
+
+One of the most commonly used Linux authentication mechanisms is **Pluggable Authentication Modules (PAM)**. PAM-related modules, such as `pam_unix.so` or `pam_unix2.so`, are typically located in:
+
+```
+/usr/lib/x86_64-linux-gnu/security/
+```
+
+on Debian-based systems.
+
+PAM modules are responsible for handling:
+
+- User authentication
+- Account management
+- Session management
+- Password changes
+
+The primary files used by `pam_unix.so` are:
+
+- `/etc/passwd`
+- `/etc/shadow`
+
+**The /etc/passwd File**
+
+The `/etc/passwd` file contains account information for every user on the system. Each entry consists of seven colon-separated fields.
+
+Example:
+
+```
+root:x:0:0:root:/root:/bin/bash
+```
+
+![Filtered output](./.images/passwd.PNG)
+
+| Field            | Value                  |
+| ---------------- | ---------------------- |
+| Username         | `root`                 |
+| Password         | `x`                    |
+| User-ID          | `0`                    |
+| Group-ID         | `0`                    |
+| GECOS            | `root`                 |
+| Home Directory   | `/root`                |
+| Default Shell    | `/bin/bash`            |
+
+On modern systems, the password field typically contains an `x`, indicating that the actual password hash is stored in `/etc/shadow`.
+
+**The /etc/shadow File**
+
+The `/etc/shadow` file stores password hashes and aging information. Only users with administrative privileges can read this file.
+
+Example:
+
+```
+htb-student:$y$j9T$...SNIP...pNbNkZKO:20485:0:99999:7:::
+```
+
+Each entry contains nine colon-separated fields:
+
+| Field              | Value                         |
+| ------------------ | ----------------------------- |
+| Username           | `htb-student`                 |
+| Password           | `$y$j9T$...SNIP...pNbNkZKO`   |
+| Last Change        | `20485`                       |
+| Min Age            | `0`                           |
+| Max Age            | `99999`                       |
+| Inactivity Period  | `-`                           |
+| Expiration Date    | `-`                           |
+| Reserved Field     | `-`                           |
+
+Password hashes follow this structure:
+
+```
+$<id>$<salt>$<hash>
+```
+
+The `id` specifies the hashing algorithm:
+
+| ID               | Hash Algorithm         |
+| ---------------- | ---------------------- |
+| `1`              | `MD5`                  |
+| `2a`             | `Blowfish`             |
+| `5`              | `SHA-256`              |
+| `6`              | `SHA-512`              |
+| `sha1`           | `SHA-1`                |
+| `y`              | `Yescrypt`             |
+| `gy`             | `Gost-yescrypt`        |
+| `7`              | `Scrypt`               |
+
+Many modern Linux distributions now use `Yescrypt` by default.
+
+**The /etc/security/opasswd File**
+
+PAM can prevent password reuse by storing previously used passwords in:
+
+```
+/etc/security/opasswd
+```
+
+Only privileged users can access this file:
+
+![Filtered output](./.images/opasswd.PNG)
+
+Old passwords are typically stored as `MD5` hashes, making them significantly easier to crack than modern `Yescrypt` or `SHA-512` hashes.
+
+**Cracking Linux Credentials**
+
+With root access, password hashes can be extracted and cracked offline.
+
+John The Ripper provides a utility called `unshadow`, which merges `/etc/passwd` and `/etc/shadow` into a crackable format:
+
+```bash
+sudo cp /etc/passwd /tmp/passwd 
+sudo cp /etc/shadow /tmp/shadow 
+
+unshadow /tmp/passwd /tmp/shadow > /tmp/unshadowed.hashes
+```
+
+**Single Crack Mode**
+
+John’s single mode uses usernames, GECOS fields, and home directory names to generate candidate passwords:
+
+```bash
+john --single /tmp/unshadowed.hashes
+```
+
+Recovered credentials:
+
+```
+martin:Martin1
+```
+
+![Filtered output](./.images/unshadowed-crack.PNG)
+
+**Wordlist Attack**
+
+Remaining hashes can be attacked using a dictionary:
+
+```bash
+john --wordlist=rockyou.txt /tmp/unshadowed.hashes
+```
+
+Recovered credentials:
+
+```
+sarah:mariposa
+```
+
+![Filtered output](./.images/unshadowed-crack2.PNG)
+
+---
+
+### Credential Hunting in Linux
