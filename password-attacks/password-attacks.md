@@ -1607,3 +1607,164 @@ sarah:mariposa
 ---
 
 ### Credential Hunting in Linux
+
+Once access to a Linux system is obtained, credential hunting is often a low-hanging fruit that can quickly lead to privilege escalation or lateral movement.
+
+Credentials are commonly harvested from four primary sources:
+
+- `Files` (configs, databases, notes, scripts, source code, cronjobs, SSH keys)
+- `History` (command history and logs)
+- `Memory` (cached or in-memory credentials)
+- `Key-rings/Browsers` (stored application credentials)
+
+#### Files
+
+**Configuration Files**
+
+Configuration files are central to Linux services and frequently contain credentials or connection strings. Common extensions include:
+
+- `.config`
+- `.conf`
+- `.cnf`
+
+The following one-liner recursively searches for configuration files while excluding common system directories:
+
+```bash
+for l in $(echo ".conf .config .cnf");do echo -e "\nFile extension: " $l; find / -name *$l 2>/dev/null | grep -v "lib\|fonts\|share\|core" ;done
+```
+
+![Filtered output](./.images/files-conf.PNG)
+
+Once identified, key phrases such as `user`, `password`, and `pass` can be searched within these files:
+
+```bash
+for i in $(find / -name *.cnf 2>/dev/null | grep -v "doc\|lib");do echo -e "\nFile: " $i; grep "user\|password\|pass" $i 2>/dev/null | grep -v "\#";done
+```
+
+![Filtered output](./.images/credential-hunting-linux.PNG)
+
+**Database Files**
+
+Database dumps and files may also contain credentials or sensitive application data:
+
+```bash
+for l in $(echo ".sql .db .*db .db*");do echo -e "\nDB File extension: " $l; find / -name *$l 2>/dev/null | grep -v "doc\|lib\|headers\|share\|man";done
+```
+
+![Filtered output](./.images/credential-hunting-linux2.PNG)
+
+**Notes**
+
+User notes can contain credentials but are harder to identify since they may not follow a consistent naming scheme. A common approach is to search for `.txt` files and files without extensions inside home directories:
+
+```bash
+find /home/* -type f -name "*.txt" -o ! -name "*.*"
+```
+
+![Filtered output](./.images/credential-hunting-linux3.PNG)
+
+**Scripts**
+
+Scripts frequently contain hard-coded credentials or sensitive logic. Common script extensions can be enumerated as follows:
+
+```bash
+for l in $(echo ".py .pyc .pl .go .jar .c .sh");do echo -e "\nFile extension: " $l; find / -name *$l 2>/dev/null | grep -v "doc\|lib\|headers\|share";done
+```
+
+![Filtered output](./.images/credential-hunting-linux4.PNG)
+
+**Cronjobs**
+
+Cron jobs automate the execution of commands and scripts. Credentials are sometimes embedded directly into scheduled tasks:
+
+```bash
+cat /etc/crontab
+```
+
+![Filtered output](./.images/credential-hunting-linux5.PNG)
+
+Additional cron locations:
+
+```bash
+ls -la /etc/cron.*/
+```
+
+![Filtered output](./.images/credential-hunting-linux6.PNG)
+
+**History Files**
+
+Command history files can expose credentials passed directly on the command line.
+
+```bash
+ls -la /home/*/.bash*
+```
+
+![Filtered output](./.images/credential-hunting-linux7.PNG)
+
+**Log Files**
+
+Linux systems maintain several categories of logs:
+
+- Application Logs
+- Event Logs
+- Service Logs
+- System Logs
+
+Common log locations include:
+
+| File                     | Description                                    |
+| ------------------------ | ---------------------------------------------- |
+| `/var/log/messages`      | `Generic system logs`                          |
+| `/var/log/syslog`        | `Generic system logs`                          |
+| `/var/log/auth.log`      | `Authentication related logs (Debian)`         |
+| `/var/log/secure`        | `Authentication related logs (RedHat/CentOS)`  |
+| `/var/log/boot.log`      | `Booting logs`                                 |
+| `/var/log/dmesg`         | `Hardware and driver logs`                     |
+| `/var/log/kern.log`      | `Kernel warnings and errors logs`              |
+| `/var/log/faillog`       | `Failed login attempts`                        |
+| `/var/log/cron`          | `Cron related logs`                            |
+| `/var/log/mail.log`      | `Mail server related logs`                     |
+| `/var/log/httpd`         | `Apache related logs`                          |
+| `/var/log/mysqld.log`    | `MySQL related logs`                           |
+
+The following loop searches log files for potentially interesting activity:
+
+```bash
+for i in $(ls /var/log/* 2>/dev/null);do GREP=$(grep "accepted\|session opened\|session closed\|failure\|failed\|ssh\|password changed\|new user\|delete user\|sudo\|COMMAND\=\|logs" $i 2>/dev/null); if [[ $GREP ]];then echo -e "\n#### Log file: " $i; grep "accepted\|session opened\|session closed\|failure\|failed\|ssh\|password changed\|new user\|delete user\|sudo\|COMMAND\=\|logs" $i 2>/dev/null;fi;done
+```
+
+![Filtered output](./.images/credential-hunting-linux8.PNG)
+
+#### Memory and Cache
+
+Many applications cache credentials in memory for convenience. Tools such as [mimepenguin](https://github.com/huntergregal/mimipenguin) and [LaZagne](https://github.com/AlessandroZ/LaZagne/blob/master/Windows/laZagne.py) can extract these values: 
+
+```bash
+sudo python3 mimipenguin.py
+```
+
+```bash
+sudo python3 laZagne.py all
+```
+
+![Filtered output](./.images/credential-hunting-linux9.PNG)
+
+**Browser Credentials**
+
+Browsers store saved credentials locally in encrypted form. For example, Firefox stores credentials in the user’s profile directory within `logins.json`.
+
+Enumerating Firefox profiles:
+
+```bash
+ls -l .mozilla/firefox/ | grep default
+```
+
+Extracting stored logins:
+
+```bash
+cat .mozilla/firefox/1bplpd86.default-release/logins.json | jq .
+```
+
+![Filtered output](./.images/credential-hunting-linux10.PNG)
+
+---
