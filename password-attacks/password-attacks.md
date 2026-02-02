@@ -25,6 +25,9 @@ This document outlines common techniques used in **password attacks**. It is int
   - [Extracting Password from Linux Systems](#extracting-password-from-linux-systems)
     - [Linux Authentication Process](#linux-authentication-process)
     - [Credential Hunting in Linux](#credential-hunting-in-linux)
+  - [Extracting Passwords From the Network](#extracting-passwords-from-the-network)
+    - [Credential Hunting in Network Traffic](#credential-hunting-in-network-traffic)
+    - [Credential Hunting in Network Shares](#credential-hunting-in-network-shares)
 
 ---
 
@@ -1768,3 +1771,93 @@ cat .mozilla/firefox/1bplpd86.default-release/logins.json | jq .
 ![Filtered output](./.images/credential-hunting-linux10.PNG)
 
 ---
+
+## Extracting Passwords From the Network
+
+---
+
+### Credential Hunting in Network Traffic
+
+Most modern applications use **Transport Layer Security (TLS)** to encrypt data in transit. However, legacy systems, misconfigured services, and development environments may still expose services over unencrypted protocols such as `HTTP`, `FTP`, or `SNMP`. In these scenarios, it becomes possible to harvest cleartext credentials directly from network traffic.
+
+The following table shows common unencrypted protocols and their encrypted counterparts:
+
+| Unencrypted Protocol     | Encrypted Counterpart            |
+| ------------------------ | -------------------------------- |
+| `HTTP`                   | `HTTPS`                          |
+| `FTP`                    | `FTPS/SFTP`                      |
+| `SNMP`                   | `SNMPv3`                         |
+| `POP3`                   | `POP3S`                          |
+| `IMAP`                   | `IMAPS`                          |
+| `SMTP`                   | `SMTPS`                          |
+| `LDAP`                   | `LDAPS`                          |
+| `RDP`                    | `RDP with TLS`                   |
+| `DNS`                    | `DNS over HTTPS`                 |
+| `SMB`                    | `SMB 3.x`                        |
+| `VNC`                    | `VNC with TLS/SSL`               |
+
+#### Wireshark
+
+Wireshark is a widely used packet analyzer capable of inspecting both live and captured network traffic.
+
+Common display filters include:
+
+| Filter                                              | Description                             |
+| --------------------------------------------------- | --------------------------------------- |
+| `ip.addr == 56.42.205.12`                           | Traffic involving a specific IP         |
+| `tcp.port == 21`                                    | Filter by TCP port                      |
+| `http`                                              | Show HTTP traffic                       |
+| `dns`                                               | Show DNS traffic                        |
+| `http.request.method == "POST"`                     | Show HTTP POST requests                 |
+| `tcp.stream eq 50`                                  | Display a specific TCP stream           |
+| `ip.src == 192.168.20.2 && ip.dst == 56.42.205.12`  | Traffic between two specific hosts      |
+
+![Filtered output](./.images/wireshark.PNG)
+
+Wireshark also allows searching packets for keywords.
+
+Searching HTTP traffic for passwords:
+
+```
+http contains "passw"
+```
+
+![Filtered output](./.images/wireshark2.PNG)
+
+Searching FTP authentication attempts:
+
+```
+ftp contains "PASS"
+```
+
+![Filtered output](./.images/wireshark3.PNG)
+
+These techniques are particularly effective against services transmitting credentials in cleartext.
+
+#### Pcredz
+
+Another tool for extracting credentials and sensitive data from packet captures is [PCreds](https://github.com/lgandx/PCredz).
+
+PCredz supports extraction of:
+
+- Credit card numbers
+- POP credentials
+- SMTP credentials
+- IMAP credentials
+- SNMP community strings
+- FTP credentials
+- Credentials from HTTP NTLM/Basic headers, as well as HTTP Forms
+- NTLMv1/v2 hashes
+- Kerberos hashes
+
+Example:
+
+```bash
+./Pcreds -f demo.pcapng
+```
+
+![Filtered output](./.images/pcreds.PNG)
+
+---
+
+### Credential Hunting in Network Shares
