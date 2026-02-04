@@ -30,7 +30,8 @@ This document outlines common techniques used in **password attacks**. It is int
     - [Credential Hunting in Network Shares](#credential-hunting-in-network-shares)
   - [Windows Lateral Movement Techniques](#windows-lateral-movement-techniques)
     - [Pass the Hash](#pass-the-hash)
-    - [Pass the Ticket from Window](#pass-the-ticket-from-windows)
+    - [Pass the Ticket from Windows](#pass-the-ticket-from-windows)
+    - [Pass the Ticket from Linux](#pass-the-ticket-from-linux)
 
 ---
 
@@ -2148,8 +2149,7 @@ sekurlsa::ekeys
 This reveals values such as:
 
 - `AES256_HMAC`
-- `AES128_HMAC`
-- `RC4_HMAC (NTLM)`
+- `RC4_HMAC`
 
 Using one of these keys, we can generate a fresh Kerberos session for the target user:
 
@@ -2213,3 +2213,5 @@ Enter-PSSession -ComputerName DC01
 | **Pass the Key**    | Kerberos encryption key  | New forged TGT          |
 
 ---
+
+### Pass the Ticket from Linux
