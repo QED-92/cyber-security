@@ -31,7 +31,7 @@ This document summarizes core techniques for network discovery and enumeration u
 
 ## Overview
 
-Nmap is a powerful open-source tool used for:
+Nmap is an open-source tool used for:
 
 - Host discovery
 - Port scanning
@@ -39,7 +39,7 @@ Nmap is a powerful open-source tool used for:
 - Operating system detection
 - Vulnerability detection
 
-It is often the first tool used during network-based reconnaissance in penetration tests.
+Nmap is often the first tool used during network-based reconaissance.
 
 ## Host discovery
 
@@ -51,13 +51,17 @@ The most common method is sending **ICMP Echo Requests** (ping).
 
 CIDR notation is used to specify network ranges.
 
+| Flag              |  Description                   |
+| ----------------- | -------------------------------|
+| `-sn`             | Disable port scanning          |
+| `-oA`             | Save output in all formats     |
+
+
 **Example:**
 
 ```bash
 nmap 10.129.2.0/24 -sn -oA hosts
 ```
-
-The **-sn** flag disables port scanning, while **-oA** saves output in all major formats.
 
 ![Filtered output](./.images/nmap2.PNG)
 
@@ -77,13 +81,20 @@ During engagements, a list of in-scope hosts is often provided.
 
 Nmap supports scanning from a file:
 
+| Flag              |  Description                   |
+| ----------------- | -------------------------------|
+| `-sn`             | Disable port scanning          |
+| `-iL`             | Input list                     |
+
 ```bash
 nmap -sn -iL hosts.txt | grep for | cut -d " " -f5
 ```
 
 ### Multiple Hosts and Host Ranges
 
-Multiple hosts:
+Nmap can scan multiple hosts in one scan. The ip-addresses can be provided one after the other, or as a range of ip-addresses. 
+
+One after the other:
 
 ```bash
 nmap -sn 10.129.2.18 10.129.2.19 10.129.2.20 | grep for | cut -d" " -f5
@@ -117,83 +128,93 @@ nmap 10.129.2.18 -sn --reason
 
 On local networks, Nmap may default to ARP scanning.
 
-To force ICMP Echo Requests:
+To disable ARP scanning and force ICMP Echo Requests:
+
+| Flag                 |  Description                   |
+| -----------------    | -------------------------------|
+| `-sn`                | Disable port scanning          |
+| `-PE`                | Perform ping scan              |
+| `--disable-arp-ping` | Disable arp scan               |
+| `--reason`           | Explain why host is up         |
 
 ```bash
-nmap 10.129.2.18 -sn -PE --disable-arp-ping
+nmap 10.129.2.18 -sn -PE --disable-arp-ping --reason
 ```
 
+![Filtered output](.images/nmap_force_icmp.png)
 ---
 
 ## Port Scanning
 
-After identifying live hosts, the next step is to enumerate:
+After identifying live hosts, the next step is usually to enumerate:
 
 - Open ports
 - Running services
-- Operating system information
+- Operating systems
 
-**Port states:**
+Nmap output categorize ports into different **Port states:**
 
 | State             | Description                                             |
 | ----------------- | ------------------------------------------------------- |
-| `open`            | `Connection established`                                |
-| `closed`          | `No service listening`                                  |
-| `filtered`        | `Usually indicates firewall silently dropping packets`  |
-| `unfiltered`      | `Port reachable, but can't determine open/closed state` |
-| `open/filtered`   | `No response (possible firewall)`                       |
-| `closed/filtered` | `Indeterminate state`                                   |
+| `open`            | Connection established                                |
+| `closed`          | No service listening                                  |
+| `filtered`        | Usually indicates firewall silently dropping packets  |
+| `unfiltered`      | Port reachable, but can't determine open/closed state |
+| `open/filtered`   | No response (possible firewall)|
+| `closed/filtered` | Indeterminate state                                   |
 
 Filtered states are common when firewalls silently drop packets.
 
 ### Default Scan Behavior
 
-By default, Nmap performs a **TCP SYN scan** (-sS) on the top 1000 ports when run as root.
+When run as root, nmap defaults to a **TCP SYN scan** (`-sS`) of the top 1000 ports
 
-- Sends SYN
-- Receives SYN/ACK (open)
-- Terminates with RST
+In essence, the process works like this:
+
+- Sends `SYN`
+- Receives `SYN/ACK` (open)
+- Terminates with `RST`
 - Does not complete the TCP handshake
 
-This makes it relatively stealthy.
+Not completing the TCP handshake makes it relatively stealthy.
 
 **Example:**
 
 ```bash
-sudo nmap 10.129.2.49
+sudo nmap 10.129.2.49 --reason
 ```
 
-![Filtered output](./.images/nmap5.PNG)
+![Filtered output](.images/nmap_default_scan.png)
 
-Without root privileges, Nmap falls back to a **TCP Connect scan** (-sT), which completes the handshake and is more easily logged.
+Without root privileges, Nmap falls back to a **TCP Connect scan** (`-sT`), which completes the handshake and is more easily logged.
 
 ### Port Selection
 
+Specifying which ports to scan can be done in multiple ways:
+
 | Syntax            | Description       |
 | ----------------- | ------------------|
-| `-p-`             | `All 65535 ports` |
-| `-p 22`           | `Single port`     |
-| `-p 21,22,80`     | `Multiple ports`  |
-| `-p 21-8080`      | `Port range`      |
+| `-p-`             | All 65535 ports   |
+| `-p 22`           | Single port       |
+| `-p 21,22,80`     | Multiple ports    |
+| `-p 21-8080`      | Port range        |
 
 **Example:**
 
 ```bash
-nmap 10.129.2.49 -p 22,80,445
+sudo nmap 10.129.2.49 -p 22,80,445
 ```
 
 ---
 
 ## Service and OS Detection
 
-To gather additional information about discovered services:
+Nmap can attempt to gather additional information about discovered services, such as versions and operating systems. OS detection requires at least one open and one closed port to be reliable.
 
-| Flag              | Description                      |
-| ----------------- | -------------------------------- |
-| `-sV`             | `Service and version detection`  |
-| `-O`              | `Operating system detection`     |
-
-OS detection requires at least one open and one closed port to be reliable.
+| Flag              | Description                    |
+| ----------------- | -------------------------------|
+| `-sV`             | Service and version detection  |
+| `-O`              | Operating system detection     |
 
 **Example:**
 
@@ -207,24 +228,24 @@ nmap 10.129.2.49 -p 22,80,445 -sV -O
 
 ## Nmap Scripting Engine (NSE)
 
-Nmap includes hundreds of scripts for advanced enumeration and vulnerability discovery.
+Nmap includes hundreds of scripts for enumeration and vulnerability discovery.
 
-| Template         | Description                       |
-| ---------------- | --------------------------------- |      
-| `auth`           | `Authentication checks`           |
-| `broadcast`      | `Broadcast-based host discovery`  |
-| `brute`          | `Brute force attacks`             |
-| `default`        | `Default safe scripts (-sC)`      |
-| `discovery`      | `Network discovery`               |
-| `dos`            | `Denial-of-service`               |
-| `exploit`        | `Active exploitation`             |
-| `external`       | `Third-party communication`       |
-| `fuzzer`         | `Fuzzing`                         |
-| `intrusive`      | `Potentially disruptive scripts`  |
-| `malware`        | `Malware detection`               |
-| `safe`           | `Non-intrusive scripts`           |
-| `version`        | `Version detection`               |
-| `vuln`           | `Vulnerability identification`    |
+| Template         | Description                     |
+| ---------------- | --------------------------------|      
+| `auth`           | Authentication checks           |
+| `broadcast`      | Broadcast-based host discovery  |
+| `brute`          | Brute force attacks             |
+| `default`        | Default safe scripts (-sC)      |
+| `discovery`      | Network discovery               |
+| `dos`            | Denial-of-service               |
+| `exploit`        | Active exploitation             |
+| `external`       | Third-party communication       |
+| `fuzzer`         | Fuzzing                         |
+| `intrusive`      | Potentially disruptive scripts  |
+| `malware`        | Malware detection               |
+| `safe`           | Non-intrusive scripts           |
+| `version`        | Version detection               |
+| `vuln`           | Vulnerability identification    |
 
 ### Common NSE Usage
 
@@ -266,13 +287,13 @@ Nmap provides extensive control over scan timing and performance.
 
 Fine-tuning options:
 
-| Flag                 | Description             |
-| -------------------- | ----------------------- |
-| `--script-timeout`   | `Max script runtime`    |
-| `--scan-delay`       | `Delay between packets` |
-| `--max-rate`         | `Packets per second`    |
-| `--max-retries`      | `Retransmission limit`  |
-| `--host-timeout`     | `Abort scan per host`   |     
+| Flag                 | Description           |
+| -------------------- | ----------------------|
+| `--script-timeout`   | Max script runtime    |
+| `--scan-delay`       | Delay between packets |
+| `--max-rate`         | Packets per second    |
+| `--max-retries`      | Retransmission limit  |
+| `--host-timeout`     | Abort scan per host   |     
 
 **Examples:**
 
@@ -302,16 +323,16 @@ NMAP also offer **timing templates** for an easier and more convenient way to co
 
 **Timing templates:**
 
-| Template        | Description        |
-| ----------------| ------------------ |
-| `-T0`           | `Paranoid`         |
-| `-T1`           | `Sneaky`           |
-| `-T2`           | `Polite`           |
-| `-T3`           | `Normal (default)` |
-| `-T4`           | `Aggressive`       |
-| `-T5`           | `Insane`           |
+| Template        | Description      |
+| ----------------| -----------------|
+| `-T0`           | Paranoid         |
+| `-T1`           | Sneaky           |
+| `-T2`           | Polite           |
+| `-T3`           | Normal (default) |
+| `-T4`           | Aggressive       |
+| `-T5`           | Insane           |
 
-The **paranoid** and **sneaky** options may be useful for IDS/IPS evasion, but are quite slow. If you're on a decent ethernet connection and not concerned about being stealthy, you are advised to use the **aggressive** option.
+The **paranoid** and **sneaky** options may be useful for IDS/IPS evasion, but are quite slow.
 
 **Example:**
 
@@ -346,5 +367,5 @@ nmap 10.129.2.49 -p 80 -S 10.129.2.200
 DNS traffic (port 53) is often trusted:
 
 ```bash
-nmap 10.129.2.49 -p 80 -sV --source-port 53
+nmap 10.129.2.49 -p 80 --source-port 53
 ```
