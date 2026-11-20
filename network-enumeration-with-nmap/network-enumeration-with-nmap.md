@@ -167,7 +167,7 @@ Filtered states are common when firewalls silently drop packets.
 
 ### Default Scan Behavior
 
-When run as root, nmap defaults to a **TCP SYN scan** (`-sS`) of the top 1000 ports
+When run as root, nmap defaults to a **TCP SYN scan** (`-sS`) of the top 1000 ports.
 
 In essence, the process works like this:
 
